@@ -3,7 +3,7 @@
 // The red gate stands in for the immigration lock. Press U (or tap the button) to unlock it.
 
 // >>> After you deploy the server on Render, paste its address here. <<<
-const SERVER_URL = 'https://YOUR-SERVER-NAME.onrender.com';
+const SERVER_URL = 'https://naija-server.onrender.com';
 
 const WORLD_W = 2400;
 const WORLD_H = 900;
