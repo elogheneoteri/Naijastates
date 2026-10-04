@@ -3,9 +3,9 @@
 // only when the server says your progress is "indigene".
 
 // >>> Paste your three values here (see the setup steps). <<<
-const SERVER_URL = 'https://YOUR-SERVER-NAME.onrender.com';
-const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
+const SERVER_URL = 'https://naija-server.onrender.com';
+const SUPABASE_URL = 'https://imcfgubedcrxmydanabx.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_dUT0e10wO4IK7t0fzD02Yw_zmuh2ruE';
 
 const WORLD_W = 2400;
 const WORLD_H = 900;
