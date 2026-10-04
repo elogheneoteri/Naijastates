@@ -13,6 +13,17 @@ const SPEED = 190;
 const GATE_X = 1300;
 const SEND_EVERY_MS = 66;
 
+// Character sprite sheet: hero.png (same folder as index.html)
+// 4 columns (walk frames) x 4 rows (down, left, right, up), each frame 128 x 224 px.
+// The character's feet sit on the line 93% of the way down each frame (y = 208).
+// It is shown at half size (SPR_SCALE) so it stays sharp on phone screens.
+// If hero.png is missing, the game falls back to the simple shapes.
+const FRAME_W = 128;
+const FRAME_H = 224;
+const SPR_SCALE = 0.5;
+const FEET = 0.93;
+const DIRS = ['down', 'left', 'right', 'up'];
+
 const ZONES = [
   { name: 'Arrival Terminal',   x: 80,   y: 330, w: 280, h: 240, color: 0x3d5a73 },
   { name: 'Refugee Camp',       x: 480,  y: 330, w: 300, h: 240, color: 0x6b5b3e },
@@ -92,6 +103,10 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
 class WorldScene extends Phaser.Scene {
   constructor() { super('world'); }
 
+  preload() {
+    this.load.spritesheet('hero', 'hero.png', { frameWidth: FRAME_W, frameHeight: FRAME_H });
+  }
+
   create() {
     this.progress = 'arrived';
     this.devTools = false;
@@ -130,9 +145,29 @@ class WorldScene extends Phaser.Scene {
     makeAvatar('avatar', 0x2c6e9b);
     makeAvatar('avatar-other', 0xd9822b);
 
-    this.player = this.physics.add.sprite(200, 450, 'avatar');
+    this.hasHero = this.textures.exists('hero');
+    this.labelOffset = this.hasHero ? Math.round(FRAME_H * SPR_SCALE * FEET) : 30;
+    this.facing = 'down';
+    if (this.hasHero) {
+      DIRS.forEach((d, row) => {
+        this.anims.create({
+          key: 'walk-' + d,
+          frames: this.anims.generateFrameNumbers('hero', { start: row * 4, end: row * 4 + 3 }),
+          frameRate: 8,
+          repeat: -1
+        });
+      });
+    }
+
+    this.player = this.physics.add.sprite(200, 450, this.hasHero ? 'hero' : 'avatar', 0);
     this.player.setCollideWorldBounds(true);
-    this.player.body.setSize(22, 30).setOffset(5, 16);
+    if (this.hasHero) {
+      // The sprite's position is its feet; the collision box is a small patch at the feet.
+      this.player.setOrigin(0.5, FEET).setScale(SPR_SCALE);
+      this.player.body.setSize(60, 40).setOffset((FRAME_W - 60) / 2, Math.round(FRAME_H * FEET) - 40);
+    } else {
+      this.player.body.setSize(22, 30).setOffset(5, 16);
+    }
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     this.physics.add.collider(this.player, this.gate);
     this.myLabel = this.add.text(0, 0, '', LABEL_STYLE).setOrigin(0.5, 1).setDepth(5000);
@@ -246,7 +281,7 @@ class WorldScene extends Phaser.Scene {
       if (!o) return;
       o.tx = d.x;
       o.ty = d.y;
-      o.sprite.setFlipX(d.flip);
+      if (!this.hasHero) o.sprite.setFlipX(d.flip);
     });
 
     this.socket.on('join_error', async msg => {
@@ -261,9 +296,11 @@ class WorldScene extends Phaser.Scene {
 
   addOther(p) {
     if (this.others.has(p.id)) return;
-    const sprite = this.add.image(p.x, p.y, 'avatar-other').setFlipX(p.flip);
-    const label = this.add.text(p.x, p.y - 30, p.name, LABEL_STYLE).setOrigin(0.5, 1);
-    this.others.set(p.id, { sprite, label, tx: p.x, ty: p.y });
+    const sprite = this.hasHero
+      ? this.add.sprite(p.x, p.y, 'hero', 0).setOrigin(0.5, FEET).setScale(SPR_SCALE)
+      : this.add.image(p.x, p.y, 'avatar-other').setFlipX(p.flip);
+    const label = this.add.text(p.x, p.y - this.labelOffset, p.name, LABEL_STYLE).setOrigin(0.5, 1);
+    this.others.set(p.id, { sprite, label, tx: p.x, ty: p.y, facing: 'down' });
   }
 
   removeOther(id) {
@@ -296,6 +333,23 @@ class WorldScene extends Phaser.Scene {
 
   // ---------- Game loop ----------
 
+  // Plays the right walking animation for the direction, or the standing frame when still.
+  // holder is where the facing direction is stored (for the player: this.facing).
+  animate(sprite, vx, vy, holder, isRemote) {
+    const threshold = isRemote ? 0.6 : 0.01;
+    const moving = Math.hypot(vx, vy) > threshold;
+    let facing = isRemote ? holder.facing : this.facing;
+    if (moving) {
+      if (Math.abs(vx) > Math.abs(vy)) facing = vx < 0 ? 'left' : 'right';
+      else facing = vy < 0 ? 'up' : 'down';
+      if (isRemote) holder.facing = facing; else this.facing = facing;
+      sprite.anims.play('walk-' + facing, true);
+    } else {
+      sprite.anims.stop();
+      sprite.setFrame(DIRS.indexOf(facing) * 4);
+    }
+  }
+
   update(time) {
     let vx = 0, vy = 0;
     if (this.cursors.left.isDown || this.keys.A.isDown) vx -= 1;
@@ -307,11 +361,15 @@ class WorldScene extends Phaser.Scene {
     const len = Math.hypot(vx, vy);
     if (len > 1) { vx /= len; vy /= len; }
     this.player.setVelocity(vx * SPEED, vy * SPEED);
-    if (vx !== 0) this.player.setFlipX(vx < 0);
+    if (this.hasHero) {
+      this.animate(this.player, vx, vy, 'facing');
+    } else if (vx !== 0) {
+      this.player.setFlipX(vx < 0);
+    }
 
     const px = this.player.x, py = this.player.y;
     this.player.setDepth(py);
-    this.myLabel.setPosition(px, py - 30);
+    this.myLabel.setPosition(px, py - this.labelOffset);
 
     const here = ZONES.find(z => px >= z.x && px <= z.x + z.w && py >= z.y && py <= z.y + z.h);
     this.zoneText.setText(here ? here.name : 'Walking');
@@ -322,10 +380,13 @@ class WorldScene extends Phaser.Scene {
     }
 
     this.others.forEach(o => {
-      o.sprite.x += (o.tx - o.sprite.x) * 0.25;
-      o.sprite.y += (o.ty - o.sprite.y) * 0.25;
+      const dx = o.tx - o.sprite.x;
+      const dy = o.ty - o.sprite.y;
+      o.sprite.x += dx * 0.25;
+      o.sprite.y += dy * 0.25;
+      if (this.hasHero) this.animate(o.sprite, dx, dy, o, true);
       o.sprite.setDepth(o.sprite.y);
-      o.label.setPosition(o.sprite.x, o.sprite.y - 30).setDepth(5000);
+      o.label.setPosition(o.sprite.x, o.sprite.y - this.labelOffset).setDepth(5000);
     });
   }
 }
