@@ -232,6 +232,12 @@ class WorldScene extends Phaser.Scene {
     });
 
     this.socket.on('progress', d => { this.progress = d.progress; this.applyGate(); });
+
+    // The server refused a move (gate or speed check): snap back to its position
+    this.socket.on('correct', d => {
+      this.player.setPosition(d.x, d.y);
+      this.player.setVelocity(0, 0);
+    });
     this.socket.on('joined', p => { this.addOther(p); this.updateStatus(); });
     this.socket.on('left', id => { this.removeOther(id); this.updateStatus(); });
 
