@@ -7,10 +7,10 @@ const SERVER_URL = 'https://naija-server.onrender.com';
 const SUPABASE_URL = 'https://imcfgubedcrxmydanabx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_dUT0e10wO4IK7t0fzD02Yw_zmuh2ruE';
 
-const WORLD_W = 2400;
-const WORLD_H = 900;
+const WORLD_W = 3900;
+const WORLD_H = 1500;
 const SPEED = 190;
-const GATE_X = 1300;
+const GATE_X = 2000;
 const SEND_EVERY_MS = 66;
 
 // Character sprite sheet: hero.png (same folder as index.html)
@@ -24,14 +24,23 @@ const SPR_SCALE = 0.5;
 const FEET = 0.93;
 const DIRS = ['down', 'left', 'right', 'up'];
 
-const ZONES = [
-  { name: 'Arrival Terminal',   x: 80,   y: 330, w: 280, h: 240, color: 0x3d5a73 },
-  { name: 'Refugee Camp',       x: 480,  y: 330, w: 300, h: 240, color: 0x6b5b3e },
-  { name: 'Immigration Office', x: 900,  y: 330, w: 320, h: 240, color: 0x4a6b4a },
-  { name: 'Bank',               x: 1450, y: 150, w: 260, h: 200, color: 0x5a4a73 },
-  { name: 'Airport',            x: 1450, y: 550, w: 260, h: 200, color: 0x73504a },
-  { name: 'Bus Stop',           x: 1880, y: 350, w: 220, h: 200, color: 0x4a6573 }
+const SPAWN_X = 470, SPAWN_Y = 850;      // new players start on the main road, in front of the Arrival Terminal
+const ROAD_TOP = 800, ROAD_BOTTOM = 920;   // main road (matches ground_left.jpg / ground_right.jpg)
+const BUILDINGS = [
+  { key: 'arrival', name: 'Arrival Terminal', cx: 520, w: 600, h: 337, top: 385, depth: 700,
+    box: [0.006, 0.0, 0.995, 0.9357], door: [0.4076, 0.9268] },
+  { key: 'refugee', name: 'Refugee Camp', cx: 640, w: 640, h: 385, top: 965, depth: 1190,
+    box: [0.143, 0.0, 0.8492, 0.5855], door: [0.4917, 0.513] },
+  { key: 'immigration', name: 'Immigration Office', cx: 1500, w: 700, h: 544, top: 235, depth: 700,
+    box: [0.0082, 0.0, 0.9938, 0.8547], door: [0.4035, 0.8547] },
+  { key: 'bank', name: 'Bank', cx: 2420, w: 640, h: 473, top: 287, depth: 700,
+    box: [0.0039, 0.0, 0.9951, 0.8724], door: [0.4266, 0.8724] },
+  { key: 'airport', name: 'Airport', cx: 3380, w: 900, h: 521, top: 274, depth: 620,
+    box: [0.0036, 0.0, 0.9964, 0.6641], door: [0.5018, 0.5948] }
 ];
+
+// Name areas shown in the top-left HUD (a strip in front of each building)
+const ZONES = BUILDINGS.map(b => ({ name: b.name, x: b.cx - b.w / 2, y: b.depth - 40, w: b.w, h: 200 }));
 
 const LABEL_STYLE = {
   fontFamily: 'Georgia, serif', fontSize: '15px', color: '#ffffff',
@@ -105,6 +114,9 @@ class WorldScene extends Phaser.Scene {
 
   preload() {
     this.load.spritesheet('hero', 'hero.png', { frameWidth: FRAME_W, frameHeight: FRAME_H });
+    this.load.image('ground_left', 'ground_left.jpg');
+    this.load.image('ground_right', 'ground_right.jpg');
+    BUILDINGS.forEach(b => this.load.image(b.key, b.key + '.png'));
   }
 
   create() {
@@ -115,25 +127,42 @@ class WorldScene extends Phaser.Scene {
     this.myId = null;
     this.lastSent = 0;
 
-    // Ground and paths
-    this.add.rectangle(WORLD_W / 2, WORLD_H / 2, WORLD_W, WORLD_H, 0x2f4a36);
-    this.add.rectangle(WORLD_W / 2, 450, WORLD_W - 100, 70, 0x57504a);
+    // Ground: roads, paths, border wall and shadows are painted into these two pictures
+    this.add.image(0, 0, 'ground_left').setOrigin(0, 0).setDepth(0);
+    this.add.image(1950, 0, 'ground_right').setOrigin(0, 0).setDepth(0);
 
-    ZONES.forEach(z => {
-      this.add.rectangle(z.x + z.w / 2, z.y + z.h / 2, z.w, z.h, z.color)
-        .setStrokeStyle(3, 0xe8e2d0, 0.7);
-      this.add.text(z.x + z.w / 2, z.y + 18, z.name, {
-        fontFamily: 'Georgia, serif', fontSize: '22px', color: '#f3eedd'
-      }).setOrigin(0.5, 0);
+    // Buildings (pictures). Each one blocks walking through its body;
+    // the strip in front of it (and its door) stays walkable.
+    this.blockerList = [];
+    const addBlocker = (x, y, w, h) => {
+      const r = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x000000, 0);
+      this.physics.add.existing(r, true);
+      this.blockerList.push(r);
+    };
+    BUILDINGS.forEach(b => {
+      const left = b.cx - b.w / 2;
+      this.add.image(b.cx, b.top, b.key).setOrigin(0.5, 0).setDisplaySize(b.w, b.h).setDepth(b.depth);
+      addBlocker(left + b.box[0] * b.w, b.top + b.box[1] * b.h,
+                 (b.box[2] - b.box[0]) * b.w, (b.box[3] - b.box[1]) * b.h);
+      b.doorX = Math.round(left + b.door[0] * b.w);   // for the NPC / Talk button later
+      b.doorY = Math.round(b.top + b.door[1] * b.h);
     });
 
-    // Gate: stays closed until the server reports progress = indigene
-    this.gate = this.add.rectangle(GATE_X, 450, 18, 260, 0xc0392b);
+    // Border wall at GATE_X: solid everywhere except the road gap
+    addBlocker(GATE_X - 12, 0, 24, ROAD_TOP - 14);
+    addBlocker(GATE_X - 12, ROAD_BOTTOM + 16, 24, WORLD_H - ROAD_BOTTOM - 16);
+
+    // Checkpoint gate in the road gap: stays closed until the server reports progress = indigene
+    this.gate = this.add.rectangle(GATE_X, (ROAD_TOP + ROAD_BOTTOM) / 2, 24, ROAD_BOTTOM - ROAD_TOP + 32, 0xc0392b, 0);
     this.physics.add.existing(this.gate, true);
-    this.gateLabel = this.add.text(GATE_X, 300, 'Locked: finish immigration', {
+    this.gateG = this.add.graphics().setDepth(900);
+    this.gateG.fillStyle(0xc0392b, 1).fillRect(GATE_X - 5, ROAD_TOP - 6, 10, ROAD_BOTTOM - ROAD_TOP + 12);
+    this.gateG.fillStyle(0xffffff, 1);
+    for (let y = ROAD_TOP + 4; y < ROAD_BOTTOM; y += 30) this.gateG.fillRect(GATE_X - 5, y, 10, 14);
+    this.gateLabel = this.add.text(GATE_X, ROAD_TOP - 50, 'Locked: finish immigration', {
       fontFamily: 'Georgia, serif', fontSize: '18px', color: '#ffd9d4',
       backgroundColor: '#7a2418', padding: { x: 8, y: 4 }
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(901);
 
     const makeAvatar = (key, shirt) => {
       const g = this.make.graphics({ x: 0, y: 0, add: false });
@@ -159,7 +188,7 @@ class WorldScene extends Phaser.Scene {
       });
     }
 
-    this.player = this.physics.add.sprite(200, 450, this.hasHero ? 'hero' : 'avatar', 0);
+    this.player = this.physics.add.sprite(SPAWN_X, SPAWN_Y, this.hasHero ? 'hero' : 'avatar', 0);
     this.player.setCollideWorldBounds(true);
     if (this.hasHero) {
       // The sprite's position is its feet; the collision box is a small patch at the feet.
@@ -170,6 +199,7 @@ class WorldScene extends Phaser.Scene {
     }
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     this.physics.add.collider(this.player, this.gate);
+    this.blockerList.forEach(r => this.physics.add.collider(this.player, r));
     this.myLabel = this.add.text(0, 0, '', LABEL_STYLE).setOrigin(0.5, 1).setDepth(5000);
 
     this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H);
@@ -319,7 +349,7 @@ class WorldScene extends Phaser.Scene {
 
   applyGate() {
     const open = this.progress === 'indigene';
-    this.gate.setVisible(!open);
+    this.gateG.setVisible(!open);
     this.gateLabel.setVisible(!open);
     this.gate.body.enable = !open;
     this.testButton.setVisible(this.devTools);
