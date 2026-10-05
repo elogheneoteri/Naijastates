@@ -22,16 +22,20 @@ export const PROPS_DIR = 'props/';
 export const PROPS = {
   // ----- water & containers -----
   jerry_can:      { file: '20l_water_jerry_can__h20_container__military.glb', height: 0.48, tags: ['camp', 'water'] },
-  overhead_tank:  { file: 'overhead_water_tank.glb',  height: 3.2,  tags: ['camp', 'water', 'tank'] },
-  plastic_tank:   { file: 'plastic_water_tank.glb',   height: 1.6,  tags: ['camp', 'water', 'tank'] },
+  overhead_tank:  { file: 'overhead_water_tank.glb',  height: 1.0,  tags: ['camp', 'water', 'tank'] },   // a long horizontal tank (about 2.8 m long at this height)
+  plastic_tank:   { file: 'plastic_water_tank.glb',   height: 1.2,  tags: ['camp', 'water', 'tank'] },   // upright round tank
 
   // ----- cooking -----
-  clay_pot:       { file: 'clay_cooking_pot.glb',     height: 0.35, tags: ['camp', 'cooking'] },
-  camp_pots:      { file: 'camping_cooking_pots.glb', height: 0.32, tags: ['camp', 'cooking'] },
+  clay_pot:       { file: 'clay_cooking_pot.glb',     height: 0.30, tags: ['camp', 'cooking'] },
+  camp_pots:      { file: 'camping_cooking_pots.glb', height: 0.22, tags: ['camp', 'cooking'] },
 
   // ----- trees (stylized pack) -----
   palm_3:         { file: 'PalmTree_3.fbx', height: 6.0, tags: ['tree', 'palm'] },
   palm_4:         { file: 'PalmTree_4.fbx', height: 7.0, tags: ['tree', 'palm'] },
+  birch_1:        { file: 'BirchTree_1.fbx', height: 5.5, tags: ['tree', 'birch'] },
+  birch_2:        { file: 'BirchTree_2.fbx', height: 6.0, tags: ['tree', 'birch'] },
+  birch_3:        { file: 'BirchTree_3.fbx', height: 6.5, tags: ['tree', 'birch'] },
+  birch_4:        { file: 'BirchTree_4.fbx', height: 5.0, tags: ['tree', 'birch'] },
   dead_tree_1:    { file: 'DeadTree_1.fbx', height: 4.5, tags: ['tree', 'dead'] },
   dead_tree_3:    { file: 'DeadTree_3.fbx', height: 5.0, tags: ['tree', 'dead'] },
 
@@ -44,13 +48,10 @@ export const PROPS = {
 // Textures that came with the stylized pack. FBX files often lose their texture links,
 // so any material whose name contains the key gets that image.
 const TEXTURE_BY_NAME = [
-  ['flower', 'Flowers.png'],
-  ['grass',  'Grass.png'],
-  ['leaf',   'Leaves_BW.png'],
-  ['leaves', 'Leaves_BW.png'],
-  ['palm',   'Leaves_BW.png'],
-  ['bush',   'Leaves_BW.png'],
+  ['flowers', 'Flowers.png'],       // material called "Flowers" uses the flower sheet
+  ['leaves',  'Leaves_BW.png'],     // PalmTree_Leaves, BirchTree_Leaves, Bush_Leaves use the leaf cut-out
 ];
+const LEAF_GREEN = 0x5f8a2a;        // used when a leaf material comes in grey or white
 
 const gltfLoader = new GLTFLoader();
 const fbxLoader = new FBXLoader();
@@ -72,23 +73,28 @@ function fixMaterials(root, def) {
   root.traverse(o => {
     if (!o.isMesh) return;
     o.castShadow = true; o.receiveShadow = true;
-    const mats = Array.isArray(o.material) ? o.material : [o.material];
-    mats.forEach((m, i) => {
-      if (!m) return;
-      // Re-link missing textures on the stylized FBX props by material/mesh name.
-      if (def.type === 'fbx' && !m.map) {
-        const label = ((m.name || '') + ' ' + (o.name || '')).toLowerCase();
+    const list = Array.isArray(o.material) ? o.material : [o.material];
+    const out = list.map(m => {
+      if (!m) return m;
+      const label = ((m.name || '') + ' ' + (o.name || '')).toLowerCase();
+      if (def.type === 'fbx') {
+        // FBX files from this pack have no linked textures: rebuild each material cleanly.
+        const std = new THREE.MeshStandardMaterial({ name: m.name, color: m.color ? m.color.clone() : 0xffffff, roughness: 0.85, metalness: 0 });
         const hit = TEXTURE_BY_NAME.find(([k]) => label.includes(k));
-        if (hit) { m.map = getTex(hit[1]); m.needsUpdate = true; }
+        if (hit) {
+          std.map = getTex(hit[1]);
+          std.alphaTest = 0.4; std.side = THREE.DoubleSide; std.transparent = false;
+          if (hit[0] === 'flowers') std.color.set(0xffffff);                      // show the flower sheet in its own colours
+          else { const hsl = {}; std.color.getHSL(hsl); if (hsl.s < 0.2) std.color.set(LEAF_GREEN); }   // grey leaves become green
+        }
+        m = std;
+      } else {
+        if ('roughness' in m) m.roughness = Math.max(m.roughness ?? 0.7, 0.55);
       }
-      // Leaf/flower cards use cut-out edges: keep them solid-looking from both sides.
-      if (m.map) { m.alphaTest = Math.max(m.alphaTest, 0.4); m.side = THREE.DoubleSide; }
-      // Slightly matte so nothing looks like plastic under the game's sun.
-      if ('roughness' in m) m.roughness = Math.max(m.roughness ?? 0.7, 0.6);
-      if ('metalness' in m && def.type === 'fbx') m.metalness = 0;
-      if (def.tint) m.color && m.color.multiply(new THREE.Color(def.tint));
-      mats[i] = m;
+      if (def.tint && m.color) m.color.multiply(new THREE.Color(def.tint));
+      return m;
     });
+    o.material = Array.isArray(o.material) ? out : out[0];
   });
 }
 

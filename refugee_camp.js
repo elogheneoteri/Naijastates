@@ -4,6 +4,7 @@
 // Exports: buildRefugeeCamp() -> { group, update }, and CAMP_BOXES (solid parts, for game.js collisions).
 
 import * as THREE from 'three';
+import { loadProp } from './props_library.js';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 let seed = 11;
@@ -18,7 +19,23 @@ const TENTS = [
 ];
 const TENT_W = 2.3, TENT_H = 1.8, TENT_D = 3.0;
 
+// Trees standing just outside the fence (x, z in camp space, trunk is solid). Edit freely.
+const TREES = [
+  { name: 'palm_4',      x: -12.8, z: -6.0,  rotY: 0.4 }, { name: 'palm_3',      x: 12.6,  z: -8.5,  rotY: 2.0 },
+  { name: 'birch_2',     x: -12.6, z: 2.0,   rotY: 1.1 }, { name: 'birch_1',     x: -6.5,  z: -12.6, rotY: 0.2 },
+  { name: 'dead_tree_1', x: 12.9,  z: 3.0,   rotY: 3.0 }, { name: 'dead_tree_3', x: 5.5,   z: -12.8, rotY: 1.6 },
+  { name: 'birch_4',     x: 13.2,  z: -2.0,  rotY: 2.4 }, { name: 'palm_3',      x: -3.0,  z: -13.0, rotY: 4.0 },
+];
+// Small plants outside the fence and beside the gate
+const PLANTS = [
+  { name: 'bush_flowers', x: -3.6, z: 10.4 }, { name: 'bush_flowers', x: 3.6, z: 10.4 },
+  { name: 'flower_clump', x: -10.6, z: -3.0 }, { name: 'flower_clump', x: 10.7, z: -5.5 },
+  { name: 'flower_1', x: -10.5, z: 4.0 }, { name: 'flower_1', x: 10.6, z: 1.0 }, { name: 'flower_clump', x: 10.6, z: 6.0 },
+];
+const JERRY_SPOTS = [[-5.2, 7.6], [-5.0, 7.9], [-3.3, 7.7], [-3.1, 7.5]];
+
 export const CAMP_BOXES = [
+  ...TREES.map(t => [t.x - 0.3, t.x + 0.3, t.z - 0.3, t.z + 0.3]),               // tree trunks
   [-4.7, 4.7, -8.0, 0.0],                                                     // the big tent
   ...TENTS.map(t => [t.x - TENT_W / 2, t.x + TENT_W / 2, t.z - TENT_D / 2, t.z + TENT_D / 2]),
   [-9.6, -9.2, -9.6, 9.5], [9.2, 9.6, -9.6, 9.5], [-9.6, 9.6, -9.6, -9.2],     // fence: left, right, back
@@ -212,7 +229,7 @@ export function buildRefugeeCamp() {
   tank.position.set(-4.2, 2.45, 6.2); tank.castShadow = true; g.add(tank);
   box(M.steel, 2.0, 0.07, 0.07, -4.2, 0.95, 6.95);
   [-4.9, -4.2, -3.5].forEach(x => { box(M.steel, 0.07, 0.22, 0.14, x, 0.82, 7.02); I.steel.add(x, 0.45, 6.95, 0.04, 0.9, 0.04); });
-  [[-5.2, 7.6], [-5.0, 7.9], [-3.3, 7.7], [-3.1, 7.5]].forEach(([x, z], i) => (i % 2 ? I.jerryB : I.jerry).add(x, 0.22, z, 0.32, 0.44, 0.2, rand() * 3));
+  JERRY_SPOTS.forEach(([x, z], i) => (i % 2 ? I.jerryB : I.jerry).add(x, 0.22, z, 0.32, 0.44, 0.2, rand() * 3));
 
   // ----- cooking area -----
   for (let i = 0; i < 9; i++) {
@@ -249,7 +266,25 @@ export function buildRefugeeCamp() {
     c.position.set(-8.3 + i * 0.6, 1.57, 2.7); c.castShadow = true; g.add(c); return c;
   });
 
-  Object.values(I).forEach(inst => { if (inst.items.length) g.add(inst.build()); });
+  // The built-in jerry cans stay as a fallback and are removed once the real model has loaded.
+  const fallbackJerry = [I.jerry, I.jerryB].map(inst => { const m = inst.build(); g.add(m); return m; });
+  Object.entries(I).forEach(([k, inst]) => { if (k !== 'jerry' && k !== 'jerryB' && inst.items.length) g.add(inst.build()); });
+
+  // ----- real props from props_library.js -----
+  // If a file is missing or fails to load, the simple code-made shapes above simply stay in place.
+  const put = (name, x, y, z, opts) => loadProp(name, opts).then(p => { p.position.set(x, y, z); g.add(p); return p; });
+  const warn = what => e => console.warn('refugee camp: could not load ' + what + ', keeping the built-in shape', e);
+
+  put('plastic_tank', -4.2, 1.89, 6.2, { rotY: 0.5 }).then(() => g.remove(tank)).catch(warn('water tank'));
+  put('clay_pot', 4.8, 0.78, 6.4).then(() => g.remove(pot)).catch(warn('cooking pot'));
+  put('camp_pots', 3.7, 0, 7.4, { rotY: 0.8 }).catch(warn('camp pots'));
+  Promise.all(JERRY_SPOTS.concat([[3.2, 8.0], [-8.4, 6.9]]).map(([x, z], i) =>
+    loadProp('jerry_can', { rotY: 1.9 * i }).then(p => { p.position.set(x, 0, z); return p; })))
+    .then(list => { fallbackJerry.forEach(m => g.remove(m)); list.forEach(p => g.add(p)); })
+    .catch(warn('jerry cans'));
+
+  TREES.forEach(t => put(t.name, t.x, 0, t.z, { rotY: t.rotY }).catch(warn(t.name)));
+  PLANTS.forEach((p, i) => put(p.name, p.x, 0, p.z, { rotY: i * 1.3 }).catch(warn(p.name)));
 
   const update = () => {
     const t = performance.now() / 1000;

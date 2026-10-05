@@ -4,6 +4,7 @@
 // Returns { group, update }. game.js adds the group and calls update() every frame (flags wave).
 
 import * as THREE from 'three';
+import { loadProp } from './props_library.js';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 let seed = 7;
@@ -255,15 +256,25 @@ export function buildImmigrationOffice() {
   box(M.step, 1.8, 0.14, 0.8, 0, 0.07, -7.75);
 
   // ----- roof extras: water tanks and satellite dish -----
+  // Built-in tanks are the fallback; they are removed once the real overhead tank model has loaded.
+  const oldTanks = [];
   const tank = (x, z, r, h) => {
-    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => box(M.steel, 0.1, 0.8, 0.1, x + a * r * 0.7, 8.5, z + b * r * 0.7));
-    box(M.steel, r * 2.2, 0.1, r * 2.2, x, 8.95, z);
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => oldTanks.push(box(M.steel, 0.1, 0.8, 0.1, x + a * r * 0.7, 8.5, z + b * r * 0.7)));
+    oldTanks.push(box(M.steel, r * 2.2, 0.1, r * 2.2, x, 8.95, z));
     const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 20), M.dark);
-    t.position.set(x, 9.0 + h / 2, z); t.castShadow = true; g.add(t);
+    t.position.set(x, 9.0 + h / 2, z); t.castShadow = true; g.add(t); oldTanks.push(t);
     const lid = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.45, r * 0.45, 0.12, 16), M.dark);
-    lid.position.set(x, 9.0 + h + 0.06, z); g.add(lid);
+    lid.position.set(x, 9.0 + h + 0.06, z); g.add(lid); oldTanks.push(lid);
   };
   tank(-4.5, -4.5, 0.8, 1.5); tank(-2.2, -4.5, 0.6, 1.2);
+
+  // Real overhead water tank (props_library.js) on one steel stand
+  loadProp('overhead_tank').then(p => {
+    oldTanks.forEach(o => g.remove(o));
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => box(M.steel, 0.12, 0.8, 0.12, -3.4 + a * 1.5, 8.5, -4.5 + b * 0.95));
+    box(M.steel, 3.5, 0.1, 2.3, -3.4, 8.95, -4.5);
+    p.position.set(-3.4, 9.0, -4.5); g.add(p);
+  }).catch(e => console.warn('immigration office: could not load the overhead tank, keeping the built-in tanks', e));
   box(M.steel, 0.08, 1.0, 0.08, 5, 8.6, -4);
   const dish = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), std(0xf2f2f2, 0.5));
   dish.material.side = THREE.DoubleSide; dish.rotation.x = Math.PI + 1.0; dish.position.set(5, 9.2, -4); dish.castShadow = true; g.add(dish);
