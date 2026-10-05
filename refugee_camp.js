@@ -19,12 +19,13 @@ const TENTS = [
 ];
 const TENT_W = 2.4, TENT_H = 1.9, TENT_D = 2.6;
 
-// Trees standing just outside the fence (x, z in camp space, trunk is solid). Edit freely.
+// African trees standing just outside the fence (x, z in camp space; r = half-width of the solid trunk). Edit freely.
+// coconut_bent leans toward -X when rotY is 0, so rotY is set to make each one lean away from the camp.
 const TREES = [
-  { name: 'palm_4',      x: -12.8, z: -6.0,  rotY: 0.4 }, { name: 'palm_3',      x: 12.6,  z: -8.5,  rotY: 2.0 },
-  { name: 'birch_2',     x: -12.6, z: 2.0,   rotY: 1.1 }, { name: 'birch_1',     x: -6.5,  z: -12.6, rotY: 0.2 },
-  { name: 'dead_tree_1', x: 12.9,  z: 3.0,   rotY: 3.0 }, { name: 'dead_tree_3', x: 5.5,   z: -12.8, rotY: 1.6 },
-  { name: 'birch_4',     x: 13.2,  z: -2.0,  rotY: 2.4 }, { name: 'palm_3',      x: -3.0,  z: -13.0, rotY: 4.0 },
+  { name: 'coconut_palm', x: -12.8, z: -6.0,  rotY: 0.4,          r: 0.3  }, { name: 'coconut_bent', x: 12.6,  z: -8.5,  rotY: Math.PI,      r: 0.35 },
+  { name: 'mango_tree',   x: -12.6, z: 2.0,   rotY: 1.1,          r: 0.5  }, { name: 'coconut_palm', x: -6.5,  z: -12.6, rotY: 2.2,          r: 0.3  },
+  { name: 'mango_tree',   x: 12.9,  z: 3.0,   rotY: 3.0,          r: 0.5  }, { name: 'coconut_bent', x: 5.5,   z: -12.8, rotY: -Math.PI / 2, r: 0.35 },
+  { name: 'coconut_palm', x: 13.2,  z: -2.0,  rotY: 2.4,          r: 0.3  }, { name: 'mango_tree',   x: -3.0,  z: -13.0, rotY: 4.0,          r: 0.5  },
 ];
 // Small plants outside the fence and beside the gate
 const PLANTS = [
@@ -34,7 +35,7 @@ const PLANTS = [
 const JERRY_SPOTS = [[-5.2, 7.6], [-5.0, 7.9], [-3.3, 7.7], [-3.1, 7.5]];
 
 export const CAMP_BOXES = [
-  ...TREES.map(t => [t.x - 0.3, t.x + 0.3, t.z - 0.3, t.z + 0.3]),               // tree trunks
+  ...TREES.map(t => [t.x - t.r, t.x + t.r, t.z - t.r, t.z + t.r]),               // tree trunks
   [-4.7, 4.7, -8.0, 0.0],                                                     // the big tent
   [-1.6, 1.6, -9.2, -8.2],                                                    // crate stack along the back fence
   ...TENTS.map(t => [t.x - TENT_W / 2, t.x + TENT_W / 2, t.z - TENT_D / 2, t.z + TENT_D / 2]),

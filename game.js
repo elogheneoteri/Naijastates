@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { buildRefugeeCamp, CAMP_BOXES } from './refugee_camp.js';
+import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.js';
 
 // >>> Your three values (same as before). <<<
 const SERVER_URL = 'https://naija-server.onrender.com';
@@ -40,9 +41,10 @@ const BUILDINGS = [
     // The code centres it on x/z and sits it on the ground; the glass front faces +Z (south, towards the road).
     scale: 0.008,
     x: 50, z: 11.8, rotY: 0,
-    boxes: [
-      [-12.8, 12.8, -12.1, 12.1]            // the whole building (tower + low wing)
-    ],
+    // The inside is built in code (immigration_office.js). Walk through the door in the south wall to go in:
+    // the outside model hides and the office interior shows. Solid parts = the office walls (with the door gap) and furniture.
+    interior: buildImmigrationOffice,
+    boxes: IMMIGRATION_BOXES,
     fallback: [25.6, 23, 24.2]
   },
   {
@@ -353,6 +355,12 @@ class World {
     // Name zone for the top-left text
     b.zone = { x0: b.x - 14, x1: b.x + 14, z0: b.z - 14, z1: b.z + 14 };
 
+    if (b.interior) {                    // a room you can walk into: hidden until the player is inside
+      b.room = b.interior();
+      b.inside = false;
+      root.add(b.room.group, b.room.marker);
+    }
+
     if (b.build) {                       // building made in code instead of a .glb file
       const built = b.build();
       root.add(built.group);
@@ -362,6 +370,8 @@ class World {
 
     new GLTFLoader().load(b.file, gltf => {
       gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      b.exterior = gltf.scene;           // kept so it can be hidden while the player is inside
+      gltf.scene.visible = !b.inside;
       if (b.scale) {                     // shrink to game size, centre on x/z, sit on the ground
         gltf.scene.scale.setScalar(b.scale);
         gltf.scene.updateMatrixWorld(true);
@@ -375,6 +385,7 @@ class World {
       // File missing or wrong name: show a plain block so the game still works
       const m = new THREE.Mesh(new THREE.BoxGeometry(...b.fallback), new THREE.MeshStandardMaterial({ color: 0xbbbbbb }));
       m.position.y = b.fallback[1] / 2; root.add(m);
+      b.exterior = m; m.visible = !b.inside;
       this.say3d('Could not load ' + b.file + ' (check the file name)');
     });
   }
@@ -627,6 +638,18 @@ class World {
     this.camera.position.lerp(want, s);
     this.look.lerp(target, s);
     this.camera.lookAt(this.look);
+
+    // buildings with an interior: show the room (and hide the outside model) while the player is inside it
+    BUILDINGS.forEach(b => {
+      if (!b.room) return;
+      const inside = Math.abs(p.x - b.x) < b.room.halfW - 0.1 && Math.abs(p.z - b.z) < b.room.halfD - 0.1;
+      if (inside !== b.inside) {
+        b.inside = inside;
+        b.room.setInside(inside);
+        if (b.exterior) b.exterior.visible = !inside;
+      }
+      if (inside) b.room.setCamera(this.camera.position.x - b.x, this.camera.position.z - b.z);
+    });
 
     // keep the sun's shadow box around the player
     this.sun.target.position.set(p.x, 0, p.z);

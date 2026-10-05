@@ -37,6 +37,17 @@ export const PROPS = {
   office_table:   { file: 'office_table..glb', height: 0.78, tags: ['camp', 'furniture'] },   // two tables pushed together: about 1.6 m x 0.8 m
   plastic_chair:  { file: 'plastic_chair (1).glb', height: 0.85, rotY: Math.PI / 2, tags: ['camp', 'furniture'] },   // front faces +Z
 
+  // ----- immigration office interior -----
+  office_chair:    { file: 'office_chair.glb', height: 0.95, tags: ['office', 'furniture'] },            // front faces +Z
+  personal_computer: { file: 'personal_computer.glb', height: 0.5, tags: ['office', 'computer'] },     // monitor + keyboard + tower
+  laptop:          { file: 'laptop.glb', maxXZ: 0.36, tags: ['office', 'computer'] },
+  standing_fan:    { file: 'standing_fan.glb', height: 1.35, tags: ['office', 'cooling'] },             // front faces +Z
+  water_dispenser: { file: 'water_dispenser.glb', height: 1.1, rotY: -Math.PI / 2, tags: ['office'] },  // taps are on the +X side of the file, so turned to face +Z
+  ac_wall:         { file: 'air_conditioner.glb', maxXZ: 0.95, tags: ['office', 'cooling'] },           // wall-mounted split unit, about 0.95 m wide
+  ac_tower:        { file: 'standing_air_conditioner.glb', height: 1.7, rotY: -Math.PI / 2, tags: ['office', 'cooling'] },
+  door_a:          { file: 'psx_doors_pack.glb', node: 'Door#1_Texture_0', height: 2.2, tags: ['office', 'door'] },
+  door_b:          { file: 'psx_doors_pack.glb', node: 'Door#2_Texture_0', height: 2.2, tags: ['office', 'door'] },
+
   // ----- firewood -----
   wood_logs:      { file: 'wood-logs.glb', unit: 0.0143, tags: ['camp', 'wood'] },   // three logs stacked, about 1 m long
   wood_pile:      { file: 'wood_pile.glb', maxXZ: 1.8, tags: ['camp', 'wood'] },     // loose pile of long logs
@@ -63,15 +74,13 @@ export const PROPS = {
   sack_coffee:    { file: 'coffee_sack_group_asset.glb', unit: 0.9, tags: ['camp', 'sack'] },
   sack_wheat:     { file: 'wheat_sack.glb', unit: 1.0, tags: ['camp', 'sack'] },
 
-  // ----- trees (stylized pack) -----
-  palm_3:         { file: 'PalmTree_3.fbx', height: 6.0, tags: ['tree', 'palm'] },
+  // ----- trees (African trees; the birch and dead trees are gone) -----
+  // center [0,0] + groundAt 0 = the trunk base sits exactly on the x/z you place it at (the bent coconut leans toward -X of the file).
+  coconut_palm:   { file: 'coconut_palm.glb',        height: 7.5, center: [0, 0], groundAt: 0, cutout: true, tags: ['tree', 'palm', 'coconut'] },
+  coconut_bent:   { file: 'bended_coconut_tree.glb', height: 7.0, center: [0, 0], groundAt: 0, cutout: true, tags: ['tree', 'palm', 'coconut'] },
+  mango_tree:     { file: 'mango_tree.glb',          height: 6.5, center: [0, 0], groundAt: 0, cutout: true, tags: ['tree', 'mango'] },
+  palm_3:         { file: 'PalmTree_3.fbx', height: 6.0, tags: ['tree', 'palm'] },    // stylised palms kept in the list, not used right now
   palm_4:         { file: 'PalmTree_4.fbx', height: 7.0, tags: ['tree', 'palm'] },
-  birch_1:        { file: 'BirchTree_1.fbx', height: 5.5, tags: ['tree', 'birch'] },
-  birch_2:        { file: 'BirchTree_2.fbx', height: 6.0, tags: ['tree', 'birch'] },
-  birch_3:        { file: 'BirchTree_3.fbx', height: 6.5, tags: ['tree', 'birch'] },
-  birch_4:        { file: 'BirchTree_4.fbx', height: 5.0, tags: ['tree', 'birch'] },
-  dead_tree_1:    { file: 'DeadTree_1.fbx', height: 4.5, tags: ['tree', 'dead'] },
-  dead_tree_3:    { file: 'DeadTree_3.fbx', height: 5.0, tags: ['tree', 'dead'] },
 
   // ----- plants -----
   bush_flowers:   { file: 'Bush_Flowers.fbx',    height: 1.0, tags: ['plant'] },

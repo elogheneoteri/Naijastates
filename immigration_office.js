@@ -7,9 +7,10 @@
 //   buildImmigrationOffice()  -> { group, marker, halfW, halfD, setInside(bool), setCamera(relX, relZ) }
 //   IMMIGRATION_BOXES         -> solid parts (walls with a door gap, desks, counter, chairs) for game.js collisions
 //
-// Props used (put these files in your props folder): pbr_material_floor_tiles.glb, psx_style_office_walls_pack.glb,
-// psx_doors_pack.glb, office_table..glb, plastic_chair (1).glb, standing_fan.glb, and the four new ones:
-// personal_computer.glb, laptop.glb, office_chair.glb. (The reception counter and cabinets are built in code.)
+// Props used (all in your props folder): pbr_material_floor_tiles.glb (floor + wall tiles), psx_style_office_walls_pack.glb,
+// psx_doors_pack.glb, office_table..glb, office_chair.glb (no plastic chairs in here), personal_computer.glb, laptop.glb,
+// standing_fan.glb, water_dispenser.glb, air_conditioner.glb (wall units), standing_air_conditioner.glb.
+// (The reception counter and cabinets are built in code.)
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -36,6 +37,14 @@ const REC = { x: -7.5, z: 3.0, w: 6.0, d: 0.9, h: 1.05 };
 const WAIT_ROWS_Z = [1.6, 3.4];
 const WAIT_X = [2.0, 3.1, 4.2, 5.3, 6.4, 7.5, 8.6];
 const FANS = [[-11.6, 10.8], [11.6, 10.8]];
+// Water dispensers, tower ACs (both stand against the side walls) and wall-mounted split ACs. rotY turns the front toward the room.
+const DISPENSERS = [{ x: 12.4, z: 0.2, rotY: -Math.PI / 2 }, { x: -12.4, z: -6.5, rotY: Math.PI / 2 }];
+const TOWER_ACS = [{ x: -12.25, z: 7.2, rotY: Math.PI / 2 }, { x: 12.25, z: 7.2, rotY: -Math.PI / 2 }];
+const WALL_AC_Y = 2.5;                                  // height of the bottom of each wall unit
+const WALL_ACS = [
+  { x: -HALF_W + 0.16, z: -6.0, rotY: Math.PI / 2 }, { x: -HALF_W + 0.16, z: 8.0, rotY: Math.PI / 2 },
+  { x: HALF_W - 0.16, z: -8.5, rotY: -Math.PI / 2 }, { x: HALF_W - 0.16, z: 8.5, rotY: -Math.PI / 2 },
+];
 const CABINETS = [[-11.4, -11.5], [11.4, -11.5]];     // filing cabinets in the back corners
 
 // Which way the computers face. If a screen looks away from the staff chair, change Math.PI to 0 here.
@@ -53,6 +62,8 @@ export const IMMIGRATION_BOXES = [
   [REC.x - REC.w / 2, REC.x + REC.w / 2, REC.z - REC.d / 2 - 0.1, REC.z + REC.d / 2 + 0.1],
   ...WAIT_ROWS_Z.map(z => [WAIT_X[0] - 0.4, WAIT_X[WAIT_X.length - 1] + 0.4, z - 0.35, z + 0.35]),
   ...FANS.map(([x, z]) => [x - 0.3, x + 0.3, z - 0.3, z + 0.3]),
+  ...DISPENSERS.map(d => [d.x - 0.2, d.x + 0.2, d.z - 0.2, d.z + 0.2]),
+  ...TOWER_ACS.map(a => [a.x - 0.3, a.x + 0.3, a.z - 0.3, a.z + 0.3]),
   ...CABINETS.map(([x, z]) => [x - 0.45, x + 0.45, z - 0.3, z + 0.3]),
 ];
 
@@ -102,7 +113,7 @@ export function buildImmigrationOffice() {
   const std = (color, rough = 0.85, metal = 0, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal, ...extra });
   const M = {
     wood: std(0x6f4c33), woodTop: std(0xb98d5e, 0.6), cabinet: std(0x7f8a91, 0.5, 0.3), mat: std(0x1f5a3a, 1),
-    post: std(0x20402f, 0.7), dark: std(0x23272b, 0.7),
+    post: std(0x20402f, 0.7), dark: std(0x23272b, 0.7), cap: std(0x4e5a63, 0.5, 0.2),
   };
   const BOX = new THREE.BoxGeometry(1, 1, 1);
   const box = (mat, w, h, d, x, y, z) => {
@@ -130,6 +141,7 @@ export function buildImmigrationOffice() {
     t.repeat.set(HALF_W * 2 / 2.0, HALF_D * 2 / 2.0);          // one picture of the texture is about 2 m wide
     t.anisotropy = 4; t.needsUpdate = true;
     floor.material = new THREE.MeshStandardMaterial({ map: t, roughness: 0.55, metalness: 0.05 });
+    addWallTiles(src.map);
   }).catch(warn('floor tiles (keeping the plain floor)'));
 
   // ----- walls: one group per side so game.js can hide the side the camera is behind -----
@@ -156,6 +168,26 @@ export function buildImmigrationOffice() {
       m.compose(pos, q, sc);
       meshes.forEach(im => im.setMatrixAt(i, m));
     }
+  };
+  // Wall tiles: a band of the same tile picture along the bottom 1.1 m of every wall, with a grey cap strip on top.
+  // Each band lives in its wall's group, so it hides together with that wall when the camera is behind it.
+  const addWallTiles = baseMap => {
+    const H = 1.1, OFF = 0.03;
+    const seg = (g, alongX, fixed, from, to, nx, nz) => {       // (nx, nz) = the direction the band faces (into the room)
+      const len = to - from, c = (from + to) / 2;
+      const t = baseMap.clone();
+      t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(len / 2.0, H / 2.0); t.anisotropy = 4; t.needsUpdate = true;
+      const band = new THREE.Mesh(new THREE.PlaneGeometry(len, H), new THREE.MeshStandardMaterial({ map: t, roughness: 0.5, metalness: 0.05 }));
+      const px = alongX ? c : fixed + nx * OFF, pz = alongX ? fixed + nz * OFF : c;
+      band.position.set(px, H / 2, pz); band.rotation.y = Math.atan2(nx, nz); band.receiveShadow = true; g.add(band);
+      const cap = new THREE.Mesh(BOX, M.cap);
+      cap.scale.set(alongX ? len : 0.07, 0.05, alongX ? 0.07 : len); cap.position.set(px, H + 0.025, pz); g.add(cap);
+    };
+    seg(side.N, true, -HALF_D, -HALF_W, HALF_W, 0, 1);
+    seg(side.S, true, HALF_D, -HALF_W, -DOOR_HALF, 0, -1);
+    seg(side.S, true, HALF_D, DOOR_HALF, HALF_W, 0, -1);
+    seg(side.W, false, -HALF_W, -HALF_D, HALF_D, 1, 0);
+    seg(side.E, false, HALF_W, -HALF_D, HALF_D, -1, 0);
   };
   const buildWalls = kit => {
     wallRun(kit, side.N, true, -HALF_D, -HALF_W, HALF_W);
@@ -207,7 +239,7 @@ export function buildImmigrationOffice() {
   WINDOWS.forEach(w => {
     put('office_table', w.x, 0, WIN_Z).catch(warn('office table'));
     put('office_chair', w.x, 0, WIN_Z - 1.1).catch(warn('office chair'));
-    put('plastic_chair', w.x, 0, WIN_Z + 1.3, { rotY: Math.PI }).catch(warn('plastic chair'));
+    put('office_chair', w.x, 0, WIN_Z + 1.3, { rotY: Math.PI }).catch(warn('office chair'));
     put(w.computer, w.x - 0.2, 0.78, WIN_Z, { rotY: COMPUTER_ROT }).catch(warn(w.computer));
   });
   // Information counter: two staff behind it, a PC and a laptop on top
@@ -215,10 +247,14 @@ export function buildImmigrationOffice() {
   put('office_chair', REC.x + 1.5, 0, REC.z - 1.2).catch(warn('office chair'));
   put('personal_computer', REC.x - 1.5, counterTop, REC.z, { rotY: COMPUTER_ROT }).catch(warn('personal computer'));
   put('laptop', REC.x + 1.5, counterTop, REC.z, { rotY: COMPUTER_ROT }).catch(warn('laptop'));
-  // Waiting area: rows of plastic chairs facing the windows (north)
-  WAIT_ROWS_Z.forEach(z => WAIT_X.forEach(x => put('plastic_chair', x, 0, z, { rotY: Math.PI }).catch(warn('plastic chair'))));
+  // Waiting area: rows of office chairs facing the windows (north)
+  WAIT_ROWS_Z.forEach(z => WAIT_X.forEach(x => put('office_chair', x, 0, z, { rotY: Math.PI }).catch(warn('office chair'))));
   // Fans in the front corners
   FANS.forEach(([x, z], i) => put('standing_fan', x, 0, z, { rotY: i ? -2.4 : 2.4 }).catch(warn('standing fan')));
+  // Water dispensers, tower ACs, and split ACs high on the side walls
+  DISPENSERS.forEach(d => put('water_dispenser', d.x, 0, d.z, { rotY: d.rotY }).catch(warn('water dispenser')));
+  TOWER_ACS.forEach(a => put('ac_tower', a.x, 0, a.z, { rotY: a.rotY }).catch(warn('tower AC')));
+  WALL_ACS.forEach(a => put('ac_wall', a.x, WALL_AC_Y, a.z, { rotY: a.rotY }).catch(warn('wall AC')));
   // Two staff doors in the back wall, with small signs
   [-3.75, 3.75].forEach((x, i) => {
     put(i ? 'door_b' : 'door_a', x, 0, -HALF_D + 0.14).catch(warn('staff door'));
