@@ -31,6 +31,15 @@ export const PROPS = {
   tent_small:     { file: 'tent.glb', unit: 0.0085, center: [0, 0], groundAt: 0, rotY: Math.PI, cutout: true, tags: ['camp', 'tent'] },
   clothes_line:   { file: '../clothes_line.glb', maxXZ: 5.4, rotY: Math.PI / 2, cutout: true, tags: ['camp'] },
   rope_fence:     { file: '../rope_fence.glb', height: 1.0, tags: ['camp', 'fence'] },
+  fence_panel:    { file: 'fence.glb', unit: 1.0, tags: ['camp', 'fence'] },        // one 2.5 m chain-link panel with a pillar at each end (1.6 m tall)
+
+  // ----- registration desk -----
+  office_table:   { file: 'office_table..glb', height: 0.78, tags: ['camp', 'furniture'] },   // two tables pushed together: about 1.6 m x 0.8 m
+  plastic_chair:  { file: 'plastic_chair (1).glb', height: 0.85, rotY: Math.PI / 2, tags: ['camp', 'furniture'] },   // front faces +Z
+
+  // ----- firewood -----
+  wood_logs:      { file: 'wood-logs.glb', unit: 0.0143, tags: ['camp', 'wood'] },   // three logs stacked, about 1 m long
+  wood_pile:      { file: 'wood_pile.glb', maxXZ: 1.8, tags: ['camp', 'wood'] },     // loose pile of long logs
 
   // ----- water & containers -----
   jerry_can:      { file: '20l_water_jerry_can__h20_container__military.glb', height: 0.48, tags: ['camp', 'water'] },

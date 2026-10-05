@@ -134,7 +134,7 @@ export function buildRefugeeCamp() {
   const canvasMat = col => new THREE.MeshStandardMaterial({ map: fabric, color: col, roughness: 1, side: THREE.DoubleSide });
   const M = {
     wood: std(0x7a5a3a), post: std(0x5b4a3a), steel: std(0x9aa0a4, 0.5, 0.4), dark: std(0x1c1f22, 0.8), concrete: std(0xa9a7a0),
-    tank: std(0x23272b, 0.6), yellow: std(0xd9b52c, 0.6), blue: std(0x2f6fb0, 0.7), tarp: std(0x2d6cb3, 0.75, 0, { side: THREE.DoubleSide }),
+    tank: std(0x23272b, 0.6), yellow: std(0xd9b52c, 0.6), blue: std(0x2f6fb0, 0.7),
     sack: std(0xe3d9bd), stone: std(0x7d7a73), ember: std(0xff6a1a, 0.5, 0, { emissive: 0xff4a00, emissiveIntensity: 1.2 }),
     rope: std(0xc0392b, 0.8), green: std(0x0f7a3e, 0.7), bundle: std(0x9b6b4a),
   };
@@ -164,11 +164,10 @@ export function buildRefugeeCamp() {
 
   const I = {
     post: new Inst(M.post), steel: new Inst(M.steel), rope: new Inst(M.rope), jerry: new Inst(M.yellow), jerryB: new Inst(M.blue),
-    wood: new Inst(M.wood),
   };
   // Simple built-in shapes: they only show if a real prop file fails to load, otherwise they are removed.
   const FB = { sack: new Inst(M.sack, new THREE.SphereGeometry(0.5, 10, 8)), bundle: new Inst(M.bundle, new THREE.SphereGeometry(0.5, 8, 6)), queueSteel: new Inst(M.steel), queueRope: new Inst(M.rope) };
-  const old = { bigTent: [], tents: TENTS.map(() => []), crates: [], line: [] };
+  const old = { bigTent: [], tents: TENTS.map(() => []), crates: [], line: [], fence: [], desk: [] };
 
   // ----- ground -----
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(19.2, 19.2), new THREE.MeshStandardMaterial({ map: dirtTex(), roughness: 1 }));
@@ -178,16 +177,13 @@ export function buildRefugeeCamp() {
   const link = linkTex();
   const linkMat = new THREE.MeshStandardMaterial({ map: link, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.3 });
   const FH = 1.8;
+  // Fallback only: a plain chain-link sheet that disappears once the real fence.glb panels have loaded.
   const panel = (len, x, z, ry) => {
     const geo = new THREE.PlaneGeometry(len, FH);
     const uv = geo.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * len / 0.45, uv.getY(i) * FH / 0.45);
     const m = new THREE.Mesh(geo, linkMat); m.position.set(x, FH / 2 + 0.05, z); m.rotation.y = ry; g.add(m);
-    const n = Math.max(2, Math.round(len / 2));
-    for (let i = 0; i <= n; i++) {
-      const o = -len / 2 + (len * i) / n;
-      I.post.add(x + Math.cos(ry) * o, FH / 2 + 0.05, z - Math.sin(ry) * o, 0.1, FH + 0.1, 0.1);
-    }
+    old.fence.push(m);
   };
   panel(19, -9.4, 0, Math.PI / 2); panel(19, 9.4, 0, Math.PI / 2); panel(19, 0, -9.4, 0);
   panel(7.5, -5.75, 9.4, 0); panel(7.5, 5.75, 9.4, 0);
@@ -199,9 +195,6 @@ export function buildRefugeeCamp() {
 
   // ----- the big tent (registration and aid) -----
   old.bigTent.push(prism(canvasMat(0xebe4d0), 9.2, 2.3, 4.3, 5.6, 0, -4.5));
-  // entrance sign on two posts in front of the tent
-  [-2.25, 2.25].forEach(x => I.post.add(x, 1.7, 0.1, 0.12, 3.4, 0.12));
-  signBoard(4.2, 0.8, 0, 3.05, 0.04, signTex(1024, 200, '#7a2418', [{ t: 'REGISTRATION and AID', size: 74, y: 100 }]));
 
   // ----- small tents -----
   TENTS.forEach((t, i) => {
@@ -209,11 +202,8 @@ export function buildRefugeeCamp() {
     I.post.add(t.x, 0.35, t.z + TENT_D / 2 + 1.1, 0.12, 0.7, 0.12);                                // sitting log
   });
 
-  // ----- registration desk under an open tarp shelter -----
-  [[-1.9, 2.0], [1.9, 2.0], [-1.9, 4.6], [1.9, 4.6]].forEach(([x, z]) => I.post.add(x, 1.25, z, 0.12, 2.5, 0.12));
-  const roof = new THREE.Mesh(BOX, M.tarp); roof.scale.set(4.4, 0.05, 3.1); roof.position.set(0, 2.6, 3.3); roof.rotation.x = 0.07; roof.castShadow = true; g.add(roof);
-  box(M.wood, 2.6, 0.08, 0.8, 0, 0.82, 3.0); box(M.wood, 0.1, 0.8, 0.7, -1.2, 0.4, 3.0); box(M.wood, 0.1, 0.8, 0.7, 1.2, 0.4, 3.0);
-  box(M.wood, 1.8, 0.4, 0.3, 0, 0.2, 4.2); box(M.wood, 1.8, 0.4, 0.3, 0, 0.2, 1.6);
+  // ----- registration desk (fallback only: the real table and chairs are placed below) -----
+  old.desk.push(box(M.wood, 2.6, 0.08, 0.8, 0, 0.82, 3.0), box(M.wood, 0.1, 0.8, 0.7, -1.2, 0.4, 3.0), box(M.wood, 0.1, 0.8, 0.7, 1.2, 0.4, 3.0));
   // queue lane from the gate (built-in posts and rope are replaced by the rope-fence props)
   [8.2, 7.1, 6.0, 5.3].forEach(z => [-1.1, 1.1].forEach(x => FB.queueSteel.add(x, 0.45, z, 0.07, 0.9, 0.07)));
   [[7.65, -1.1], [6.55, -1.1], [7.65, 1.1], [6.55, 1.1]].forEach(([z, x]) => FB.queueRope.add(x, 0.82, z, 0.03, 0.03, 1.1));
@@ -227,11 +217,6 @@ export function buildRefugeeCamp() {
   // ----- cooking area -----
   const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.3, 0.38, 18), M.dark);   // fallback only
   pot.position.set(4.8, 0.19, 6.4); pot.castShadow = true; g.add(pot);
-  [[3.5, 5.6], [6.0, 5.8], [5.9, 7.4]].forEach(([x, z]) => {
-    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 1.3, 10), M.wood);
-    log.rotation.z = Math.PI / 2; log.rotation.y = Math.atan2(z - 6.4, x - 4.8) + Math.PI / 2; log.position.set(x, 0.17, z); log.castShadow = true; g.add(log);
-  });
-  for (let i = 0; i < 8; i++) I.wood.add(6.6 + (i % 4) * 0.12 - 0.2, 0.08 + Math.floor(i / 4) * 0.14, 8.0 + (i % 2) * 0.05, 0.1, 0.1, 0.9);
 
   // ----- aid crates, sacks and bundles (fallback shapes; the real props are placed below) -----
   [[5.3, 1.5], [6.0, 1.9], [5.4, 2.4]].forEach(([x, z], i) => old.crates.push(box(M.wood, 0.75, 0.5 + (i % 2) * 0.1, 0.55, x, 0.27, z)));
@@ -260,6 +245,35 @@ export function buildRefugeeCamp() {
     loadProp('jerry_can', { rotY: 1.9 * i }).then(p => { p.position.set(x, 0, z); return p; })))
     .then(list => { fallbackJerry.forEach(m => g.remove(m)); list.forEach(p => g.add(p)); })
     .catch(warn('jerry cans'));
+
+  // Perimeter fence: a row of fence.glb panels along each side (the gate arch and sign stay as they were).
+  const FENCE_STEP = 2.505;        // pillar-to-pillar width of fence.glb at its natural size
+  const fenceRun = (x1, z1, x2, z2) => {
+    const len = Math.hypot(x2 - x1, z2 - z1), n = Math.max(1, Math.round(len / 2.6)), step = len / n;
+    const ry = Math.atan2(-(z2 - z1), x2 - x1);
+    return Promise.all(Array.from({ length: n }, (_, i) => {
+      const f = (i + 0.5) / n;
+      return loadProp('fence_panel', { rotY: ry }).then(p => {
+        p.scale.x = step / FENCE_STEP;                       // tiny stretch so the pillars of neighbouring panels meet
+        p.position.set(x1 + (x2 - x1) * f, 0, z1 + (z2 - z1) * f); return p;
+      });
+    }));
+  };
+  Promise.all([
+    fenceRun(-9.4, -9.4, -9.4, 9.4), fenceRun(9.4, -9.4, 9.4, 9.4), fenceRun(-9.4, -9.4, 9.4, -9.4),   // left, right, back
+    fenceRun(-9.4, 9.4, -2.3, 9.4), fenceRun(2.3, 9.4, 9.4, 9.4),                                       // front, either side of the gate
+  ]).then(runs => { old.fence.forEach(o => g.remove(o)); runs.flat().forEach(p => g.add(p)); }).catch(warn('fence'));
+
+  // Registration desk: your table, one chair for the person being registered and two for the staff behind it
+  Promise.all([
+    put('office_table', 0, 0, 3.0),
+    put('plastic_chair', -0.45, 0, 2.15), put('plastic_chair', 0.45, 0, 2.15),      // staff side, facing the gate
+    put('plastic_chair', 0, 0, 3.95, { rotY: Math.PI }),                              // applicant side, facing the desk
+  ]).then(() => old.desk.forEach(o => g.remove(o))).catch(warn('registration desk'));
+
+  // Cooking area wood: a neat stack of logs beside the pot and a loose pile further back
+  put('wood_logs', 3.2, 0, 5.6, { rotY: 0.6 }).catch(warn('wood logs'));
+  put('wood_pile', 6.9, 0, 8.1, { rotY: 1.35 }).catch(warn('wood pile'));
 
   // Big tent: takes the place of the old one
   put('tent_big', 0, 0, -4.5).then(() => old.bigTent.forEach(o => g.remove(o))).catch(warn('big tent'));
