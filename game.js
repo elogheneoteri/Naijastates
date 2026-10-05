@@ -5,7 +5,9 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { buildImmigrationOffice } from './immigration_exterior.js';
+import { buildRefugeeCamp, CAMP_BOXES } from './refugee_camp.js';
 
 // >>> Your three values (same as before). <<<
 const SERVER_URL = 'https://naija-server.onrender.com';
@@ -45,8 +47,9 @@ const BUILDINGS = [
   },
   {
     key: 'refugee', name: 'Refugee Camp', file: 'refugee_camp.glb',
+    build: buildRefugeeCamp,                // built in code (refugee_camp.js); the .glb is no longer used
     x: 21, z: 40, rotY: 180,
-    boxes: [[-4.7, 4.7, -8.0, 0.0]],        // the big tent
+    boxes: CAMP_BOXES,                      // big tent, small tents and fence (defined in refugee_camp.js)
     fallback: [19, 4, 19]
   }
 ];
@@ -119,7 +122,7 @@ function makeLabel(text, bg = 'rgba(0,0,0,0.6)', color = '#fff', size = 34) {
 }
 
 // Simple placeholder person (until the proper 3D character exists).
-function makeAvatar(shirt) {
+function makeBlockyAvatar(shirt) {
   const g = new THREE.Group();
   const skin = new THREE.MeshStandardMaterial({ color: 0x8d5a3b, roughness: 0.8 });
   const cloth = new THREE.MeshStandardMaterial({ color: shirt, roughness: 0.8 });
@@ -141,13 +144,57 @@ function makeAvatar(shirt) {
   return g;
 }
 
-function animateAvatar(av, speed, dt) {
+function animateBlocky(av, speed, dt) {
   const u = av.userData;
   u.phase += dt * (3 + speed * 1.6);
   const amp = Math.min(speed / SPEED, 1) * 0.7;
   const s = Math.sin(u.phase) * amp;
   u.legL.rotation.x = s; u.legR.rotation.x = -s;
   u.armL.rotation.x = -s; u.armR.rotation.x = s;
+}
+
+// ---------- The 3D character (player_female_01.glb: has a skeleton and idle / walk / run animations) ----------
+
+let characterLoad = null;
+function loadCharacter() {
+  if (!characterLoad) characterLoad = new Promise((ok, fail) => new GLTFLoader().load('player_female_01.glb', ok, undefined, fail));
+  return characterLoad;
+}
+
+// Returns an empty holder straight away; the character appears inside it once the file has loaded.
+// If the file cannot load, the old blocky person is used instead so the game still works.
+function makeAvatar(shirt) {
+  const holder = new THREE.Group();
+  loadCharacter().then(gltf => {
+    const model = cloneSkinned(gltf.scene);
+    model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+    holder.add(model);
+    const mixer = new THREE.AnimationMixer(model);
+    const actions = {};
+    gltf.animations.forEach(c => { actions[c.name] = mixer.clipAction(c); });
+    actions.idle.play();
+    Object.assign(holder.userData, { mixer, actions, state: 'idle' });
+  }).catch(() => {
+    const b = makeBlockyAvatar(shirt);
+    Object.assign(holder.userData, b.userData);
+    while (b.children.length) holder.add(b.children[0]);
+  });
+  return holder;
+}
+
+function animateAvatar(av, speed, dt) {
+  const u = av.userData;
+  if (!u.mixer) { if (u.legL) animateBlocky(av, speed, dt); return; }
+  const want = speed < 0.3 ? 'idle' : speed < 2.5 ? 'walk' : 'run';
+  if (want !== u.state) {
+    const next = u.actions[want], prev = u.actions[u.state];
+    next.reset().play();
+    next.crossFadeFrom(prev, 0.25, false);
+    u.state = want;
+  }
+  if (want === 'walk') u.actions.walk.timeScale = THREE.MathUtils.clamp(speed / 1.6, 0.5, 1.6);
+  if (want === 'run') u.actions.run.timeScale = THREE.MathUtils.clamp(speed / 3.6, 0.8, 1.6);
+  u.mixer.update(dt);
 }
 
 function turnTowards(obj, angle, dt) {
