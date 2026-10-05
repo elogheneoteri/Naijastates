@@ -17,7 +17,7 @@ const TENTS = [
   { x: 7.3, z: -7.0, col: 0xd8d3c3 }, { x: 7.3, z: -3.5, col: 0x4f6f8c }, { x: 7.3, z: 0.0, col: 0xb8a27a },
   { x: -7.0, z: 5.4, col: 0x7b8a5a }, { x: 7.0, z: 5.4, col: 0xcfc8b4 },
 ];
-const TENT_W = 2.3, TENT_H = 1.8, TENT_D = 3.0;
+const TENT_W = 2.4, TENT_H = 1.9, TENT_D = 2.6;
 
 // Trees standing just outside the fence (x, z in camp space, trunk is solid). Edit freely.
 const TREES = [
@@ -36,6 +36,7 @@ const JERRY_SPOTS = [[-5.2, 7.6], [-5.0, 7.9], [-3.3, 7.7], [-3.1, 7.5]];
 export const CAMP_BOXES = [
   ...TREES.map(t => [t.x - 0.3, t.x + 0.3, t.z - 0.3, t.z + 0.3]),               // tree trunks
   [-4.7, 4.7, -8.0, 0.0],                                                     // the big tent
+  [-1.6, 1.6, -9.2, -8.2],                                                    // crate stack along the back fence
   ...TENTS.map(t => [t.x - TENT_W / 2, t.x + TENT_W / 2, t.z - TENT_D / 2, t.z + TENT_D / 2]),
   [-9.6, -9.2, -9.6, 9.5], [9.2, 9.6, -9.6, 9.5], [-9.6, 9.6, -9.6, -9.2],     // fence: left, right, back
   [-9.6, -2.0, 9.1, 9.5], [2.0, 9.6, 9.1, 9.5],                               // fence: front, either side of the gate
@@ -163,9 +164,11 @@ export function buildRefugeeCamp() {
 
   const I = {
     post: new Inst(M.post), steel: new Inst(M.steel), rope: new Inst(M.rope), jerry: new Inst(M.yellow), jerryB: new Inst(M.blue),
-    sack: new Inst(M.sack, new THREE.SphereGeometry(0.5, 10, 8)), stone: new Inst(M.stone, new THREE.SphereGeometry(0.5, 8, 6)),
-    wood: new Inst(M.wood), bundle: new Inst(M.bundle, new THREE.SphereGeometry(0.5, 8, 6)),
+    wood: new Inst(M.wood),
   };
+  // Simple built-in shapes: they only show if a real prop file fails to load, otherwise they are removed.
+  const FB = { sack: new Inst(M.sack, new THREE.SphereGeometry(0.5, 10, 8)), bundle: new Inst(M.bundle, new THREE.SphereGeometry(0.5, 8, 6)), queueSteel: new Inst(M.steel), queueRope: new Inst(M.rope) };
+  const old = { bigTent: [], tents: TENTS.map(() => []), crates: [], line: [] };
 
   // ----- ground -----
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(19.2, 19.2), new THREE.MeshStandardMaterial({ map: dirtTex(), roughness: 1 }));
@@ -195,20 +198,15 @@ export function buildRefugeeCamp() {
     signTex(1024, 220, '#0b5a2e', [{ t: 'WELCOME', size: 100, y: 78 }, { t: 'Rest, eat, then register', size: 44, y: 160 }]));
 
   // ----- the big tent (registration and aid) -----
-  prism(canvasMat(0xebe4d0), 9.2, 2.3, 4.3, 8.0, 0, -4.0);
-  [-4.62, 4.62].forEach(x => box(M.green, 0.05, 0.28, 8.04, x, 1.95, -4.0, false));
-  box(M.dark, 3.0, 2.2, 0.05, 0, 1.1, 0.03, false).material = std(0x2a1d12, 1, 0, { emissive: 0x3a1f08, emissiveIntensity: 0.6 });
-  [-1.75, 1.75].forEach(x => box(canvasMat(0xd9d1ba), 0.5, 2.3, 0.1, x, 1.15, 0.08));
-  box(M.post, 3.4, 0.12, 0.12, 0, 2.3, 0.1);
+  old.bigTent.push(prism(canvasMat(0xebe4d0), 9.2, 2.3, 4.3, 5.6, 0, -4.5));
+  // entrance sign on two posts in front of the tent
+  [-2.25, 2.25].forEach(x => I.post.add(x, 1.7, 0.1, 0.12, 3.4, 0.12));
   signBoard(4.2, 0.8, 0, 3.05, 0.04, signTex(1024, 200, '#7a2418', [{ t: 'REGISTRATION and AID', size: 74, y: 100 }]));
 
-  // ----- small tents (canvas and tarps) -----
+  // ----- small tents -----
   TENTS.forEach((t, i) => {
-    prism(canvasMat(t.col), TENT_W, 0, TENT_H, TENT_D, t.x, t.z);
-    const door = new THREE.Mesh(new THREE.ShapeGeometry((() => { const s = new THREE.Shape(); s.moveTo(-0.55, 0); s.lineTo(0.55, 0); s.lineTo(0, 1.35); s.closePath(); return s; })()), std(0x201812, 1));
-    door.position.set(t.x, 0.02, t.z + TENT_D / 2 + 0.01); g.add(door);
-    if (i % 3 === 1) prism(M.tarp, TENT_W + 0.3, 0, TENT_H + 0.12, TENT_D * 0.55, t.x, t.z - 0.4);   // blue tarp thrown over
-    I.post.add(t.x, 0.35, t.z + TENT_D / 2 + 0.6, 0.12, 0.7, 0.12);                                // sitting log
+    old.tents[i].push(prism(canvasMat(t.col), TENT_W, 0, TENT_H, TENT_D, t.x, t.z));
+    I.post.add(t.x, 0.35, t.z + TENT_D / 2 + 1.1, 0.12, 0.7, 0.12);                                // sitting log
   });
 
   // ----- registration desk under an open tarp shelter -----
@@ -216,9 +214,9 @@ export function buildRefugeeCamp() {
   const roof = new THREE.Mesh(BOX, M.tarp); roof.scale.set(4.4, 0.05, 3.1); roof.position.set(0, 2.6, 3.3); roof.rotation.x = 0.07; roof.castShadow = true; g.add(roof);
   box(M.wood, 2.6, 0.08, 0.8, 0, 0.82, 3.0); box(M.wood, 0.1, 0.8, 0.7, -1.2, 0.4, 3.0); box(M.wood, 0.1, 0.8, 0.7, 1.2, 0.4, 3.0);
   box(M.wood, 1.8, 0.4, 0.3, 0, 0.2, 4.2); box(M.wood, 1.8, 0.4, 0.3, 0, 0.2, 1.6);
-  // queue lane from the gate
-  [8.2, 7.1, 6.0, 5.3].forEach(z => [-1.1, 1.1].forEach(x => I.steel.add(x, 0.45, z, 0.07, 0.9, 0.07)));
-  [[7.65, -1.1], [6.55, -1.1], [7.65, 1.1], [6.55, 1.1]].forEach(([z, x]) => I.rope.add(x, 0.82, z, 0.03, 0.03, 1.1));
+  // queue lane from the gate (built-in posts and rope are replaced by the rope-fence props)
+  [8.2, 7.1, 6.0, 5.3].forEach(z => [-1.1, 1.1].forEach(x => FB.queueSteel.add(x, 0.45, z, 0.07, 0.9, 0.07)));
+  [[7.65, -1.1], [6.55, -1.1], [7.65, 1.1], [6.55, 1.1]].forEach(([z, x]) => FB.queueRope.add(x, 0.82, z, 0.03, 0.03, 1.1));
 
   // ----- water point -----
   box(M.concrete, 2.6, 0.12, 1.4, -4.2, 0.06, 6.6);
@@ -235,23 +233,20 @@ export function buildRefugeeCamp() {
   });
   for (let i = 0; i < 8; i++) I.wood.add(6.6 + (i % 4) * 0.12 - 0.2, 0.08 + Math.floor(i / 4) * 0.14, 8.0 + (i % 2) * 0.05, 0.1, 0.1, 0.9);
 
-  // ----- aid crates, sacks and bundles beside the big tent -----
-  [[5.3, 1.5], [6.0, 1.9], [5.4, 2.4]].forEach(([x, z], i) => box(M.wood, 0.75, 0.5 + (i % 2) * 0.1, 0.55, x, 0.27, z));
-  box(M.wood, 0.7, 0.45, 0.55, 5.45, 0.78, 1.7);
-  for (let r = 0; r < 3; r++) for (let c = 0; c < 4 - r; c++) I.sack.add(-5.6 + c * 0.55 + r * 0.27, 0.16 + r * 0.26, 2.0 + (c % 2) * 0.03, 0.6, 0.3, 0.42, rand() * 0.4);
-  [[-3.4, 1.4], [-3.0, 2.0], [3.2, 2.2]].forEach(([x, z]) => I.bundle.add(x, 0.25, z, 0.7, 0.5, 0.5, rand() * 3));
+  // ----- aid crates, sacks and bundles (fallback shapes; the real props are placed below) -----
+  [[5.3, 1.5], [6.0, 1.9], [5.4, 2.4]].forEach(([x, z], i) => old.crates.push(box(M.wood, 0.75, 0.5 + (i % 2) * 0.1, 0.55, x, 0.27, z)));
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 4 - r; c++) FB.sack.add(-5.6 + c * 0.55 + r * 0.27, 0.16 + r * 0.26, 2.0 + (c % 2) * 0.03, 0.6, 0.3, 0.42, rand() * 0.4);
+  [[-3.4, 1.4], [-3.0, 2.0], [3.2, 2.2]].forEach(([x, z]) => FB.bundle.add(x, 0.25, z, 0.7, 0.5, 0.5, rand() * 3));
 
-  // ----- clothesline -----
-  [-8.7, -5.3].forEach(x => I.post.add(x, 1.0, 2.7, 0.1, 2.0, 0.1));
-  box(M.rope, 3.4, 0.02, 0.02, -7.0, 1.95, 2.7, false);
-  const cloths = [0xe9e4d6, 0xc0392b, 0x2f6fb0, 0xf1c40f, 0x0f7a3e, 0xe9e4d6].map((col, i) => {
-    const c = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.7), new THREE.MeshStandardMaterial({ color: col, side: THREE.DoubleSide, roughness: 1 }));
-    c.position.set(-8.3 + i * 0.6, 1.57, 2.7); c.castShadow = true; g.add(c); return c;
-  });
+  // ----- clothesline (fallback; the real clothesline prop replaces it) -----
+  [-8.7, -5.3].forEach(x => old.line.push(box(M.post, 0.1, 2.0, 0.1, x, 1.0, 2.8)));
+  old.line.push(box(M.rope, 3.4, 0.02, 0.02, -7.0, 1.95, 2.8, false));
+  const cloths = [];     // (the old waving cloth is gone; the update loop below still works with an empty list)
 
   // The built-in jerry cans stay as a fallback and are removed once the real model has loaded.
   const fallbackJerry = [I.jerry, I.jerryB].map(inst => { const m = inst.build(); g.add(m); return m; });
   Object.entries(I).forEach(([k, inst]) => { if (k !== 'jerry' && k !== 'jerryB' && inst.items.length) g.add(inst.build()); });
+  const fbMeshes = {}; Object.entries(FB).forEach(([k, inst]) => { fbMeshes[k] = inst.build(); g.add(fbMeshes[k]); });
 
   // ----- real props from props_library.js -----
   // If a file is missing or fails to load, the simple code-made shapes above simply stay in place.
@@ -265,6 +260,36 @@ export function buildRefugeeCamp() {
     loadProp('jerry_can', { rotY: 1.9 * i }).then(p => { p.position.set(x, 0, z); return p; })))
     .then(list => { fallbackJerry.forEach(m => g.remove(m)); list.forEach(p => g.add(p)); })
     .catch(warn('jerry cans'));
+
+  // Big tent: takes the place of the old one
+  put('tent_big', 0, 0, -4.5).then(() => old.bigTent.forEach(o => g.remove(o))).catch(warn('big tent'));
+
+  // Small tents
+  TENTS.forEach((t, i) => put('tent_small', t.x, 0, t.z).then(() => old.tents[i].forEach(o => g.remove(o))).catch(warn('small tent')));
+
+  // Queue lane: one rope fence on each side
+  Promise.all([-1.1, 1.1].map(x => loadProp('rope_fence', { rotY: Math.PI / 2 }).then(p => { p.position.set(x, 0, 6.75); return p; })))
+    .then(list => { g.remove(fbMeshes.queueSteel); g.remove(fbMeshes.queueRope); list.forEach(p => g.add(p)); })
+    .catch(warn('rope fences'));
+
+  // Clothesline between the two left-hand tents
+  put('clothes_line', -6.3, 0, 2.8).then(() => old.line.forEach(o => g.remove(o))).catch(warn('clothesline'));
+
+  // Crates and barrels
+  Promise.all([
+    put('crate_small', 4.4, 0, 1.5, { rotY: 0.2 }), put('crate_small', 5.25, 0, 1.6, { rotY: -0.15 }), put('crate_small', 4.85, 0.69, 1.55, { rotY: 0.5 }),
+    put('crate_tall', 6.3, 0, 2.3, { rotY: 0.3 }), put('crate_wide', 4.9, 0, 3.1, { rotY: Math.PI / 2 }),
+    put('barrel', -2.6, 0, 6.5), put('barrel', -2.2, 0, 7.3, { rotY: 1 }),
+  ]).then(() => old.crates.forEach(o => g.remove(o))).catch(warn('crates'));
+
+  put('crate_store', 0, 0, -8.7).catch(warn('crate stack'));     // long stack of boxes along the back fence
+
+  // Sacks
+  Promise.all([
+    put('sack_coffee', -3.4, 0, 1.6, { rotY: 0.3 }), put('sack_wheat', -2.9, 0, 2.9, { rotY: 1.2 }),
+    put('sack_burlap', -2.4, 0, 0.9, { rotY: 0.6 }), put('sack_burlap', -4.5, 0, 0.7, { rotY: 2.1 }), put('sack_burlap', -2.2, 0, 2.2, { rotY: 3.4 }),
+    put('sack_burlap', 3.2, 0, 2.2, { rotY: 1.7 }), put('sack_burlap', 3.55, 0, 2.7, { rotY: 0.2 }),
+  ]).then(() => { g.remove(fbMeshes.sack); g.remove(fbMeshes.bundle); }).catch(warn('sacks'));
 
   TREES.forEach(t => put(t.name, t.x, 0, t.z, { rotY: t.rotY }).catch(warn(t.name)));
   PLANTS.forEach((p, i) => put(p.name, p.x, 0, p.z, { rotY: i * 1.3 }).catch(warn(p.name)));

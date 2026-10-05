@@ -6,7 +6,8 @@
 //   tank.position.set(-4.2, 0, 6.2); scene.add(tank);
 //
 // FOLDER LAYOUT: put every model and texture file in a folder called "props" next to index.html
-// (just the files you uploaded to me, keep the same names). Change PROPS_DIR if you use another folder.
+// (keep the file names). Three models live one level up, next to index.html: medieval_tent.glb, clothes_line.glb,
+// rope_fence.glb (they are written as '../name' below, so leave them where they are or move them into props and drop the '../').
 //
 // ADDING A NEW PROP LATER: add one line to PROPS below. `height` is the real-world height in metres,
 // the loader rescales the model to that, so no model ever comes in giant or tiny again.
@@ -20,6 +21,17 @@ export const PROPS_DIR = 'props/';
 // type: glb | fbx.  height: metres.  rotY: spin the model (radians) if it faces the wrong way.
 // rotX: tip the model if it was exported lying down.  tint: optional colour multiplier.
 export const PROPS = {
+  // Sizing options (use ONE of them):  height = real height in metres | maxXZ = longest side in metres |
+  // unit = metres per model unit (use it when the model has loose ropes or stakes that confuse height).
+  // center = [x, z] point of the model (in model units) to treat as its middle.  groundAt = model height that is the ground.
+  // node = use only the named part of a model file.  rotY = which way the front faces.  cutout = leaf/cloth cut-out edges.
+
+  // ----- tents and camp structures -----
+  tent_big:       { file: '../medieval_tent.glb', unit: 0.12, center: [-17.5, 0], groundAt: 0, cutout: true, tags: ['camp', 'tent'] },
+  tent_small:     { file: 'tent.glb', unit: 0.0085, center: [0, 0], groundAt: 0, rotY: Math.PI, cutout: true, tags: ['camp', 'tent'] },
+  clothes_line:   { file: '../clothes_line.glb', maxXZ: 5.4, rotY: Math.PI / 2, cutout: true, tags: ['camp'] },
+  rope_fence:     { file: '../rope_fence.glb', height: 1.0, tags: ['camp', 'fence'] },
+
   // ----- water & containers -----
   jerry_can:      { file: '20l_water_jerry_can__h20_container__military.glb', height: 0.48, tags: ['camp', 'water'] },
   overhead_tank:  { file: 'overhead_water_tank.glb',  height: 1.0,  tags: ['camp', 'water', 'tank'] },   // a long horizontal tank (about 2.8 m long at this height)
@@ -28,6 +40,19 @@ export const PROPS = {
   // ----- cooking -----
   clay_pot:       { file: 'clay_cooking_pot.glb',     height: 0.30, tags: ['camp', 'cooking'] },
   camp_pots:      { file: 'camping_cooking_pots.glb', height: 0.22, tags: ['camp', 'cooking'] },
+
+  // ----- crates and barrel (all cut out of crates.glb, one part each) -----
+  crate_small:    { file: 'crates.glb', node: 'cratesmall', unit: 0.0075, tags: ['camp', 'crate'] },
+  crate_tall:     { file: 'crates.glb', node: 'cratetall',  unit: 0.0075, tags: ['camp', 'crate'] },
+  crate_wide:     { file: 'crates.glb', node: 'cratewide',  unit: 0.0075, tags: ['camp', 'crate'] },
+  barrel:         { file: 'crates.glb', node: 'barrel',     unit: 0.0075, tags: ['camp', 'crate'] },
+  crate_pile:     { file: 'crates.glb', node: 'cratesmerged2', unit: 0.0055, tags: ['camp', 'crate'] },
+  crate_store:    { file: 'crates_and_boxes_at_the_back_of_an_asian_store.glb', height: 1.4, rotY: Math.PI / 2, tags: ['camp', 'crate'] },
+
+  // ----- sacks -----
+  sack_burlap:    { file: 'burlap_sack.glb', unit: 1.0, tags: ['camp', 'sack'] },
+  sack_coffee:    { file: 'coffee_sack_group_asset.glb', unit: 0.9, tags: ['camp', 'sack'] },
+  sack_wheat:     { file: 'wheat_sack.glb', unit: 1.0, tags: ['camp', 'sack'] },
 
   // ----- trees (stylized pack) -----
   palm_3:         { file: 'PalmTree_3.fbx', height: 6.0, tags: ['tree', 'palm'] },
@@ -90,6 +115,11 @@ function fixMaterials(root, def) {
         m = std;
       } else {
         if ('roughness' in m) m.roughness = Math.max(m.roughness ?? 0.7, 0.55);
+        if ('metalness' in m && m.metalness > 0.6 && !m.metalnessMap) m.metalness = 0.3;   // avoid black "mirror" look without an environment map
+        if (def.cutout && m.map) {            // leaf / cloth edges cut out cleanly instead of blending
+          if (m.transparent || m.alphaTest > 0) { m.alphaTest = Math.max(m.alphaTest, 0.4); m.transparent = false; m.depthWrite = true; }
+          m.side = THREE.DoubleSide;
+        }
       }
       if (def.tint && m.color) m.color.multiply(new THREE.Color(def.tint));
       return m;
@@ -98,33 +128,44 @@ function fixMaterials(root, def) {
   });
 }
 
-// Scale to the target height, centre on x/z, put the lowest point on y = 0.
+// Scale, centre on x/z, and put the ground at y = 0. Spin (rotY) happens around the centre.
 function normalise(root, def) {
   if (def.rotX) root.rotation.x = def.rotX;
-  if (def.rotY) root.rotation.y = def.rotY;
   root.updateMatrixWorld(true);
   let box = new THREE.Box3().setFromObject(root);
   const size = box.getSize(new THREE.Vector3());
-  const s = size.y > 0 ? def.height / size.y : 1;
+  let s = 1;
+  if (def.unit) s = def.unit;
+  else if (def.maxXZ) s = def.maxXZ / Math.max(size.x, size.z, 1e-6);
+  else if (def.height && size.y > 0) s = def.height / size.y;
   root.scale.multiplyScalar(s);
   root.updateMatrixWorld(true);
   box = new THREE.Box3().setFromObject(root);
-  const c = box.getCenter(new THREE.Vector3());
+  const c = def.center ? new THREE.Vector3(def.center[0] * s, 0, def.center[1] * s) : box.getCenter(new THREE.Vector3());
+  const ground = def.groundAt !== undefined ? def.groundAt * s : box.min.y;
+  root.position.set(root.position.x - c.x, root.position.y - ground, root.position.z - c.z);
+  const pivot = new THREE.Group();
+  pivot.add(root);
+  pivot.rotation.y = def.rotY || 0;
   const wrapper = new THREE.Group();
-  root.position.set(root.position.x - c.x, root.position.y - box.min.y, root.position.z - c.z);
-  wrapper.add(root);
+  wrapper.add(pivot);
   return wrapper;
 }
 
+const fileCache = new Map();   // file name -> the loaded model (each file is downloaded and fixed once)
+
 function loadFile(def) {
-  const url = PROPS_DIR + def.file;
-  const type = def.type || def.file.split('.').pop().toLowerCase();
-  def.type = type === 'gltf' ? 'glb' : type;
-  return new Promise((resolve, reject) => {
-    if (def.type === 'glb') gltfLoader.load(url, g => resolve(g.scene), undefined, reject);
-    else if (def.type === 'fbx') fbxLoader.load(url, resolve, undefined, reject);
-    else reject(new Error('props_library: unsupported file type ' + def.file));
-  });
+  if (!fileCache.has(def.file)) {
+    const url = PROPS_DIR + def.file;
+    const type = def.file.split('.').pop().toLowerCase();
+    def.type = type === 'gltf' ? 'glb' : type;
+    fileCache.set(def.file, new Promise((resolve, reject) => {
+      if (def.type === 'glb') gltfLoader.load(url, g => resolve(g.scene), undefined, reject);
+      else if (def.type === 'fbx') fbxLoader.load(url, resolve, undefined, reject);
+      else reject(new Error('props_library: unsupported file type ' + def.file));
+    }).then(root => { fixMaterials(root, def); root.updateMatrixWorld(true); return root; }));
+  }
+  return fileCache.get(def.file);
 }
 
 // Returns a fresh, ready-to-place THREE.Group. Safe to call many times for the same prop.
@@ -132,9 +173,19 @@ export async function loadProp(name, options = {}) {
   const def = PROPS[name];
   if (!def) throw new Error('props_library: no prop called "' + name + '". Check the PROPS list.');
   if (!cache.has(name)) {
-    cache.set(name, loadFile(def).then(root => {
-      fixMaterials(root, def);
-      return normalise(root, def);
+    cache.set(name, loadFile(def).then(scene => {
+      let source = scene;
+      if (def.node) {                                   // use just one named part of the file
+        const part = scene.getObjectByName(def.node);
+        if (!part) throw new Error('props_library: no part called "' + def.node + '" in ' + def.file);
+        source = new THREE.Group();
+        const c = part.clone(true);
+        part.matrixWorld.decompose(c.position, c.quaternion, c.scale);
+        source.add(c);
+      } else {
+        source = scene.clone(true);
+      }
+      return normalise(source, def);
     }));
   }
   const template = await cache.get(name);
