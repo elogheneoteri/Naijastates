@@ -1,56 +1,48 @@
-// Step 4: accounts + saved progress.
-// Log in or sign up, walk around with other players, and the gate opens
-// only when the server says your progress is "indigene".
+// 3D version of the game (Three.js). Replaces the flat Phaser game.
+// Your server.js does NOT change: it still thinks in the old pixel units.
+// We convert: 1 metre in 3D = PX_PER_M pixels on the server.
+//   server x  ->  3D X (east)      server y  ->  3D Z (south)
 
-// >>> Paste your three values here (see the setup steps). <<<
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+// >>> Your three values (same as before). <<<
 const SERVER_URL = 'https://naija-server.onrender.com';
 const SUPABASE_URL = 'https://imcfgubedcrxmydanabx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_dUT0e10wO4IK7t0fzD02Yw_zmuh2ruE';
 
-const WORLD_W = 3900;
-const WORLD_H = 1500;
-const SPEED = 190;
-const GATE_X = 2000;
+// ---------------- World settings ----------------
+
+const PX_PER_M = 30;                       // server pixels per metre
+const WORLD_W = 3900 / PX_PER_M;           // 130 m
+const WORLD_H = 1500 / PX_PER_M;           // 50 m
+const SPEED = 5.0;                         // metres per second (server allows up to 190 px/s = 6.3 m/s)
+const GATE_X = 2000 / PX_PER_M;            // border wall (66.7 m); server blocks players past x = 1995 px
 const SEND_EVERY_MS = 66;
+const PLAYER_RADIUS = 0.45;
 
-// Character sprite sheet: hero.png (same folder as index.html)
-// 4 columns (walk frames) x 4 rows (down, left, right, up), each frame 128 x 224 px.
-// The character's feet sit on the line 93% of the way down each frame (y = 208).
-// It is shown at half size (SPR_SCALE) so it stays sharp on phone screens.
-// If hero.png is missing, the game falls back to the simple shapes.
-const FRAME_W = 128;
-const FRAME_H = 224;
-const SPR_SCALE = 0.5;
-const FEET = 0.93;
-const DIRS = ['down', 'left', 'right', 'up'];
+const SPAWN = { x: 470 / PX_PER_M, z: 850 / PX_PER_M };
+const ROAD_Z0 = 27.0, ROAD_Z1 = 30.5;      // main road (runs west to east, through the gate)
 
-const SPAWN_X = 470, SPAWN_Y = 850;      // new players start on the main road, in front of the Arrival Terminal
-const ROAD_TOP = 800, ROAD_BOTTOM = 920;   // main road (matches ground_left.jpg / ground_right.jpg)
+// Buildings. x/z = centre on the ground, rotY = turn in degrees.
+// Both models are made facing +Z (south), so the Refugee Camp (south of the road) is turned 180
+// to face north, towards the road.
+// boxes = solid parts you cannot walk through: [minX, maxX, minZ, maxZ] relative to the centre,
+// measured BEFORE rotation (the code rotates them for you).
 const BUILDINGS = [
-  { key: 'arrival', name: 'Arrival Terminal', cx: 520, w: 600, h: 337, top: 385, depth: 700,
-    box: [0.006, 0.0, 0.995, 0.9357], door: [0.4076, 0.9268] },
-  { key: 'refugee', name: 'Refugee Camp', cx: 640, w: 640, h: 385, top: 965, depth: 1190,
-    box: [0.143, 0.0, 0.8492, 0.5855], door: [0.4917, 0.513] },
-  { key: 'immigration', name: 'Immigration Office', cx: 1500, w: 700, h: 544, top: 235, depth: 700,
-    box: [0.0082, 0.0, 0.9938, 0.8547], door: [0.4035, 0.8547] },
-  { key: 'bank', name: 'Bank', cx: 2420, w: 640, h: 473, top: 287, depth: 700,
-    box: [0.0039, 0.0, 0.9951, 0.8724], door: [0.4266, 0.8724] },
-  { key: 'airport', name: 'Airport', cx: 3380, w: 900, h: 521, top: 274, depth: 620,
-    box: [0.0036, 0.0, 0.9964, 0.6641], door: [0.5018, 0.5948] }
+  {
+    key: 'immigration', name: 'Immigration Office', file: 'immigration_office.glb',
+    x: 50, z: 18.8, rotY: 0,
+    boxes: [[-7.4, 7.4, -7.3, 3.9]],        // the building body; the steps in front stay walkable
+    fallback: [15, 10, 14.4]
+  },
+  {
+    key: 'refugee', name: 'Refugee Camp', file: 'refugee_camp.glb',
+    x: 21, z: 40, rotY: 180,
+    boxes: [[-4.7, 4.7, -8.0, 0.0]],        // the big tent
+    fallback: [19, 4, 19]
+  }
 ];
-
-// Name areas shown in the top-left HUD (a strip in front of each building)
-const ZONES = BUILDINGS.map(b => ({ name: b.name, x: b.cx - b.w / 2, y: b.depth - 40, w: b.w, h: 200 }));
-
-const LABEL_STYLE = {
-  fontFamily: 'Georgia, serif', fontSize: '15px', color: '#ffffff',
-  backgroundColor: '#00000099', padding: { x: 5, y: 2 }
-};
-
-const HUD_STYLE = {
-  fontFamily: 'Georgia, serif', fontSize: '18px', color: '#ffffff',
-  backgroundColor: '#00000088', padding: { x: 8, y: 4 }
-};
 
 // ---------------- Login screen ----------------
 
@@ -70,14 +62,7 @@ function startGame() {
   if (gameStarted) return;
   gameStarted = true;
   authBox.style.display = 'none';
-  new Phaser.Game({
-    type: Phaser.AUTO,
-    parent: 'game',
-    backgroundColor: '#14202b',
-    scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
-    physics: { default: 'arcade', arcade: { debug: false } },
-    scene: WorldScene
-  });
+  new World(document.getElementById('game'));
 }
 
 document.getElementById('btnSignup').addEventListener('click', async () => {
@@ -107,253 +92,382 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
   if (data.session) startGame();
 })();
 
-// ---------------- Game ----------------
+// ---------------- Small helpers ----------------
 
-class WorldScene extends Phaser.Scene {
-  constructor() { super('world'); }
+function makeLabel(text, bg = 'rgba(0,0,0,0.6)', color = '#fff', size = 34) {
+  const c = document.createElement('canvas');
+  const ctx = c.getContext('2d');
+  ctx.font = `${size}px Georgia, serif`;
+  const w = Math.ceil(ctx.measureText(text).width) + 28;
+  c.width = w; c.height = size + 20;
+  ctx.font = `${size}px Georgia, serif`;
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.fillStyle = color; ctx.textBaseline = 'middle'; ctx.fillText(text, 14, c.height / 2 + 1);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  const k = 0.0085;
+  spr.scale.set(c.width * k, c.height * k, 1);
+  return spr;
+}
 
-  preload() {
-    this.load.spritesheet('hero', 'hero.png', { frameWidth: FRAME_W, frameHeight: FRAME_H });
-    this.load.image('ground_left', 'ground_left.jpg');
-    this.load.image('ground_right', 'ground_right.jpg');
-    BUILDINGS.forEach(b => this.load.image(b.key, b.key + '.png'));
-  }
+// Simple placeholder person (until the proper 3D character exists).
+function makeAvatar(shirt) {
+  const g = new THREE.Group();
+  const skin = new THREE.MeshStandardMaterial({ color: 0x8d5a3b, roughness: 0.8 });
+  const cloth = new THREE.MeshStandardMaterial({ color: shirt, roughness: 0.8 });
+  const pants = new THREE.MeshStandardMaterial({ color: 0x2b2f3a, roughness: 0.9 });
+  const add = (geo, mat, x, y, z, parent = g) => {
+    const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m;
+  };
+  add(new THREE.BoxGeometry(0.46, 0.62, 0.26), cloth, 0, 1.08, 0);
+  add(new THREE.SphereGeometry(0.17, 16, 12), skin, 0, 1.56, 0);
+  const mkLimb = (geo, mat, x, y, drop) => {
+    const pivot = new THREE.Group(); pivot.position.set(x, y, 0); g.add(pivot);
+    add(geo, mat, 0, -drop, 0, pivot); return pivot;
+  };
+  g.userData.legL = mkLimb(new THREE.BoxGeometry(0.17, 0.78, 0.2), pants, -0.12, 0.78, 0.39);
+  g.userData.legR = mkLimb(new THREE.BoxGeometry(0.17, 0.78, 0.2), pants, 0.12, 0.78, 0.39);
+  g.userData.armL = mkLimb(new THREE.BoxGeometry(0.12, 0.6, 0.14), cloth, -0.3, 1.36, 0.27);
+  g.userData.armR = mkLimb(new THREE.BoxGeometry(0.12, 0.6, 0.14), cloth, 0.3, 1.36, 0.27);
+  g.userData.phase = 0;
+  return g;
+}
 
-  create() {
+function animateAvatar(av, speed, dt) {
+  const u = av.userData;
+  u.phase += dt * (3 + speed * 1.6);
+  const amp = Math.min(speed / SPEED, 1) * 0.7;
+  const s = Math.sin(u.phase) * amp;
+  u.legL.rotation.x = s; u.legR.rotation.x = -s;
+  u.armL.rotation.x = -s; u.armR.rotation.x = s;
+}
+
+function turnTowards(obj, angle, dt) {
+  let d = angle - obj.rotation.y;
+  d = Math.atan2(Math.sin(d), Math.cos(d));
+  obj.rotation.y += d * Math.min(1, dt * 12);
+}
+
+// ---------------- The world ----------------
+
+class World {
+  constructor(parent) {
     this.progress = 'arrived';
     this.devTools = false;
-    this.stick = { active: false, startX: 0, startY: 0, x: 0, y: 0 };
     this.others = new Map();
     this.myId = null;
     this.lastSent = 0;
+    this.boxes = [];            // solid rectangles {x0,x1,z0,z1}
+    this.keys = {};
+    this.stick = { active: false, id: null, sx: 0, sy: 0, x: 0, y: 0 };
+    this.cam = { yaw: -Math.PI / 2, pitch: 0.42, dist: 9 };
+    this.look = null;
+    this.clock = new THREE.Clock();
 
-    // Ground: roads, paths, border wall and shadows are painted into these two pictures
-    this.add.image(0, 0, 'ground_left').setOrigin(0, 0).setDepth(0);
-    this.add.image(1950, 0, 'ground_right').setOrigin(0, 0).setDepth(0);
-
-    // Buildings (pictures). Each one blocks walking through its body;
-    // the strip in front of it (and its door) stays walkable.
-    this.blockerList = [];
-    const addBlocker = (x, y, w, h) => {
-      const r = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x000000, 0);
-      this.physics.add.existing(r, true);
-      this.blockerList.push(r);
-    };
-    BUILDINGS.forEach(b => {
-      const left = b.cx - b.w / 2;
-      this.add.image(b.cx, b.top, b.key).setOrigin(0.5, 0).setDisplaySize(b.w, b.h).setDepth(b.depth);
-      addBlocker(left + b.box[0] * b.w, b.top + b.box[1] * b.h,
-                 (b.box[2] - b.box[0]) * b.w, (b.box[3] - b.box[1]) * b.h);
-      b.doorX = Math.round(left + b.door[0] * b.w);   // for the NPC / Talk button later
-      b.doorY = Math.round(b.top + b.door[1] * b.h);
-    });
-
-    // Border wall at GATE_X: solid everywhere except the road gap
-    addBlocker(GATE_X - 12, 0, 24, ROAD_TOP - 14);
-    addBlocker(GATE_X - 12, ROAD_BOTTOM + 16, 24, WORLD_H - ROAD_BOTTOM - 16);
-
-    // Checkpoint gate in the road gap: stays closed until the server reports progress = indigene
-    this.gate = this.add.rectangle(GATE_X, (ROAD_TOP + ROAD_BOTTOM) / 2, 24, ROAD_BOTTOM - ROAD_TOP + 32, 0xc0392b, 0);
-    this.physics.add.existing(this.gate, true);
-    this.gateG = this.add.graphics().setDepth(900);
-    this.gateG.fillStyle(0xc0392b, 1).fillRect(GATE_X - 5, ROAD_TOP - 6, 10, ROAD_BOTTOM - ROAD_TOP + 12);
-    this.gateG.fillStyle(0xffffff, 1);
-    for (let y = ROAD_TOP + 4; y < ROAD_BOTTOM; y += 30) this.gateG.fillRect(GATE_X - 5, y, 10, 14);
-    this.gateLabel = this.add.text(GATE_X, ROAD_TOP - 50, 'Locked: finish immigration', {
-      fontFamily: 'Georgia, serif', fontSize: '18px', color: '#ffd9d4',
-      backgroundColor: '#7a2418', padding: { x: 8, y: 4 }
-    }).setOrigin(0.5).setDepth(901);
-
-    const makeAvatar = (key, shirt) => {
-      const g = this.make.graphics({ x: 0, y: 0, add: false });
-      g.fillStyle(0xf2c14e, 1).fillCircle(16, 12, 10);
-      g.fillStyle(shirt, 1).fillRoundedRect(6, 20, 20, 26, 6);
-      g.generateTexture(key, 32, 48);
-      g.destroy();
-    };
-    makeAvatar('avatar', 0x2c6e9b);
-    makeAvatar('avatar-other', 0xd9822b);
-
-    this.hasHero = this.textures.exists('hero');
-    this.labelOffset = this.hasHero ? Math.round(FRAME_H * SPR_SCALE * FEET) : 30;
-    this.facing = 'down';
-    if (this.hasHero) {
-      DIRS.forEach((d, row) => {
-        this.anims.create({
-          key: 'walk-' + d,
-          frames: this.anims.generateFrameNumbers('hero', { start: row * 4, end: row * 4 + 3 }),
-          frameRate: 8,
-          repeat: -1
-        });
-      });
-    }
-
-    this.player = this.physics.add.sprite(SPAWN_X, SPAWN_Y, this.hasHero ? 'hero' : 'avatar', 0);
-    this.player.setCollideWorldBounds(true);
-    if (this.hasHero) {
-      // The sprite's position is its feet; the collision box is a small patch at the feet.
-      this.player.setOrigin(0.5, FEET).setScale(SPR_SCALE);
-      this.player.body.setSize(60, 40).setOffset((FRAME_W - 60) / 2, Math.round(FRAME_H * FEET) - 40);
-    } else {
-      this.player.body.setSize(22, 30).setOffset(5, 16);
-    }
-    this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
-    this.physics.add.collider(this.player, this.gate);
-    this.blockerList.forEach(r => this.physics.add.collider(this.player, r));
-    this.myLabel = this.add.text(0, 0, '', LABEL_STYLE).setOrigin(0.5, 1).setDepth(5000);
-
-    this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H);
-    this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
-
-    this.cursors = this.input.keyboard.createCursorKeys();
-    this.keys = this.input.keyboard.addKeys('W,A,S,D');
-
-    // HUD
-    this.zoneText = this.add.text(12, 10, '', { ...HUD_STYLE, fontSize: '20px' })
-      .setScrollFactor(0).setDepth(10000);
-
-    this.testButton = this.add.text(12, 50, '', { ...HUD_STYLE, backgroundColor: '#2c6e9b', padding: { x: 10, y: 6 } })
-      .setScrollFactor(0).setDepth(10000).setVisible(false)
-      .setInteractive({ useHandCursor: true });
-    this.testButton.on('pointerdown', () => this.toggleProgressTest());
-
-    this.statusText = this.add.text(12, 96, '', { ...HUD_STYLE, fontSize: '16px', color: '#ffe9a8' })
-      .setScrollFactor(0).setDepth(10000);
-
-    this.logoutButton = this.add.text(12, 134, 'Log out', { ...HUD_STYLE, fontSize: '16px', backgroundColor: '#3a566d' })
-      .setScrollFactor(0).setDepth(10000).setInteractive({ useHandCursor: true });
-    this.logoutButton.on('pointerdown', async () => {
-      await sb.auth.signOut();
-      location.reload();
-    });
-
-    // Touch joystick
-    this.stickBase = this.add.circle(0, 0, 55, 0xffffff, 0.15).setScrollFactor(0).setDepth(10000).setVisible(false);
-    this.stickKnob = this.add.circle(0, 0, 26, 0xffffff, 0.45).setScrollFactor(0).setDepth(10001).setVisible(false);
-
-    this.input.on('pointerdown', p => {
-      if (p.y < 180) return; // keep HUD buttons tappable
-      this.stick.active = true;
-      this.stick.startX = p.x;
-      this.stick.startY = p.y;
-      this.stick.x = 0;
-      this.stick.y = 0;
-      this.stickBase.setPosition(p.x, p.y).setVisible(true);
-      this.stickKnob.setPosition(p.x, p.y).setVisible(true);
-    });
-    this.input.on('pointermove', p => {
-      if (!this.stick.active) return;
-      let dx = p.x - this.stick.startX;
-      let dy = p.y - this.stick.startY;
-      const len = Math.hypot(dx, dy);
-      const max = 55;
-      if (len > max) { dx = dx / len * max; dy = dy / len * max; }
-      this.stick.x = dx / max;
-      this.stick.y = dy / max;
-      this.stickKnob.setPosition(this.stick.startX + dx, this.stick.startY + dy);
-    });
-    const endStick = () => {
-      this.stick.active = false;
-      this.stick.x = 0;
-      this.stick.y = 0;
-      this.stickBase.setVisible(false);
-      this.stickKnob.setVisible(false);
-    };
-    this.input.on('pointerup', endStick);
-    this.input.on('pointerupoutside', endStick);
-
+    this.initThree(parent);
+    this.buildGround();
+    this.buildBorder();
+    BUILDINGS.forEach(b => this.addBuilding(b));
+    this.buildPlayer();
+    this.buildHud();
+    this.bindInput();
     this.applyGate();
     this.connect();
+    this.renderer.setAnimationLoop(() => this.frame());
   }
 
-  // ---------- Multiplayer ----------
+  // ----- three.js setup -----
+  initThree(parent) {
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    parent.appendChild(this.renderer.domElement);
+    this.canvas = this.renderer.domElement;
 
-  connect() {
-    if (SERVER_URL.includes('YOUR-SERVER-NAME')) {
-      this.statusText.setText('Set SERVER_URL at the top of game.js');
-      return;
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0xa9d3ee);
+    this.scene.fog = new THREE.Fog(0xa9d3ee, 70, 190);
+    this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 400);
+
+    this.scene.add(new THREE.HemisphereLight(0xdfeeff, 0x7a6a50, 1.25));
+    this.sun = new THREE.DirectionalLight(0xfff1d6, 2.0);
+    this.sun.position.set(30, 50, 20);
+    this.sun.castShadow = true;
+    this.sun.shadow.mapSize.set(2048, 2048);
+    const sc = this.sun.shadow.camera;
+    sc.left = -40; sc.right = 40; sc.top = 40; sc.bottom = -40; sc.near = 1; sc.far = 140;
+    this.sun.shadow.bias = -0.0004;
+    this.scene.add(this.sun, this.sun.target);
+
+    window.addEventListener('resize', () => {
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.camera.aspect = window.innerWidth / window.innerHeight;
+      this.camera.updateProjectionMatrix();
+    });
+  }
+
+  // ----- ground, road, border wall and gate -----
+  buildGround() {
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#7d9059'; ctx.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 2600; i++) {
+      const v = 90 + Math.random() * 60;
+      ctx.fillStyle = `rgba(${v + 20},${v + 40},${v - 10},0.35)`;
+      ctx.fillRect(Math.random() * 256, Math.random() * 256, 2 + Math.random() * 3, 2 + Math.random() * 3);
     }
-    this.statusText.setText('Connecting... the server may take about a minute to wake up.');
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(WORLD_W / 6, WORLD_H / 6);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, WORLD_H), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.set(WORLD_W / 2, -0.04, WORLD_H / 2);
+    ground.receiveShadow = true;
+    this.scene.add(ground);
+
+    // Beyond the world edge: more ground so the horizon is not a cliff
+    const far = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: 0x748754, roughness: 1 }));
+    far.rotation.x = -Math.PI / 2; far.position.set(WORLD_W / 2, -0.08, WORLD_H / 2);
+    this.scene.add(far);
+
+    const roadMat = new THREE.MeshStandardMaterial({ color: 0x3d4046, roughness: 0.95 });
+    const road = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, ROAD_Z1 - ROAD_Z0), roadMat);
+    road.rotation.x = -Math.PI / 2;
+    road.position.set(WORLD_W / 2, -0.02, (ROAD_Z0 + ROAD_Z1) / 2);
+    road.receiveShadow = true;
+    this.scene.add(road);
+    const dash = new THREE.MeshStandardMaterial({ color: 0xe8e2c8, roughness: 0.9 });
+    for (let x = 2; x < WORLD_W; x += 4) {
+      const d = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.14), dash);
+      d.rotation.x = -Math.PI / 2; d.position.set(x, -0.015, (ROAD_Z0 + ROAD_Z1) / 2); this.scene.add(d);
+    }
+  }
+
+  buildBorder() {
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x9a9a94, roughness: 0.9 });
+    const H = 3.6, T = 0.5, gx = GATE_X;
+    const seg = (z0, z1) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(T, H, z1 - z0), wallMat);
+      m.position.set(gx + T / 2 - 0.2, H / 2, (z0 + z1) / 2);
+      m.castShadow = m.receiveShadow = true; this.scene.add(m);
+      this.boxes.push({ x0: gx - 0.2, x1: gx - 0.2 + T, z0, z1 });
+    };
+    seg(0, ROAD_Z0 - 0.6);
+    seg(ROAD_Z1 + 0.6, WORLD_H);
+
+    // Checkpoint barrier in the road gap: closed until the server says progress = indigene
+    this.gateGroup = new THREE.Group();
+    const red = new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.6 });
+    const white = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.6 });
+    const gz0 = ROAD_Z0 - 0.6, gz1 = ROAD_Z1 + 0.6, n = 8, step = (gz1 - gz0) / n;
+    for (let i = 0; i < n; i++) {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, step), i % 2 ? white : red);
+      b.position.set(gx + 0.05, 1.0, gz0 + step * (i + 0.5)); b.castShadow = true; this.gateGroup.add(b);
+    }
+    [gz0 + 0.1, gz1 - 0.1].forEach(z => {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.2, 0.4), wallMat);
+      p.position.set(gx + 0.05, 1.1, z); p.castShadow = true; this.gateGroup.add(p);
+    });
+    this.gateLabel = makeLabel('Locked: finish immigration', '#7a2418', '#ffd9d4', 34);
+    this.gateLabel.position.set(gx - 0.3, 3.0, (ROAD_Z0 + ROAD_Z1) / 2);
+    this.gateGroup.add(this.gateLabel);
+    this.scene.add(this.gateGroup);
+    this.gateBox = { x0: gx - 0.2, x1: gx + 0.3, z0: gz0, z1: gz1 };
+    this.gateClosed = true;
+  }
+
+  // ----- buildings (the .glb files) -----
+  addBuilding(b) {
+    const root = new THREE.Group();
+    root.position.set(b.x, 0, b.z);
+    root.rotation.y = THREE.MathUtils.degToRad(b.rotY);
+    this.scene.add(root);
+
+    // Collision boxes: rotate the relative boxes by rotY (multiples of 90 only)
+    const r = ((Math.round(b.rotY / 90) % 4) + 4) % 4;
+    b.boxes.forEach(([x0, x1, z0, z1]) => {
+      let a = [x0, x1, z0, z1];
+      for (let i = 0; i < r; i++) a = [a[2], a[3], -a[1], -a[0]];   // 90 degrees turn
+      this.boxes.push({ x0: b.x + a[0], x1: b.x + a[1], z0: b.z + a[2], z1: b.z + a[3] });
+    });
+
+    // Name zone for the top-left text
+    b.zone = { x0: b.x - 14, x1: b.x + 14, z0: b.z - 14, z1: b.z + 14 };
+
+    new GLTFLoader().load(b.file, gltf => {
+      gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      root.add(gltf.scene);
+    }, undefined, () => {
+      // File missing or wrong name: show a plain block so the game still works
+      const m = new THREE.Mesh(new THREE.BoxGeometry(...b.fallback), new THREE.MeshStandardMaterial({ color: 0xbbbbbb }));
+      m.position.y = b.fallback[1] / 2; root.add(m);
+      this.say3d('Could not load ' + b.file + ' (check the file name)');
+    });
+  }
+
+  // ----- the player -----
+  buildPlayer() {
+    this.player = makeAvatar(0x2c6e9b);
+    this.player.position.set(SPAWN.x, 0, SPAWN.z);
+    this.scene.add(this.player);
+    this.pvel = { x: 0, z: 0 };
+  }
+
+  setLabel(holder, name) {
+    holder.remove(holder.userData.label || new THREE.Object3D());
+    const l = makeLabel(name);
+    l.position.y = 2.1;
+    holder.add(l); holder.userData.label = l;
+  }
+
+  // ----- HUD (plain HTML on top of the 3D view) -----
+  buildHud() {
+    const css = document.createElement('style');
+    css.textContent = `
+      .hud { position: fixed; left: 12px; font-family: Georgia, serif; color: #fff; background: #00000088;
+             padding: 6px 10px; border-radius: 4px; z-index: 5; user-select: none; }
+      .hud.btn { cursor: pointer; background: #3a566d; font-size: 16px; }
+      #stickBase, #stickKnob { position: fixed; border-radius: 50%; z-index: 6; display: none; pointer-events: none; }
+      #stickBase { width: 110px; height: 110px; background: #ffffff26; }
+      #stickKnob { width: 52px; height: 52px; background: #ffffff73; }`;
+    document.head.appendChild(css);
+    const mk = (id, top, extra = '') => {
+      const d = document.createElement('div'); d.id = id; d.className = 'hud ' + extra; d.style.top = top + 'px';
+      document.body.appendChild(d); return d;
+    };
+    this.zoneText = mk('zoneText', 10); this.zoneText.style.fontSize = '20px';
+    this.testButton = mk('testButton', 50, 'btn'); this.testButton.style.background = '#2c6e9b'; this.testButton.style.display = 'none';
+    this.testButton.addEventListener('click', () => this.toggleProgressTest());
+    this.statusText = mk('statusText', 96); this.statusText.style.color = '#ffe9a8'; this.statusText.style.fontSize = '16px';
+    this.logoutButton = mk('logoutButton', 134, 'btn'); this.logoutButton.textContent = 'Log out';
+    this.logoutButton.addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
+    this.stickBase = document.createElement('div'); this.stickBase.id = 'stickBase';
+    this.stickKnob = document.createElement('div'); this.stickKnob.id = 'stickKnob';
+    document.body.append(this.stickBase, this.stickKnob);
+  }
+
+  say3d(t) { this.statusText.textContent = t; }
+
+  // ----- input: WASD/arrows, mouse drag to look, touch stick (left) + drag to look (right) -----
+  bindInput() {
+    window.addEventListener('keydown', e => { this.keys[e.code] = true; });
+    window.addEventListener('keyup', e => { this.keys[e.code] = false; });
+    this.canvas.style.touchAction = 'none';
+    this.canvas.addEventListener('contextmenu', e => e.preventDefault());
+    this.canvas.addEventListener('wheel', e => {
+      this.cam.dist = THREE.MathUtils.clamp(this.cam.dist + e.deltaY * 0.01, 4, 20); e.preventDefault();
+    }, { passive: false });
+
+    const drags = new Map();
+    this.canvas.addEventListener('pointerdown', e => {
+      this.canvas.setPointerCapture(e.pointerId);
+      const touch = e.pointerType === 'touch';
+      if (touch && e.clientX < window.innerWidth * 0.5 && e.clientY > 180 && !this.stick.active) {
+        this.stick.active = true; this.stick.id = e.pointerId; this.stick.sx = e.clientX; this.stick.sy = e.clientY;
+        this.stick.x = this.stick.y = 0;
+        this.stickBase.style.cssText = `display:block;left:${e.clientX - 55}px;top:${e.clientY - 55}px`;
+        this.stickKnob.style.cssText = `display:block;left:${e.clientX - 26}px;top:${e.clientY - 26}px`;
+      } else {
+        drags.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+    });
+    this.canvas.addEventListener('pointermove', e => {
+      if (this.stick.active && e.pointerId === this.stick.id) {
+        let dx = e.clientX - this.stick.sx, dy = e.clientY - this.stick.sy;
+        const len = Math.hypot(dx, dy), max = 55;
+        if (len > max) { dx = dx / len * max; dy = dy / len * max; }
+        this.stick.x = dx / max; this.stick.y = dy / max;
+        this.stickKnob.style.left = (this.stick.sx + dx - 26) + 'px';
+        this.stickKnob.style.top = (this.stick.sy + dy - 26) + 'px';
+        return;
+      }
+      const d = drags.get(e.pointerId);
+      if (!d) return;
+      this.cam.yaw -= (e.clientX - d.x) * 0.006;
+      this.cam.pitch = THREE.MathUtils.clamp(this.cam.pitch + (e.clientY - d.y) * 0.005, 0.12, 1.25);
+      d.x = e.clientX; d.y = e.clientY;
+    });
+    const end = e => {
+      drags.delete(e.pointerId);
+      if (this.stick.active && e.pointerId === this.stick.id) {
+        this.stick.active = false; this.stick.x = this.stick.y = 0;
+        this.stickBase.style.display = 'none'; this.stickKnob.style.display = 'none';
+      }
+    };
+    this.canvas.addEventListener('pointerup', end);
+    this.canvas.addEventListener('pointercancel', end);
+  }
+
+  // ----- multiplayer (same messages as before; only the units are converted) -----
+  connect() {
+    if (SERVER_URL.includes('YOUR-SERVER-NAME')) { this.say3d('Set SERVER_URL at the top of game.js'); return; }
+    this.say3d('Connecting... the server may take about a minute to wake up.');
     this.socket = io(SERVER_URL, { transports: ['websocket', 'polling'] });
 
     this.socket.on('connect', async () => {
       const { data } = await sb.auth.getSession();
-      if (!data.session) { this.statusText.setText('Please log in again.'); return; }
-      this.socket.emit('join', {
-        token: data.session.access_token,
-        name: localStorage.getItem('pendingName') || ''
-      });
+      if (!data.session) { this.say3d('Please log in again.'); return; }
+      this.socket.emit('join', { token: data.session.access_token, name: localStorage.getItem('pendingName') || '' });
     });
 
     this.socket.on('init', data => {
       this.myId = data.you;
       this.progress = data.progress;
       this.devTools = data.devTools;
-      this.player.setPosition(data.x, data.y);
-      this.myLabel.setText(data.name);
+      this.player.position.set(data.x / PX_PER_M, 0, data.y / PX_PER_M);
+      this.setLabel(this.player, data.name);
       data.players.forEach(p => { if (p.id !== this.myId) this.addOther(p); });
       this.applyGate();
       this.updateStatus();
     });
 
     this.socket.on('progress', d => { this.progress = d.progress; this.applyGate(); });
-
-    // The server refused a move (gate or speed check): snap back to its position
-    this.socket.on('correct', d => {
-      this.player.setPosition(d.x, d.y);
-      this.player.setVelocity(0, 0);
-    });
+    this.socket.on('correct', d => { this.player.position.set(d.x / PX_PER_M, 0, d.y / PX_PER_M); });
     this.socket.on('joined', p => { this.addOther(p); this.updateStatus(); });
     this.socket.on('left', id => { this.removeOther(id); this.updateStatus(); });
-
     this.socket.on('moved', d => {
       const o = this.others.get(d.id);
-      if (!o) return;
-      o.tx = d.x;
-      o.ty = d.y;
-      if (!this.hasHero) o.sprite.setFlipX(d.flip);
+      if (o) { o.tx = d.x / PX_PER_M; o.tz = d.y / PX_PER_M; }
     });
-
     this.socket.on('join_error', async msg => {
-      this.statusText.setText(msg);
+      this.say3d(msg);
       if (msg.includes('log in')) { await sb.auth.signOut(); }
     });
-    this.socket.on('kicked', () => this.statusText.setText('Logged in somewhere else. Reload to play here.'));
-    this.socket.on('full', () => this.statusText.setText('Server is full. Try again later.'));
-    this.socket.on('disconnect', () => this.statusText.setText('Disconnected. Reconnecting...'));
-    this.socket.on('connect_error', () => this.statusText.setText('Cannot reach the server yet. Retrying...'));
+    this.socket.on('kicked', () => this.say3d('Logged in somewhere else. Reload to play here.'));
+    this.socket.on('full', () => this.say3d('Server is full. Try again later.'));
+    this.socket.on('disconnect', () => this.say3d('Disconnected. Reconnecting...'));
+    this.socket.on('connect_error', () => this.say3d('Cannot reach the server yet. Retrying...'));
   }
 
   addOther(p) {
     if (this.others.has(p.id)) return;
-    const sprite = this.hasHero
-      ? this.add.sprite(p.x, p.y, 'hero', 0).setOrigin(0.5, FEET).setScale(SPR_SCALE)
-      : this.add.image(p.x, p.y, 'avatar-other').setFlipX(p.flip);
-    const label = this.add.text(p.x, p.y - this.labelOffset, p.name, LABEL_STYLE).setOrigin(0.5, 1);
-    this.others.set(p.id, { sprite, label, tx: p.x, ty: p.y, facing: 'down' });
+    const av = makeAvatar(0xd9822b);
+    av.position.set(p.x / PX_PER_M, 0, p.y / PX_PER_M);
+    this.setLabel(av, p.name);
+    this.scene.add(av);
+    this.others.set(p.id, { av, tx: p.x / PX_PER_M, tz: p.y / PX_PER_M });
   }
 
   removeOther(id) {
     const o = this.others.get(id);
     if (!o) return;
-    o.sprite.destroy();
-    o.label.destroy();
+    this.scene.remove(o.av);
     this.others.delete(id);
   }
 
-  updateStatus() {
-    this.statusText.setText('Online: ' + (this.others.size + 1));
-  }
+  updateStatus() { this.say3d('Online: ' + (this.others.size + 1)); }
 
-  // ---------- Gate and progress ----------
-
+  // ----- gate and progress -----
   applyGate() {
     const open = this.progress === 'indigene';
-    this.gateG.setVisible(!open);
-    this.gateLabel.setVisible(!open);
-    this.gate.body.enable = !open;
-    this.testButton.setVisible(this.devTools);
-    this.testButton.setText(open ? 'Test: reset to arrived' : 'Test: become indigene');
+    this.gateClosed = !open;
+    this.gateGroup.visible = !open;
+    this.testButton.style.display = this.devTools ? 'block' : 'none';
+    this.testButton.textContent = open ? 'Test: reset to arrived' : 'Test: become indigene';
   }
 
   toggleProgressTest() {
@@ -361,62 +475,92 @@ class WorldScene extends Phaser.Scene {
     this.socket.emit('dev_progress', this.progress === 'indigene' ? 'arrived' : 'indigene');
   }
 
-  // ---------- Game loop ----------
-
-  // Plays the right walking animation for the direction, or the standing frame when still.
-  // holder is where the facing direction is stored (for the player: this.facing).
-  animate(sprite, vx, vy, holder, isRemote) {
-    const threshold = isRemote ? 0.6 : 0.01;
-    const moving = Math.hypot(vx, vy) > threshold;
-    let facing = isRemote ? holder.facing : this.facing;
-    if (moving) {
-      if (Math.abs(vx) > Math.abs(vy)) facing = vx < 0 ? 'left' : 'right';
-      else facing = vy < 0 ? 'up' : 'down';
-      if (isRemote) holder.facing = facing; else this.facing = facing;
-      sprite.anims.play('walk-' + facing, true);
-    } else {
-      sprite.anims.stop();
-      sprite.setFrame(DIRS.indexOf(facing) * 4);
+  // ----- walking and collisions -----
+  collide(pos) {
+    const all = this.gateClosed ? this.boxes.concat([this.gateBox]) : this.boxes;
+    for (const b of all) {
+      const cx = THREE.MathUtils.clamp(pos.x, b.x0, b.x1);
+      const cz = THREE.MathUtils.clamp(pos.z, b.z0, b.z1);
+      let dx = pos.x - cx, dz = pos.z - cz;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < PLAYER_RADIUS * PLAYER_RADIUS) {
+        if (d2 > 1e-9) {
+          const d = Math.sqrt(d2), push = PLAYER_RADIUS - d;
+          pos.x += dx / d * push; pos.z += dz / d * push;
+        } else {                       // centre is inside the box: push out the nearest side
+          const l = pos.x - b.x0, r = b.x1 - pos.x, t = pos.z - b.z0, u = b.z1 - pos.z, m = Math.min(l, r, t, u);
+          if (m === l) pos.x = b.x0 - PLAYER_RADIUS; else if (m === r) pos.x = b.x1 + PLAYER_RADIUS;
+          else if (m === t) pos.z = b.z0 - PLAYER_RADIUS; else pos.z = b.z1 + PLAYER_RADIUS;
+        }
+      }
     }
   }
 
-  update(time) {
-    let vx = 0, vy = 0;
-    if (this.cursors.left.isDown || this.keys.A.isDown) vx -= 1;
-    if (this.cursors.right.isDown || this.keys.D.isDown) vx += 1;
-    if (this.cursors.up.isDown || this.keys.W.isDown) vy -= 1;
-    if (this.cursors.down.isDown || this.keys.S.isDown) vy += 1;
-    if (this.stick.active) { vx = this.stick.x; vy = this.stick.y; }
+  frame() {
+    const dt = Math.min(this.clock.getDelta(), 0.1);
+    const k = this.keys;
+    let ix = 0, iy = 0;                                   // ix = right, iy = forward
+    if (k.KeyA || k.ArrowLeft) ix -= 1;
+    if (k.KeyD || k.ArrowRight) ix += 1;
+    if (k.KeyW || k.ArrowUp) iy += 1;
+    if (k.KeyS || k.ArrowDown) iy -= 1;
+    if (this.stick.active) { ix = this.stick.x; iy = -this.stick.y; }
+    const il = Math.hypot(ix, iy);
+    if (il > 1) { ix /= il; iy /= il; }
 
-    const len = Math.hypot(vx, vy);
-    if (len > 1) { vx /= len; vy /= len; }
-    this.player.setVelocity(vx * SPEED, vy * SPEED);
-    if (this.hasHero) {
-      this.animate(this.player, vx, vy, 'facing');
-    } else if (vx !== 0) {
-      this.player.setFlipX(vx < 0);
+    const { yaw } = this.cam;
+    const fx = -Math.sin(yaw), fz = -Math.cos(yaw);       // forward on the ground
+    const rx = Math.cos(yaw), rz = -Math.sin(yaw);        // right
+    const vx = (fx * iy + rx * ix) * SPEED;
+    const vz = (fz * iy + rz * ix) * SPEED;
+
+    const p = this.player.position;
+    p.x += vx * dt; p.z += vz * dt;
+    p.x = THREE.MathUtils.clamp(p.x, PLAYER_RADIUS, WORLD_W - PLAYER_RADIUS);
+    p.z = THREE.MathUtils.clamp(p.z, PLAYER_RADIUS, WORLD_H - PLAYER_RADIUS);
+    this.collide(p);
+    this.collide(p);
+
+    const speed = Math.hypot(vx, vz);
+    if (speed > 0.2) turnTowards(this.player, Math.atan2(vx, vz), dt);
+    animateAvatar(this.player, speed, dt);
+
+    // zone name
+    const z = BUILDINGS.find(b => p.x >= b.zone.x0 && p.x <= b.zone.x1 && p.z >= b.zone.z0 && p.z <= b.zone.z1);
+    this.zoneText.textContent = z ? z.name : 'Walking';
+
+    // send position to the server (in the old pixel units)
+    const now = performance.now();
+    if (this.socket && this.socket.connected && this.myId && now - this.lastSent > SEND_EVERY_MS) {
+      this.lastSent = now;
+      this.socket.emit('move', { x: Math.round(p.x * PX_PER_M), y: Math.round(p.z * PX_PER_M), flip: false });
     }
 
-    const px = this.player.x, py = this.player.y;
-    this.player.setDepth(py);
-    this.myLabel.setPosition(px, py - this.labelOffset);
-
-    const here = ZONES.find(z => px >= z.x && px <= z.x + z.w && py >= z.y && py <= z.y + z.h);
-    this.zoneText.setText(here ? here.name : 'Walking');
-
-    if (this.socket && this.socket.connected && this.myId && time - this.lastSent > SEND_EVERY_MS) {
-      this.lastSent = time;
-      this.socket.emit('move', { x: Math.round(px), y: Math.round(py), flip: this.player.flipX });
-    }
-
+    // other players glide to their latest position and face the way they walk
+    const a = 1 - Math.exp(-12 * dt);
     this.others.forEach(o => {
-      const dx = o.tx - o.sprite.x;
-      const dy = o.ty - o.sprite.y;
-      o.sprite.x += dx * 0.25;
-      o.sprite.y += dy * 0.25;
-      if (this.hasHero) this.animate(o.sprite, dx, dy, o, true);
-      o.sprite.setDepth(o.sprite.y);
-      o.label.setPosition(o.sprite.x, o.sprite.y - this.labelOffset).setDepth(5000);
+      const dx = o.tx - o.av.position.x, dz = o.tz - o.av.position.z;
+      o.av.position.x += dx * a; o.av.position.z += dz * a;
+      const sp = Math.hypot(dx, dz) / Math.max(dt, 0.001) * a;
+      if (Math.hypot(dx, dz) > 0.02) turnTowards(o.av, Math.atan2(dx, dz), dt);
+      animateAvatar(o.av, Math.min(sp, SPEED), dt);
     });
+
+    // camera follows from behind and above
+    const c = this.cam;
+    const target = new THREE.Vector3(p.x, 1.5, p.z);
+    const cp = Math.cos(c.pitch);
+    const want = new THREE.Vector3(p.x + Math.sin(c.yaw) * cp * c.dist, 1.5 + Math.sin(c.pitch) * c.dist, p.z + Math.cos(c.yaw) * cp * c.dist);
+    if (!this.look) { this.look = target.clone(); this.camera.position.copy(want); }
+    const s = 1 - Math.exp(-10 * dt);
+    this.camera.position.lerp(want, s);
+    this.look.lerp(target, s);
+    this.camera.lookAt(this.look);
+
+    // keep the sun's shadow box around the player
+    this.sun.target.position.set(p.x, 0, p.z);
+    this.sun.position.set(p.x + 30, 50, p.z + 20);
+
+    this.renderer.render(this.scene, this.camera);
   }
 }
