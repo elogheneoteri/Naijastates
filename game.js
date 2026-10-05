@@ -6,7 +6,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { buildImmigrationOffice } from './immigration_exterior.js';
 import { buildRefugeeCamp, CAMP_BOXES } from './refugee_camp.js';
 
 // >>> Your three values (same as before). <<<
@@ -35,15 +34,16 @@ const ROAD_Z0 = 27.0, ROAD_Z1 = 30.5;      // main road (runs west to east, thro
 const BUILDINGS = [
   {
     key: 'immigration', name: 'Immigration Office', file: 'immigration_office.glb',
-    build: buildImmigrationOffice,          // built in code (immigration_exterior.js); the .glb is no longer used
-    x: 50, z: 18.8, rotY: 0,
+    // Realistic office building (low_rise_wall_to_wall_office_building.glb, saved as immigration_office.glb).
+    // The model is in centimetre-style units, so scale shrinks it to game metres.
+    // Make it bigger or smaller with scale (0.008 = about 25.6 m wide, 23 m tall tower).
+    // The code centres it on x/z and sits it on the ground; the glass front faces +Z (south, towards the road).
+    scale: 0.008,
+    x: 50, z: 11.8, rotY: 0,
     boxes: [
-      [-7.4, 7.4, -7.3, 3.9],               // the building body; the steps in front stay walkable
-      [3.6, 7.0, 3.9, 4.7], [-7.0, -3.6, 3.9, 4.7],   // planters
-      [8.8, 9.6, 5.4, 6.2], [-9.6, -8.8, 5.4, 6.2],   // flag pole bases
-      [9.9, 12.1, 4.4, 6.6]                 // guard booth
+      [-12.8, 12.8, -12.1, 12.1]            // the whole building (tower + low wing)
     ],
-    fallback: [15, 10, 14.4]
+    fallback: [25.6, 23, 24.2]
   },
   {
     key: 'refugee', name: 'Refugee Camp', file: 'refugee_camp.glb',
@@ -362,6 +362,14 @@ class World {
 
     new GLTFLoader().load(b.file, gltf => {
       gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      if (b.scale) {                     // shrink to game size, centre on x/z, sit on the ground
+        gltf.scene.scale.setScalar(b.scale);
+        gltf.scene.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(gltf.scene);
+        gltf.scene.position.x -= (box.min.x + box.max.x) / 2;
+        gltf.scene.position.z -= (box.min.z + box.max.z) / 2;
+        gltf.scene.position.y -= box.min.y;
+      }
       root.add(gltf.scene);
     }, undefined, () => {
       // File missing or wrong name: show a plain block so the game still works
