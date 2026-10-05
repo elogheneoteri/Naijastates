@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { buildImmigrationOffice } from './immigration_exterior.js';
 
 // >>> Your three values (same as before). <<<
 const SERVER_URL = 'https://naija-server.onrender.com';
@@ -32,8 +33,14 @@ const ROAD_Z0 = 27.0, ROAD_Z1 = 30.5;      // main road (runs west to east, thro
 const BUILDINGS = [
   {
     key: 'immigration', name: 'Immigration Office', file: 'immigration_office.glb',
+    build: buildImmigrationOffice,          // built in code (immigration_exterior.js); the .glb is no longer used
     x: 50, z: 18.8, rotY: 0,
-    boxes: [[-7.4, 7.4, -7.3, 3.9]],        // the building body; the steps in front stay walkable
+    boxes: [
+      [-7.4, 7.4, -7.3, 3.9],               // the building body; the steps in front stay walkable
+      [3.6, 7.0, 3.9, 4.7], [-7.0, -3.6, 3.9, 4.7],   // planters
+      [8.8, 9.6, 5.4, 6.2], [-9.6, -8.8, 5.4, 6.2],   // flag pole bases
+      [9.9, 12.1, 4.4, 6.6]                 // guard booth
+    ],
     fallback: [15, 10, 14.4]
   },
   {
@@ -159,6 +166,7 @@ class World {
     this.myId = null;
     this.lastSent = 0;
     this.boxes = [];            // solid rectangles {x0,x1,z0,z1}
+    this.animators = [];        // functions run every frame (waving flags)
     this.keys = {};
     this.stick = { active: false, id: null, sx: 0, sy: 0, x: 0, y: 0 };
     this.cam = { yaw: -Math.PI / 2, pitch: 0.42, dist: 9 };
@@ -297,6 +305,13 @@ class World {
 
     // Name zone for the top-left text
     b.zone = { x0: b.x - 14, x1: b.x + 14, z0: b.z - 14, z1: b.z + 14 };
+
+    if (b.build) {                       // building made in code instead of a .glb file
+      const built = b.build();
+      root.add(built.group);
+      if (built.update) this.animators.push(built.update);
+      return;
+    }
 
     new GLTFLoader().load(b.file, gltf => {
       gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
@@ -524,6 +539,7 @@ class World {
     const speed = Math.hypot(vx, vz);
     if (speed > 0.2) turnTowards(this.player, Math.atan2(vx, vz), dt);
     animateAvatar(this.player, speed, dt);
+    for (const f of this.animators) f();
 
     // zone name
     const z = BUILDINGS.find(b => p.x >= b.zone.x0 && p.x <= b.zone.x1 && p.z >= b.zone.z0 && p.z <= b.zone.z1);
