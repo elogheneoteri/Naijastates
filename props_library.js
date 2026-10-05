@@ -45,6 +45,9 @@ export const PROPS = {
   water_dispenser: { file: 'water_dispenser.glb', height: 1.1, rotY: -Math.PI / 2, tags: ['office'] },  // taps are on the +X side of the file, so turned to face +Z
   ac_wall:         { file: 'air_conditioner.glb', maxXZ: 0.95, tags: ['office', 'cooling'] },           // wall-mounted split unit, about 0.95 m wide
   ac_tower:        { file: 'standing_air_conditioner.glb', height: 1.7, rotY: -Math.PI / 2, tags: ['office', 'cooling'] },
+  office_partition: { file: 'office_partition.glb', unit: 1.0, tags: ['office', 'furniture'] },   // desk divider, 2.64 m long x 1.41 m tall, runs along z (glass strip on top)
+  filing_cabinet:  { file: 'filing_cabinet.glb', height: 1.3, rotY: Math.PI, tags: ['office', 'furniture'] },   // front faces +Z
+  gta_marker_blue: { file: 'gta_marker_blue.glb', maxXZ: 1.9, glow: true, tags: ['marker'] },     // blue gradient entrance / exit marker (government)
   door_a:          { file: 'psx_doors_pack.glb', node: 'Door#1_Texture_0', height: 2.2, tags: ['office', 'door'] },
   door_b:          { file: 'psx_doors_pack.glb', node: 'Door#2_Texture_0', height: 2.2, tags: ['office', 'door'] },
 
@@ -138,6 +141,10 @@ function fixMaterials(root, def) {
           if (m.transparent || m.alphaTest > 0) { m.alphaTest = Math.max(m.alphaTest, 0.4); m.transparent = false; m.depthWrite = true; }
           m.side = THREE.DoubleSide;
         }
+      }
+      if (def.glow && m.map) {                // GTA-style marker: bright gradient, blends with what is behind it
+        m.emissive = new THREE.Color(0xffffff); m.emissiveMap = m.map; m.emissiveIntensity = 1.0;
+        m.transparent = true; m.depthWrite = false; m.side = THREE.DoubleSide; m.needsUpdate = true;
       }
       if (def.tint && m.color) m.color.multiply(new THREE.Color(def.tint));
       return m;

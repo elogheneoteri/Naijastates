@@ -8,9 +8,9 @@
 //   IMMIGRATION_BOXES         -> solid parts (walls with a door gap, desks, counter, chairs) for game.js collisions
 //
 // Props used (all in your props folder): pbr_material_floor_tiles.glb (floor + wall tiles), psx_style_office_walls_pack.glb,
-// psx_doors_pack.glb, office_table..glb, office_chair.glb (no plastic chairs in here), personal_computer.glb, laptop.glb,
+// psx_doors_pack.glb, office_table..glb, office_chair.glb (no plastic chairs in here), personal_computer.glb, office_partition.glb (desk dividers), filing_cabinet.glb, gta_marker_blue.glb,
 // standing_fan.glb, water_dispenser.glb, air_conditioner.glb (wall units), standing_air_conditioner.glb.
-// (The reception counter and cabinets are built in code.)
+// (The information counter is built in code.)
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -29,7 +29,7 @@ const WIN_Z = -9.0;
 const WINDOWS = [
   { x: -7.5, title: 'WINDOW 1', sub: 'Registration',     computer: 'personal_computer' },
   { x: 0.0,  title: 'WINDOW 2', sub: 'Verification',     computer: 'personal_computer' },
-  { x: 7.5,  title: 'WINDOW 3', sub: 'Indigene status',  computer: 'laptop' },
+  { x: 7.5,  title: 'WINDOW 3', sub: 'Indigene status',  computer: 'personal_computer' },
 ];
 // Information counter on the west side (built in code)
 const REC = { x: -7.5, z: 3.0, w: 6.0, d: 0.9, h: 1.05 };
@@ -45,7 +45,14 @@ const WALL_ACS = [
   { x: -HALF_W + 0.16, z: -6.0, rotY: Math.PI / 2 }, { x: -HALF_W + 0.16, z: 8.0, rotY: Math.PI / 2 },
   { x: HALF_W - 0.16, z: -8.5, rotY: -Math.PI / 2 }, { x: HALF_W - 0.16, z: 8.5, rotY: -Math.PI / 2 },
 ];
-const CABINETS = [[-11.4, -11.5], [11.4, -11.5]];     // filing cabinets in the back corners
+const CABINETS = [[-11.4, -11.5], [11.4, -11.5]];     // filing cabinets in the back corners (real model: filing_cabinet.glb)
+// Desk dividers (office_partition.glb, 2.64 m long at scale 1): one between each pair of service windows, one between the two counter seats.
+const PART_SCALE = 0.85;
+const PART_LEN = 2.64 * PART_SCALE;
+const PARTITIONS = [
+  { x: -3.75, z: WIN_Z - 0.4 }, { x: 3.75, z: WIN_Z - 0.4 },
+  { x: REC.x, z: REC.z - 1.3 },
+];
 
 // Which way the computers face. If a screen looks away from the staff chair, change Math.PI to 0 here.
 const COMPUTER_ROT = Math.PI;
@@ -64,7 +71,8 @@ export const IMMIGRATION_BOXES = [
   ...FANS.map(([x, z]) => [x - 0.3, x + 0.3, z - 0.3, z + 0.3]),
   ...DISPENSERS.map(d => [d.x - 0.2, d.x + 0.2, d.z - 0.2, d.z + 0.2]),
   ...TOWER_ACS.map(a => [a.x - 0.3, a.x + 0.3, a.z - 0.3, a.z + 0.3]),
-  ...CABINETS.map(([x, z]) => [x - 0.45, x + 0.45, z - 0.3, z + 0.3]),
+  ...CABINETS.map(([x, z]) => [x - 0.35, x + 0.35, z - 0.35, z + 0.35]),
+  ...PARTITIONS.map(p => [p.x - 0.07, p.x + 0.07, p.z - PART_LEN / 2, p.z + PART_LEN / 2]),
 ];
 
 // ---------- small helpers ----------
@@ -210,9 +218,8 @@ export function buildImmigrationOffice() {
     buildWalls(kit);
   }).catch(e => { warn('office wall pieces (using plain walls)')(e); buildWalls(null); });
 
-  // ----- entrance: exit sign inside, door mat -----
-  board(group, 1.6, 0.45, 0, 2.7, HALF_D - 0.06, Math.PI, signTex(512, 144, '#0b5a2e', [{ t: 'EXIT', size: 96, y: 76 }]));
-  box(M.mat, 2.2, 0.03, 1.1, 0, 0.03, HALF_D - 1.0);
+  // ----- exit (inside): blue gradient marker in front of the door (government building = blue) -----
+  put('gta_marker_blue', 0, 0.02, HALF_D - 1.7).catch(warn('exit marker'));
 
   // ----- signs on the walls -----
   WINDOWS.forEach(w => board(group, 2.6, 0.78, w.x, 2.45, -HALF_D + 0.06, 0,
@@ -228,11 +235,10 @@ export function buildImmigrationOffice() {
   box(M.woodTop, REC.w + 0.2, 0.07, REC.d + 0.2, REC.x, REC.h + 0.035, REC.z);
   const counterTop = REC.h + 0.07;
 
-  // ----- filing cabinets -----
-  CABINETS.forEach(([x, z]) => {
-    box(M.cabinet, 0.9, 1.5, 0.5, x, 0.75, z);
-    [0.3, 0.75, 1.2].forEach(y => box(M.dark, 0.7, 0.04, 0.02, x, y, z + 0.26));
-  });
+  // ----- filing cabinets (real model) -----
+  CABINETS.forEach(([x, z]) => put('filing_cabinet', x, 0, z).catch(warn('filing cabinet')));
+  // ----- desk dividers between the service windows and between the two counter seats -----
+  PARTITIONS.forEach(p => put('office_partition', p.x, 0, p.z, { scale: PART_SCALE }).catch(warn('desk divider')));
 
   // ----- real props -----
   // Service windows: table, staff chair behind, applicant chair in front, a computer on the table
@@ -242,11 +248,11 @@ export function buildImmigrationOffice() {
     put('office_chair', w.x, 0, WIN_Z + 1.3, { rotY: Math.PI }).catch(warn('office chair'));
     put(w.computer, w.x - 0.2, 0.78, WIN_Z, { rotY: COMPUTER_ROT }).catch(warn(w.computer));
   });
-  // Information counter: two staff behind it, a PC and a laptop on top
+  // Information counter: two staff behind it, a desktop PC at each seat
   put('office_chair', REC.x - 1.5, 0, REC.z - 1.2).catch(warn('office chair'));
   put('office_chair', REC.x + 1.5, 0, REC.z - 1.2).catch(warn('office chair'));
   put('personal_computer', REC.x - 1.5, counterTop, REC.z, { rotY: COMPUTER_ROT }).catch(warn('personal computer'));
-  put('laptop', REC.x + 1.5, counterTop, REC.z, { rotY: COMPUTER_ROT }).catch(warn('laptop'));
+  put('personal_computer', REC.x + 1.5, counterTop, REC.z, { rotY: COMPUTER_ROT }).catch(warn('personal computer'));
   // Waiting area: rows of office chairs facing the windows (north)
   WAIT_ROWS_Z.forEach(z => WAIT_X.forEach(x => put('office_chair', x, 0, z, { rotY: Math.PI }).catch(warn('office chair'))));
   // Fans in the front corners
@@ -261,15 +267,8 @@ export function buildImmigrationOffice() {
     board(group, 1.1, 0.32, x, 2.6, -HALF_D + 0.06, 0, signTex(384, 112, '#7a2418', [{ t: 'STAFF ONLY', size: 46, y: 58 }]));
   });
 
-  // ----- door marker (outside): so players can see where to walk in -----
-  const frame = (w, h, d, x, y, z) => { const m = new THREE.Mesh(BOX, M.post); m.scale.set(w, h, d); m.position.set(x, y, z); m.castShadow = true; marker.add(m); };
-  const mz = HALF_D + 0.35;
-  frame(0.3, 3.2, 0.3, -DOOR_HALF - 0.15, 1.6, mz);
-  frame(0.3, 3.2, 0.3, DOOR_HALF + 0.15, 1.6, mz);
-  frame(DOOR_HALF * 2 + 0.6, 0.3, 0.3, 0, 3.2, mz);
-  board(marker, 3.4, 0.9, 0, 3.85, mz, 0, signTex(1024, 270, '#0b5a2e', [{ t: 'IMMIGRATION OFFICE', size: 84, y: 100 }, { t: 'Walk in to register', size: 46, y: 192, color: '#ffe9a8' }]));
-  const matOut = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.4), M.mat);
-  matOut.rotation.x = -Math.PI / 2; matOut.position.set(0, 0.03, HALF_D + 0.9); matOut.receiveShadow = true; marker.add(matOut);
+  // ----- door marker (outside): blue gradient marker in front of the door, so players can see where to walk in -----
+  loadProp('gta_marker_blue').then(p => { p.position.set(0, 0.02, HALF_D + 1.5); marker.add(p); }).catch(warn('entrance marker'));
 
   // ----- hooks used by game.js -----
   const setInside = inside => { group.visible = inside; marker.visible = !inside; };
