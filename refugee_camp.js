@@ -28,9 +28,8 @@ const TREES = [
 ];
 // Small plants outside the fence and beside the gate
 const PLANTS = [
-  { name: 'bush_flowers', x: -3.6, z: 10.4 }, { name: 'bush_flowers', x: 3.6, z: 10.4 },
   { name: 'flower_clump', x: -10.6, z: -3.0 }, { name: 'flower_clump', x: 10.7, z: -5.5 },
-  { name: 'flower_1', x: -10.5, z: 4.0 }, { name: 'flower_1', x: 10.6, z: 1.0 }, { name: 'flower_clump', x: 10.6, z: 6.0 },
+  { name: 'flower_1', x: -10.5, z: 3.0 }, { name: 'flower_1', x: 10.6, z: 1.0 },
 ];
 const JERRY_SPOTS = [[-5.2, 7.6], [-5.0, 7.9], [-3.3, 7.7], [-3.1, 7.5]];
 
@@ -223,29 +222,13 @@ export function buildRefugeeCamp() {
 
   // ----- water point -----
   box(M.concrete, 2.6, 0.12, 1.4, -4.2, 0.06, 6.6);
-  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => I.steel.add(-4.2 + a * 0.55, 0.95, 6.2 + b * 0.35, 0.08, 1.7, 0.08));
-  box(M.steel, 1.4, 0.08, 1.0, -4.2, 1.85, 6.2);
   const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 1.1, 20), M.tank);
-  tank.position.set(-4.2, 2.45, 6.2); tank.castShadow = true; g.add(tank);
-  box(M.steel, 2.0, 0.07, 0.07, -4.2, 0.95, 6.95);
-  [-4.9, -4.2, -3.5].forEach(x => { box(M.steel, 0.07, 0.22, 0.14, x, 0.82, 7.02); I.steel.add(x, 0.45, 6.95, 0.04, 0.9, 0.04); });
+  tank.position.set(-4.2, 0.67, 6.2); tank.castShadow = true; g.add(tank);
   JERRY_SPOTS.forEach(([x, z], i) => (i % 2 ? I.jerryB : I.jerry).add(x, 0.22, z, 0.32, 0.44, 0.2, rand() * 3));
 
   // ----- cooking area -----
-  for (let i = 0; i < 9; i++) {
-    const a = (i / 9) * Math.PI * 2;
-    I.stone.add(4.8 + Math.cos(a) * 0.55, 0.12, 6.4 + Math.sin(a) * 0.55, 0.3, 0.22, 0.3);
-  }
-  box(M.ember, 0.7, 0.05, 0.7, 4.8, 0.06, 6.4, false);
-  const flames = [0, 1, 2].map(i => {
-    const f = new THREE.Mesh(new THREE.ConeGeometry(0.16 - i * 0.03, 0.55 - i * 0.1, 8),
-      new THREE.MeshStandardMaterial({ color: 0xffa31a, emissive: i ? 0xffd24a : 0xff7a10, emissiveIntensity: 1.6, transparent: true, opacity: 0.85 }));
-    f.position.set(4.8 + (i - 1) * 0.12, 0.32, 6.4 + (i === 1 ? 0.08 : -0.05)); g.add(f); return f;
-  });
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.3, 0.38, 18), M.dark);
-  pot.position.set(4.8, 0.95, 6.4); pot.castShadow = true; g.add(pot);
-  [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]].forEach(([a, b]) => I.steel.add(4.8 + a, 0.38, 6.4 + b, 0.04, 0.76, 0.04));
-  box(M.steel, 0.8, 0.04, 0.8, 4.8, 0.76, 6.4);
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.3, 0.38, 18), M.dark);   // fallback only
+  pot.position.set(4.8, 0.19, 6.4); pot.castShadow = true; g.add(pot);
   [[3.5, 5.6], [6.0, 5.8], [5.9, 7.4]].forEach(([x, z]) => {
     const log = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 1.3, 10), M.wood);
     log.rotation.z = Math.PI / 2; log.rotation.y = Math.atan2(z - 6.4, x - 4.8) + Math.PI / 2; log.position.set(x, 0.17, z); log.castShadow = true; g.add(log);
@@ -275,8 +258,8 @@ export function buildRefugeeCamp() {
   const put = (name, x, y, z, opts) => loadProp(name, opts).then(p => { p.position.set(x, y, z); g.add(p); return p; });
   const warn = what => e => console.warn('refugee camp: could not load ' + what + ', keeping the built-in shape', e);
 
-  put('plastic_tank', -4.2, 1.89, 6.2, { rotY: 0.5 }).then(() => g.remove(tank)).catch(warn('water tank'));
-  put('clay_pot', 4.8, 0.78, 6.4).then(() => g.remove(pot)).catch(warn('cooking pot'));
+  put('plastic_tank', -4.2, 0.12, 6.2, { rotY: 0.5, scale: 1.25 }).then(() => g.remove(tank)).catch(warn('water tank'));
+  put('clay_pot', 4.8, 0, 6.4).then(() => g.remove(pot)).catch(warn('cooking pot'));
   put('camp_pots', 3.7, 0, 7.4, { rotY: 0.8 }).catch(warn('camp pots'));
   Promise.all(JERRY_SPOTS.concat([[3.2, 8.0], [-8.4, 6.9]]).map(([x, z], i) =>
     loadProp('jerry_can', { rotY: 1.9 * i }).then(p => { p.position.set(x, 0, z); return p; })))
@@ -288,9 +271,6 @@ export function buildRefugeeCamp() {
 
   const update = () => {
     const t = performance.now() / 1000;
-    flames.forEach((f, i) => {
-      f.scale.set(1 + Math.sin(t * 9 + i * 2) * 0.12, 1 + Math.sin(t * 13 + i) * 0.22, 1 + Math.cos(t * 11 + i) * 0.12);
-    });
     cloths.forEach((c, i) => { c.rotation.z = Math.sin(t * 1.6 + i) * 0.08; c.rotation.y = Math.sin(t * 1.1 + i * 1.7) * 0.25; });
   };
 
