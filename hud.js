@@ -8,10 +8,10 @@
   // ---- scale from the 1536x1024 design size ----
   function layout() {
     var w = window.innerWidth, h = window.innerHeight;
-    var s = Math.max(0.5, Math.min(1.1, Math.min(w / 1536, h / 1024) * 1.3));
+    var s = Math.max(0.62, Math.min(1.15, Math.min(w / 1536, h / 1024) * 1.7));
     root.style.setProperty('--s', s.toFixed(3));
-    // stats card is 14 + 388 design-px wide; the dock is 330 wide and centred
-    root.classList.toggle('stacked', (14 + 388) * s > (w / 2 - 165 * s) - 6);
+    // stats card is 18 + 360 design-px wide; the dock is 300 wide and centred
+    root.classList.toggle('stacked', (18 + 360) * s > (w / 2 - 150 * s) - 6);
   }
   window.addEventListener('resize', layout);
   window.addEventListener('orientationchange', layout);
@@ -19,19 +19,19 @@
 
   // ---- the seven stat rows: [key, label, colour, icon file, column] ----
   var defs = [
-    ['social',  'Social',        '#ff3fa4', 'social',  'L'],
-    ['energy',  'Energy',        '#ffc61a', 'energy',  'L'],
-    ['hunger',  'Hunger',        '#ff8a2a', 'hunger',  'L'],
-    ['thirst',  'Thirst',        '#25a8ff', 'thirst',  'R'],
-    ['hygiene', 'Hygiene',       '#3ad0ff', 'hygiene', 'R'],
-    ['pee',     'Pee',           '#8a5cff', 'pee',     'R'],
-    ['stress',  'Mental Stress', '#e04bff', 'stress',  'R']
+    ['social',  'Social',        '#ff7ab8', 'users',   'L'],
+    ['energy',  'Energy',        '#ffd24d', 'zap',     'L'],
+    ['hunger',  'Hunger',        '#ff9a4d', 'food',    'L'],
+    ['thirst',  'Thirst',        '#4db8ff', 'drop',    'R'],
+    ['hygiene', 'Hygiene',       '#5ee0d0', 'bubbles', 'R'],
+    ['pee',     'Pee',           '#a78bfa', 'toilet',  'R'],
+    ['stress',  'Mental Stress', '#d98bff', 'pulse',   'R']
   ];
   defs.forEach(function (d) {
     document.getElementById('col' + d[4]).insertAdjacentHTML('beforeend',
-      '<div class="st"><img class="ico" src="assets/icons/' + d[3] + '.png" alt="" onerror="this.style.visibility=\'hidden\'">' +
+      '<div class="st" style="--c:' + d[2] + '"><svg class="ic"><use href="#i-' + d[3] + '"/></svg>' +
       '<div><div class="lab"><span>' + d[1] + '</span><b id="st_' + d[0] + 't">100%</b></div>' +
-      '<div class="hbar"><i id="st_' + d[0] + '" style="--c:' + d[2] + ';width:100%"></i></div></div></div>');
+      '<div class="hbar"><i id="st_' + d[0] + '" style="width:100%"></i></div></div></div>');
   });
 
   function bar(id, txt, v) {

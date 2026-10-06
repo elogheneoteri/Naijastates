@@ -6,8 +6,8 @@
 <title>NaijaVerse RP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap">
-<link rel="stylesheet" href="hud.css?v=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="hud.css?v=2">
 <style>
 :root { --navy:#0b1a33; --navy2:#10264a; --line:#1f4a8a; --gold:#ffc61a; --txt:#f3f6ff; --mut:#9fb3d1; }
 * { box-sizing:border-box; }
@@ -88,18 +88,37 @@ button.soc { font:inherit; font-size:15px; padding:12px; border-radius:999px; co
 <div id="game"></div>
 
 <!-- ============ IN-GAME HUD (screen-space overlay; styled by hud.css, driven by hud.js) ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.7 8.9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+<symbol id="i-cash" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+<symbol id="i-food" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></symbol>
+<symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></symbol>
+<symbol id="i-bubbles" viewBox="0 0 24 24"><circle cx="9" cy="14" r="5"/><circle cx="17" cy="7" r="3"/><circle cx="18" cy="17" r="2"/></symbol>
+<symbol id="i-toilet" viewBox="0 0 24 24"><path d="M7 3h10v6H7zM5 9h14c0 5-2 8-5 8h-4c-3 0-5-3-5-8zM9 21h6"/></symbol>
+<symbol id="i-pulse" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .7-1.5l7-6a2 2 0 0 1 2.6 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+<symbol id="i-car" viewBox="0 0 24 24"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></symbol>
+<symbol id="i-shirt" viewBox="0 0 24 24"><path d="M20.4 5.4 16 3a4 4 0 0 1-8 0L3.6 5.4a2 2 0 0 0-1.1 2.2l.9 3.3a1 1 0 0 0 1 .8H6v9h12v-9h1.6a1 1 0 0 0 1-.8l.9-3.3a2 2 0 0 0-1.1-2.2z"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M12 18h.01"/></symbol>
+<symbol id="i-bag" viewBox="0 0 24 24"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5M8 10h8"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+</defs></svg>
 <div id="hud">
 
   <!-- 1. minimap : top-left -->
   <div id="mini">
     <div class="m-ring"><div class="m-in">
       <canvas id="hudMap" width="256" height="256"></canvas>
-      <svg id="hudArrow" viewBox="0 0 30 30" aria-hidden="true"><polygon points="15,1 27,28 15,21 3,28" fill="#4cc9ff" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <svg id="hudArrow" viewBox="0 0 30 30" aria-hidden="true"><polygon points="15,2 26,27 15,21 4,27" fill="#fff" stroke="#2c8cff" stroke-width="2.2" stroke-linejoin="round"/></svg>
     </div></div>
     <span class="m-n">N</span>
-    <div class="m-b b-home"><img src="assets/icons/home.png" alt="" onerror="this.style.visibility='hidden'"></div>
-    <div class="m-b b-car"><img src="assets/icons/car.png" alt="" onerror="this.style.visibility='hidden'"></div>
-    <div class="m-b b-shirt"><svg viewBox="0 0 28 28" aria-hidden="true"><path fill="#7fd3ff" d="M9 3 2 8l3.4 5L8 11.4V25h12V11.4l2.6 1.6L26 8l-7-5c-.8 2-2.4 3.2-5 3.2S9.8 5 9 3z"/></svg></div>
+    <div class="m-b b-home"><svg class="ic"><use href="#i-home"/></svg></div>
+    <div class="m-b b-car"><svg class="ic"><use href="#i-car"/></svg></div>
+    <div class="m-b b-shirt"><svg class="ic"><use href="#i-shirt"/></svg></div>
   </div>
 
   <!-- zone / online / test / logout : under the minimap -->
@@ -110,17 +129,17 @@ button.soc { font:inherit; font-size:15px; padding:12px; border-radius:999px; co
   </div>
 
   <!-- 2. money + vitals : top-right -->
-  <div id="tr">
-    <div class="row cash"><img src="assets/icons/cash.png" alt="" onerror="this.style.visibility='hidden'"><span id="hudCash">₦0</span></div>
-    <div class="row"><img src="assets/icons/health.png" alt="" onerror="this.style.visibility='hidden'"><div class="hbar"><i id="hudHealth" style="--c:#ff2d3d;width:100%"></i></div><span class="pct" id="hudHealthTxt">100%</span></div>
-    <div class="row"><img src="assets/icons/armor.png" alt="" onerror="this.style.visibility='hidden'"><div class="hbar"><i id="hudArmor" style="--c:#2f8bff;width:0"></i></div><span class="pct" id="hudArmorTxt">0%</span></div>
+  <div id="tr" class="glass">
+    <div class="row cash"><svg class="ic"><use href="#i-cash"/></svg><span id="hudCash">₦0</span></div>
+    <div class="row" style="color:#ff5c6c"><svg class="ic"><use href="#i-heart"/></svg><div class="hbar"><i id="hudHealth" style="--c:#ff5c6c;width:100%"></i></div><span class="pct" id="hudHealthTxt">100%</span></div>
+    <div class="row" style="color:#4da3ff"><svg class="ic"><use href="#i-shield"/></svg><div class="hbar"><i id="hudArmor" style="--c:#4da3ff;width:0"></i></div><span class="pct" id="hudArmorTxt">0%</span></div>
   </div>
 
   <!-- 3. player stats : bottom-left -->
-  <div id="stats">
+  <div id="stats" class="glass">
     <div class="col" id="colL">
       <div class="head">
-        <div id="av"><div id="hudFace">🙂</div><img id="hudFrame" src="assets/icons/avatar.png" alt="" onerror="this.style.display='none'"></div>
+        <div id="av"><div id="hudFace"><svg class="ic"><use href="#i-user"/></svg></div><img id="hudFrame" src="assets/icons/avatar.png" alt=""></div>
         <div class="who"><span id="hudLevel">Lv. 1</span><span id="hudRole">Civilian</span></div>
       </div>
     </div>
@@ -130,35 +149,19 @@ button.soc { font:inherit; font-size:15px; padding:12px; border-radius:999px; co
 
   <!-- 4. phone control : bottom-center, flush with the bottom edge -->
   <div id="dock">
-    <svg viewBox="0 0 330 142" aria-hidden="true" style="font-family:inherit">
-      <defs>
-        <linearGradient id="dkBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16397a"/><stop offset="1" stop-color="#071531"/></linearGradient>
-        <linearGradient id="dkGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd35a"/><stop offset=".55" stop-color="#d98a0b"/><stop offset="1" stop-color="#ffb92e"/></linearGradient>
-        <radialGradient id="dkBtn" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#1f4f9a"/><stop offset="1" stop-color="#081a3d"/></radialGradient>
-      </defs>
-      <path d="M2 142 C2 80 62 40 165 40 C268 40 328 80 328 142 Z" fill="url(#dkBody)"/>
-      <path d="M14 142 C14 88 70 52 165 52 C260 52 316 88 316 142" fill="none" stroke="rgba(90,150,255,.28)" stroke-width="1.5"/>
-      <path d="M2 142 C2 80 62 40 165 40 C268 40 328 80 328 142" fill="none" stroke="url(#dkGold)" stroke-width="3.5"/>
-      <circle cx="68" cy="98" r="27" fill="url(#dkBtn)" stroke="url(#dkGold)" stroke-width="3"/>
-      <circle cx="262" cy="98" r="27" fill="url(#dkBtn)" stroke="url(#dkGold)" stroke-width="3"/>
-      <circle cx="165" cy="58" r="56" fill="url(#dkBtn)" stroke="url(#dkGold)" stroke-width="3.5"/>
-      <!-- phone -->
-      <g transform="translate(165 46)" fill="none" stroke="#eaf2ff" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">
-        <rect x="-12" y="-22" width="24" height="40" rx="5"/><line x1="-4" y1="-16" x2="4" y2="-16"/><circle cx="0" cy="12" r="1.6" fill="#eaf2ff" stroke="none"/>
+    <svg class="dk" viewBox="0 0 300 120" aria-hidden="true" style="font-family:inherit">
+      <defs><linearGradient id="dkGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3d489"/><stop offset=".6" stop-color="#a77d2c"/><stop offset="1" stop-color="#e3b756"/></linearGradient></defs>
+      <path d="M1 120 C1 66 52 34 150 34 C248 34 299 66 299 120 Z" fill="rgba(10,15,26,.66)"/>
+      <path d="M1 120 C1 66 52 34 150 34 C248 34 299 66 299 120" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="1.5"/>
+      <circle cx="62" cy="84" r="22" fill="rgba(16,24,40,.92)" stroke="rgba(255,255,255,.20)" stroke-width="1.2"/>
+      <circle cx="238" cy="84" r="22" fill="rgba(16,24,40,.92)" stroke="rgba(255,255,255,.20)" stroke-width="1.2"/>
+      <circle cx="150" cy="48" r="44" fill="rgba(14,22,38,.96)" stroke="url(#dkGold)" stroke-width="2"/>
+      <g class="ic" style="color:#fff;stroke-width:1.7">
+        <use href="#i-phone" x="136" y="22" width="28" height="28"/>
+        <use href="#i-bag" x="50" y="72" width="24" height="24"/>
+        <use href="#i-gear" x="226" y="72" width="24" height="24"/>
       </g>
-      <text x="165" y="92" text-anchor="middle" font-size="15" font-weight="600" fill="#fff" style="font-family:inherit">Phone</text>
-      <!-- backpack -->
-      <g transform="translate(68 98)" fill="none" stroke="#eaf2ff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M-5 -12v-2a5 5 0 0 1 10 0v2"/><rect x="-11" y="-12" width="22" height="25" rx="8"/><rect x="-6" y="1" width="12" height="8" rx="2.5"/><path d="M-11 -2h-3v9M11 -2h3v9"/>
-      </g>
-      <!-- gear -->
-      <g transform="translate(262 98)" fill="#eaf2ff">
-        <path d="M-2.8 -15h5.6v8h-5.6zM-2.8 7h5.6v8h-5.6z"/>
-        <path transform="rotate(45)" d="M-2.8 -15h5.6v8h-5.6zM-2.8 7h5.6v8h-5.6z"/>
-        <path transform="rotate(90)" d="M-2.8 -15h5.6v8h-5.6zM-2.8 7h5.6v8h-5.6z"/>
-        <path transform="rotate(135)" d="M-2.8 -15h5.6v8h-5.6zM-2.8 7h5.6v8h-5.6z"/>
-        <circle r="10.5" fill="none" stroke="#eaf2ff" stroke-width="4.5"/><circle r="3.4" fill="none" stroke="#eaf2ff" stroke-width="2.4"/>
-      </g>
+      <text x="150" y="70" text-anchor="middle" font-size="11" font-weight="600" fill="#fff" letter-spacing=".04em" style="font-family:inherit">Phone</text>
     </svg>
     <button id="btnBag" aria-label="Inventory"></button><button id="btnPhone" aria-label="Phone"></button><button id="btnSettings" aria-label="Settings"></button>
   </div>
@@ -206,7 +209,7 @@ button.soc { font:inherit; font-size:15px; padding:12px; border-radius:999px; co
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<script src="hud.js?v=1"></script>
+<script src="hud.js?v=2"></script>
 <script type="module" src="game.js?v=1"></script>
 </body>
 </html>
