@@ -57,6 +57,80 @@ const BUILDINGS = [
   }
 ];
 
+// ---------------- Procedural textures for the ground, road and pavement ----------------
+// (drawn in code, so there are no image files to download)
+function makeRng(seed) {
+  let s = seed | 0;
+  return () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+// draw a soft round blob; copies are drawn across the tile edges so the texture tiles without seams
+function wrapBlob(ctx, W, H, x, y, r, rgba) {
+  for (const dx of [-W, 0, W]) for (const dy of [-H, 0, H]) {
+    const px = x + dx, py = y + dy;
+    if (px < -r || px > W + r || py < -r || py > H + r) continue;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, r);
+    g.addColorStop(0, rgba); g.addColorStop(1, rgba.replace(/[\d.]+\)$/, '0)'));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.fill();
+  }
+}
+function paintGrass(ctx, W, H, rnd) {
+  ctx.fillStyle = '#6c8749'; ctx.fillRect(0, 0, W, H);
+  const blotch = ['rgba(128,150,84,0.40)', 'rgba(92,122,62,0.40)', 'rgba(140,146,78,0.30)', 'rgba(70,100,48,0.40)'];
+  for (let i = 0; i < 46; i++) wrapBlob(ctx, W, H, rnd() * W, rnd() * H, 40 + rnd() * 90, blotch[(rnd() * blotch.length) | 0]);
+  for (let i = 0; i < 9000; i++) {                    // fine blades of grass
+    const x = rnd() * W, y = rnd() * H, a = -1.57 + (rnd() - 0.5) * 1.1, l = 3 + rnd() * 6;
+    const v = rnd();
+    ctx.strokeStyle = v < 0.5 ? `rgba(${60 + rnd() * 30},${105 + rnd() * 45},${40 + rnd() * 25},0.55)` : `rgba(${130 + rnd() * 40},${150 + rnd() * 40},${60 + rnd() * 30},0.45)`;
+    ctx.lineWidth = 1 + rnd(); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); ctx.stroke();
+  }
+  for (let i = 0; i < 260; i++) { ctx.fillStyle = `rgba(${110 + rnd() * 40},${90 + rnd() * 30},${60 + rnd() * 20},0.45)`; ctx.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 2.5, 1 + rnd() * 2.5); }
+}
+function paintPatches(ctx, W, H, rnd) {               // big dry / dark patches that stop the grass looking repeated
+  ctx.clearRect(0, 0, W, H);
+  const cols = ['rgba(150,128,84,0.40)', 'rgba(176,170,96,0.30)', 'rgba(52,84,38,0.35)', 'rgba(120,104,72,0.30)'];
+  for (let i = 0; i < 70; i++) {
+    const x = rnd() * W, y = rnd() * H, r = 30 + rnd() * 120, c = cols[(rnd() * cols.length) | 0];
+    ctx.save(); ctx.translate(x, y); ctx.scale(1 + rnd() * 1.2, 1); ctx.translate(-x, -y);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, c); g.addColorStop(1, c.replace(/[\d.]+\)$/, '0)'));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill(); ctx.restore();
+  }
+}
+function paintAsphalt(ctx, W, H, rnd) {               // one tile = 4 m along the road, full road width across
+  ctx.fillStyle = '#3a3d42'; ctx.fillRect(0, 0, W, H);
+  for (let i = 0; i < 34; i++) wrapBlob(ctx, W, H, rnd() * W, rnd() * H, 60 + rnd() * 160, rnd() < 0.5 ? 'rgba(18,20,24,0.28)' : 'rgba(84,86,92,0.22)');
+  for (const f of [0.30, 0.70]) {                     // darker, polished wheel paths
+    const g = ctx.createLinearGradient(0, H * f - 90, 0, H * f + 90);
+    g.addColorStop(0, 'rgba(10,10,12,0)'); g.addColorStop(0.5, 'rgba(10,10,12,0.30)'); g.addColorStop(1, 'rgba(10,10,12,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, H * f - 90, W, 180);
+  }
+  for (let i = 0; i < 16000; i++) { const v = 60 + rnd() * 90; ctx.fillStyle = `rgba(${v},${v},${v + 4},${0.25 + rnd() * 0.4})`; ctx.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 1.6, 1 + rnd() * 1.6); }
+  ctx.lineCap = 'round';                              // hairline cracks
+  for (let i = 0; i < 12; i++) {
+    let x = rnd() * W, y = rnd() * H; ctx.strokeStyle = 'rgba(8,8,10,0.65)'; ctx.lineWidth = 0.8 + rnd() * 1.4; ctx.beginPath(); ctx.moveTo(x, y);
+    for (let k = 0; k < 8; k++) { x += (rnd() - 0.3) * 40; y += (rnd() - 0.5) * 26; ctx.lineTo(x, y); } ctx.stroke();
+  }
+  ctx.fillStyle = '#e9e4cc';                          // centre dashes + solid edge lines
+  ctx.fillRect(W * 0.09, H / 2 - 11, W * 0.45, 22);
+  ctx.globalAlpha = 0.88; ctx.fillRect(0, 66, W, 18); ctx.fillRect(0, H - 84, W, 18); ctx.globalAlpha = 1;
+  for (let i = 0; i < 3000; i++) { ctx.fillStyle = `rgba(${52 + rnd() * 16},${55 + rnd() * 16},${60 + rnd() * 16},${0.45 + rnd() * 0.4})`; ctx.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 3, 1 + rnd() * 3); }   // worn paint
+}
+function paintPavers(ctx, W, H, rnd) {                // 4 x 4 paving slabs per tile
+  ctx.fillStyle = '#86837a'; ctx.fillRect(0, 0, W, H);
+  const n = 4, tw = W / n, th = H / n;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const v = 168 + rnd() * 28; ctx.fillStyle = `rgb(${v},${v - 4},${v - 12})`; ctx.fillRect(i * tw + 3, j * th + 3, tw - 6, th - 6);
+  }
+  for (let i = 0; i < 4000; i++) { const v = 120 + rnd() * 90; ctx.fillStyle = `rgba(${v},${v - 3},${v - 10},0.35)`; ctx.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 2, 1 + rnd() * 2); }
+}
+function paintTuft(ctx, S, rnd) {                     // a clump of grass blades on a transparent card
+  ctx.clearRect(0, 0, S, S);
+  for (let i = 0; i < 16; i++) {
+    const x0 = S * (0.3 + rnd() * 0.4), lean = (rnd() - 0.5) * S * 0.5, h = S * (0.5 + rnd() * 0.45), w = 3 + rnd() * 4;
+    ctx.fillStyle = `rgb(${70 + rnd() * 50},${120 + rnd() * 55},${40 + rnd() * 30})`;
+    ctx.beginPath(); ctx.moveTo(x0 - w, S); ctx.quadraticCurveTo(x0, S - h * 0.6, x0 + lean, S - h); ctx.quadraticCurveTo(x0 + w * 0.2, S - h * 0.5, x0 + w, S); ctx.fill();
+  }
+}
+
 // ---------------- Login / sign-up / choose character ----------------
 
 const configured = !SUPABASE_URL.includes('YOUR-') && !SUPABASE_ANON_KEY.includes('YOUR-');
@@ -567,40 +641,66 @@ class World {
 
   // ----- ground, road, border wall and gate -----
   buildGround() {
-    const c = document.createElement('canvas'); c.width = c.height = 256;
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = '#7d9059'; ctx.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 2600; i++) {
-      const v = 90 + Math.random() * 60;
-      ctx.fillStyle = `rgba(${v + 20},${v + 40},${v - 10},0.35)`;
-      ctx.fillRect(Math.random() * 256, Math.random() * 256, 2 + Math.random() * 3, 2 + Math.random() * 3);
-    }
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(WORLD_W / 6, WORLD_H / 6);
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, WORLD_H), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.set(WORLD_W / 2, -0.04, WORLD_H / 2);
-    ground.receiveShadow = true;
-    this.scene.add(ground);
+    const rnd = makeRng(1337);
+    const aniso = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    const tex = (w, h, paint, rx, ry, srgb = true) => {
+      const c = document.createElement('canvas'); c.width = w; c.height = h; paint(c.getContext('2d'), w, h, rnd);
+      const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+      t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = aniso; return t;
+    };
+    const cz = (ROAD_Z0 + ROAD_Z1) / 2, roadW = ROAD_Z1 - ROAD_Z0;
+
+    // Grass (10 m tiles) + one big non-repeating layer of dry/dark patches on top of it
+    const grass = tex(512, 512, paintGrass, WORLD_W / 10, WORLD_H / 10);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, WORLD_H), new THREE.MeshStandardMaterial({ map: grass, bumpMap: grass, bumpScale: 0.6, roughness: 1 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.set(WORLD_W / 2, -0.04, WORLD_H / 2); ground.receiveShadow = true; this.scene.add(ground);
+    const patchTex = tex(1024, 512, paintPatches, 1, 1); patchTex.wrapS = patchTex.wrapT = THREE.ClampToEdgeWrapping;
+    const patches = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, WORLD_H), new THREE.MeshBasicMaterial({ map: patchTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }));
+    patches.material.fog = true; patches.rotation.x = -Math.PI / 2; patches.position.set(WORLD_W / 2, -0.035, WORLD_H / 2); patches.renderOrder = 1; this.scene.add(patches);
 
     // Beyond the world edge: more ground so the horizon is not a cliff
-    const far = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: 0x748754, roughness: 1 }));
-    far.rotation.x = -Math.PI / 2; far.position.set(WORLD_W / 2, -0.08, WORLD_H / 2);
-    this.scene.add(far);
+    const far = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: 0x6b8348, roughness: 1 }));
+    far.rotation.x = -Math.PI / 2; far.position.set(WORLD_W / 2, -0.08, WORLD_H / 2); this.scene.add(far);
 
-    const roadMat = new THREE.MeshStandardMaterial({ color: 0x3d4046, roughness: 0.95 });
-    const road = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, ROAD_Z1 - ROAD_Z0), roadMat);
-    road.rotation.x = -Math.PI / 2;
-    road.position.set(WORLD_W / 2, -0.02, (ROAD_Z0 + ROAD_Z1) / 2);
-    road.receiveShadow = true;
-    this.scene.add(road);
-    const dash = new THREE.MeshStandardMaterial({ color: 0xe8e2c8, roughness: 0.9 });
-    for (let x = 2; x < WORLD_W; x += 4) {
-      const d = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.14), dash);
-      d.rotation.x = -Math.PI / 2; d.position.set(x, -0.015, (ROAD_Z0 + ROAD_Z1) / 2); this.scene.add(d);
+    // Asphalt road with worn lane markings baked in (one tile = 4 m of road)
+    const asphalt = tex(1024, 896, paintAsphalt, WORLD_W / 4, 1);
+    const road = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, roadW), new THREE.MeshStandardMaterial({ map: asphalt, bumpMap: asphalt, bumpScale: 0.5, roughness: 0.9 }));
+    road.rotation.x = -Math.PI / 2; road.position.set(WORLD_W / 2, -0.02, cz); road.receiveShadow = true; this.scene.add(road);
+
+    // Pavements + kerbs on both sides of the road (flat enough that walking is unaffected)
+    const pave = tex(512, 512, paintPavers, WORLD_W / 2, 0.8);
+    const paveMat = new THREE.MeshStandardMaterial({ map: pave, bumpMap: pave, bumpScale: 0.5, roughness: 0.95 });
+    const kerbMat = new THREE.MeshStandardMaterial({ color: 0xaaa79f, roughness: 0.9 });
+    [-1, 1].forEach(side => {
+      const edge = side < 0 ? ROAD_Z0 : ROAD_Z1;
+      const kerb = new THREE.Mesh(new THREE.BoxGeometry(WORLD_W, 0.1, 0.15), kerbMat);
+      kerb.position.set(WORLD_W / 2, 0.03, edge + side * 0.075); kerb.receiveShadow = true; this.scene.add(kerb);
+      const walk = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, 1.6), paveMat);
+      walk.rotation.x = -Math.PI / 2; walk.position.set(WORLD_W / 2, -0.01, edge + side * (0.15 + 0.8)); walk.receiveShadow = true; this.scene.add(walk);
+    });
+
+    // Grass tufts: two crossed cards per clump, 1 draw call each, kept away from the road and the buildings
+    const tc = document.createElement('canvas'); tc.width = tc.height = 128; paintTuft(tc.getContext('2d'), 128, rnd);
+    const tuftTex = new THREE.CanvasTexture(tc); tuftTex.colorSpace = THREE.SRGBColorSpace; tuftTex.anisotropy = aniso;
+    const tuftMat = new THREE.MeshStandardMaterial({ map: tuftTex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1 });
+    const clear = BUILDINGS.map(b => { const [w, , d] = b.fallback || [20, 0, 20]; return { x0: b.x - w / 2 - 2, x1: b.x + w / 2 + 2, z0: b.z - d / 2 - 2, z1: b.z + d / 2 + 2 }; });
+    const spots = [];
+    for (let tries = 0; spots.length < 1600 && tries < 8000; tries++) {
+      const x = rnd() * WORLD_W, z = rnd() * WORLD_H;
+      if (z > ROAD_Z0 - 2.4 && z < ROAD_Z1 + 2.4) continue;
+      if (Math.abs(x - GATE_X) < 1) continue;
+      if (clear.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
+      spots.push([x, z]);
     }
+    [0, Math.PI / 2].forEach(rot => {
+      const g = new THREE.PlaneGeometry(0.5, 0.4).translate(0, 0.2, 0).rotateY(rot);
+      const im = new THREE.InstancedMesh(g, tuftMat, spots.length), m = new THREE.Object3D(), col = new THREE.Color();
+      spots.forEach(([x, z], i) => {
+        const s = 0.7 + rnd() * 0.9; m.position.set(x, -0.04, z); m.rotation.y = rnd() * 3.14; m.scale.set(s, s * (0.8 + rnd() * 0.5), s); m.updateMatrix();
+        im.setMatrixAt(i, m.matrix); const t = 0.75 + rnd() * 0.4; im.setColorAt(i, col.setRGB(t, t, t * 0.9));
+      });
+      im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true; im.frustumCulled = false; this.scene.add(im);
+    });
   }
 
   buildBorder() {
