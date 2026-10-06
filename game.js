@@ -180,8 +180,19 @@ function loadCharacterFile(file) {
 // If the file cannot load, the old character is tried, then the old blocky person, so the game still works.
 function makeAvatar(shirt, characterId) {
   const holder = new THREE.Group();
+  applyCharacter(holder, shirt, characterId);
+  return holder;
+}
+
+// Puts (or swaps) the character model inside a holder. Safe to call again when a player changes character.
+function applyCharacter(holder, shirt, characterId) {
+  const u = holder.userData;
+  const token = (u.charToken = (u.charToken || 0) + 1);
+  u.characterId = characterId;
   const file = CHARACTER_FILES[characterId] || CHARACTER_FILES[DEFAULT_CHARACTER] || OLD_CHARACTER_FILE;
   loadCharacterFile(file).catch(() => loadCharacterFile(OLD_CHARACTER_FILE)).then(gltf => {
+    if (u.charToken !== token) return;                 // a newer choice replaced this one
+    if (u.model) holder.remove(u.model);
     const model = cloneSkinned(gltf.scene);
     model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
     holder.add(model);
@@ -189,13 +200,13 @@ function makeAvatar(shirt, characterId) {
     const actions = {};
     gltf.animations.forEach(c => { actions[c.name] = mixer.clipAction(c); });
     actions.idle.play();
-    Object.assign(holder.userData, { mixer, actions, state: 'idle' });
+    Object.assign(u, { model, mixer, actions, state: 'idle' });
   }).catch(() => {
+    if (u.charToken !== token || u.model) return;
     const b = makeBlockyAvatar(shirt);
-    Object.assign(holder.userData, b.userData);
+    Object.assign(u, b.userData);
     while (b.children.length) holder.add(b.children[0]);
   });
-  return holder;
 }
 
 function animateAvatar(av, speed, dt) {
@@ -506,7 +517,7 @@ class World {
     this.socket.on('connect', async () => {
       const { data } = await sb.auth.getSession();
       if (!data.session) { this.say3d('Please log in again.'); return; }
-      this.socket.emit('join', { token: data.session.access_token, name: localStorage.getItem('pendingName') || '' });
+      this.socket.emit('join', { token: data.session.access_token, name: localStorage.getItem('pendingName') || '', character: myCharacterId() });
     });
 
     this.socket.on('init', data => {
@@ -515,6 +526,11 @@ class World {
       this.devTools = data.devTools;
       this.player.position.set(data.x / PX_PER_M, 0, data.y / PX_PER_M);
       this.setLabel(this.player, data.name);
+      // the server is the authority on which character this account uses
+      if (data.character && data.character !== this.player.userData.characterId) {
+        localStorage.setItem('characterId', data.character);
+        applyCharacter(this.player, 0x2c6e9b, data.character);
+      }
       data.players.forEach(p => { if (p.id !== this.myId) this.addOther(p); });
       this.applyGate();
       this.updateStatus();
@@ -523,6 +539,12 @@ class World {
     this.socket.on('progress', d => { this.progress = d.progress; this.applyGate(); });
     this.socket.on('correct', d => { this.player.position.set(d.x / PX_PER_M, 0, d.y / PX_PER_M); });
     this.socket.on('joined', p => { this.addOther(p); this.updateStatus(); });
+    this.socket.on('character', d => {
+      const av = d.id === this.myId ? this.player : (this.others.get(d.id) || {}).av;
+      if (!av) return;
+      if (d.id === this.myId) localStorage.setItem('characterId', d.character);
+      applyCharacter(av, d.id === this.myId ? 0x2c6e9b : 0xd9822b, d.character);
+    });
     this.socket.on('left', id => { this.removeOther(id); this.updateStatus(); });
     this.socket.on('moved', d => {
       const o = this.others.get(d.id);
@@ -540,7 +562,7 @@ class World {
 
   addOther(p) {
     if (this.others.has(p.id)) return;
-    const av = makeAvatar(0xd9822b, p.character);   // the server does not send this yet, so others use the default look
+    const av = makeAvatar(0xd9822b, p.character);
     av.position.set(p.x / PX_PER_M, 0, p.y / PX_PER_M);
     this.setLabel(av, p.name);
     this.scene.add(av);
@@ -555,6 +577,9 @@ class World {
   }
 
   updateStatus() { this.say3d('Online: ' + (this.others.size + 1)); }
+
+  // Called by the choose-your-character screen (next step)
+  chooseCharacter(id) { if (this.socket) this.socket.emit('set_character', id); }
 
   // ----- gate and progress -----
   applyGate() {
