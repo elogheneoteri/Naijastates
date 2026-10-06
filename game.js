@@ -157,17 +157,31 @@ function animateBlocky(av, speed, dt) {
 
 // ---------- The 3D character (player_female_01.glb: has a skeleton and idle / walk / run animations) ----------
 
-let characterLoad = null;
-function loadCharacter() {
-  if (!characterLoad) characterLoad = new Promise((ok, fail) => new GLTFLoader().load('player_female_01.glb', ok, undefined, fail));
-  return characterLoad;
+// characters.json says which file belongs to which character id (free / premium / npc).
+const CHARACTER_FILES = {};
+try {
+  const manifest = await (await fetch('characters.json')).json();
+  for (const tier of ['free', 'premium', 'npc']) for (const c of manifest[tier] || []) CHARACTER_FILES[c.id] = c.file;
+} catch (e) { /* no characters.json: the old single character is used */ }
+
+const DEFAULT_CHARACTER = 'male_civilian';
+const OLD_CHARACTER_FILE = 'player_female_01.glb';   // used only if a chosen character cannot load
+
+// The character the player picked (the choose-your-character screen will set this later).
+function myCharacterId() { return localStorage.getItem('characterId') || DEFAULT_CHARACTER; }
+
+const characterLoads = new Map();
+function loadCharacterFile(file) {
+  if (!characterLoads.has(file)) characterLoads.set(file, new Promise((ok, fail) => new GLTFLoader().load(file, ok, undefined, fail)));
+  return characterLoads.get(file);
 }
 
 // Returns an empty holder straight away; the character appears inside it once the file has loaded.
-// If the file cannot load, the old blocky person is used instead so the game still works.
-function makeAvatar(shirt) {
+// If the file cannot load, the old character is tried, then the old blocky person, so the game still works.
+function makeAvatar(shirt, characterId) {
   const holder = new THREE.Group();
-  loadCharacter().then(gltf => {
+  const file = CHARACTER_FILES[characterId] || CHARACTER_FILES[DEFAULT_CHARACTER] || OLD_CHARACTER_FILE;
+  loadCharacterFile(file).catch(() => loadCharacterFile(OLD_CHARACTER_FILE)).then(gltf => {
     const model = cloneSkinned(gltf.scene);
     model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
     holder.add(model);
@@ -392,7 +406,7 @@ class World {
 
   // ----- the player -----
   buildPlayer() {
-    this.player = makeAvatar(0x2c6e9b);
+    this.player = makeAvatar(0x2c6e9b, myCharacterId());
     this.player.position.set(SPAWN.x, 0, SPAWN.z);
     this.scene.add(this.player);
     this.pvel = { x: 0, z: 0 };
@@ -526,7 +540,7 @@ class World {
 
   addOther(p) {
     if (this.others.has(p.id)) return;
-    const av = makeAvatar(0xd9822b);
+    const av = makeAvatar(0xd9822b, p.character);   // the server does not send this yet, so others use the default look
     av.position.set(p.x / PX_PER_M, 0, p.y / PX_PER_M);
     this.setLabel(av, p.name);
     this.scene.add(av);
