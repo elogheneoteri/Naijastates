@@ -1,0 +1,95 @@
+{
+  "_note": "tier decides where a character appears. 'free' = shown on the first-time choose-your-character screen. 'premium' = shown in the shop, only usable once bought. 'npc' = not playable (staff and officers). To move a character, move its .glb into the matching folder and change its entry here.",
+  "free": [
+    {
+      "id": "male_civilian",
+      "name": "Brown Jacket",
+      "gender": "male",
+      "file": "characters/free/male_civilian.glb",
+      "preview": "characters/previews/male_civilian.png"
+    },
+    {
+      "id": "male_wong",
+      "name": "Vest and Cap",
+      "gender": "male",
+      "file": "characters/free/male_wong.glb",
+      "preview": "characters/previews/male_wong.png"
+    },
+    {
+      "id": "male_streetwear",
+      "name": "Streetwear",
+      "gender": "male",
+      "file": "characters/free/male_streetwear.glb",
+      "preview": "characters/previews/male_streetwear.png"
+    },
+    {
+      "id": "female_jeans",
+      "name": "Denim Shorts",
+      "gender": "female",
+      "file": "characters/free/female_jeans.glb",
+      "preview": "characters/previews/female_jeans.png"
+    },
+    {
+      "id": "female_elizabeth",
+      "name": "Striped Top",
+      "gender": "female",
+      "file": "characters/free/female_elizabeth.glb",
+      "preview": "characters/previews/female_elizabeth.png"
+    },
+    {
+      "id": "female_rocker",
+      "name": "Leather Jacket",
+      "gender": "female",
+      "file": "characters/free/female_rocker.glb",
+      "preview": "characters/previews/female_rocker.png"
+    }
+  ],
+  "premium": [
+    {
+      "id": "female_sammie",
+      "name": "Pink Hair",
+      "gender": "female",
+      "price": 500,
+      "file": "characters/premium/female_sammie.glb",
+      "preview": "characters/previews/female_sammie.png"
+    },
+    {
+      "id": "female_summer",
+      "name": "Summer Vibes",
+      "gender": "female",
+      "price": 500,
+      "file": "characters/premium/female_summer.glb",
+      "preview": "characters/previews/female_summer.png"
+    },
+    {
+      "id": "female_emma",
+      "name": "Sport Vest",
+      "gender": "female",
+      "price": 500,
+      "file": "characters/premium/female_emma.glb",
+      "preview": "characters/previews/female_emma.png"
+    },
+    {
+      "id": "female_floral",
+      "name": "Floral Dress",
+      "gender": "female",
+      "price": 500,
+      "file": "characters/premium/female_floral.glb",
+      "preview": "characters/previews/female_floral.png"
+    }
+  ],
+  "npc": [
+    {
+      "id": "female_sophia",
+      "name": "Business Casual",
+      "gender": "female",
+      "file": "characters/npc/female_sophia.glb"
+    },
+    {
+      "id": "female_ivory",
+      "name": "Corporate",
+      "gender": "female",
+      "file": "characters/npc/female_ivory.glb"
+    }
+  ]
+}
