@@ -100,7 +100,7 @@ $('btnLogin').addEventListener('click', async () => {
 
 async function boot() {
   // small build tag in the corner, so you can see at once whether the newest game.js is the one running
-  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-06 solid-materials';
+  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-06 alpha-check';
   tag.style.cssText = 'position:fixed;left:8px;bottom:4px;z-index:99;font:11px sans-serif;color:#7f8c8d;pointer-events:none';
   document.body.appendChild(tag);
   authBox.style.display = 'flex'; showPanel('pLanding');
@@ -243,6 +243,20 @@ function loadMixamoSet(gender) {
   return mixamoSetLoads[gender];
 }
 
+// share of a texture that is see-through (looks at a small copy of the picture)
+async function emptyFraction(tex) {
+  try {
+    const img = tex.image; if (!img) return 0;
+    if (img.decode) await img.decode().catch(() => {});
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.drawImage(img, 0, 0, 64, 64);
+    const d = x.getImageData(0, 0, 64, 64).data; let n = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] < 128) n++;
+    return n / (64 * 64);
+  } catch (e) { return 0; }
+}
+
 async function loadMixamoCharacter(file) {
   const base = file.split('/').pop();
   const gender = base.startsWith('female') ? 'female' : 'male';
@@ -261,22 +275,23 @@ async function loadMixamoCharacter(file) {
   fbx.updateMatrixWorld(true);
   fbx.position.y -= new THREE.Box3().setFromObject(fbx).min.y;   // feet on the ground
 
-  fbx.traverse(o => {
-    if (!o.isMesh) return;
-    [].concat(o.material).forEach(m => {
-      if (m.isMeshPhongMaterial) { m.shininess = 8; m.specular.setScalar(0.08); }
-      // Mixamo files often mark every material see-through: make everything solid.
-      // Parts of a texture that are meant to be empty (hair edges, rips in jeans) are cut out cleanly with alphaTest
-      // instead of being drawn as semi-transparent or as the colour hidden behind the empty part.
-      // Only hair and eyelashes are cut out by their texture. Clothes and skin are fully solid and drawn from both sides,
-      // so nothing can look see-through. (Add ?cutout=1 to the web address to get the old "cut out everything" look back.)
-      const cutout = new URLSearchParams(location.search).get('cutout') === '1' || /hair|lash|brow|beard/i.test(m.name || '');
-      m.opacity = 1; m.transparent = false; m.depthWrite = true; m.side = THREE.DoubleSide;
-      m.alphaTest = cutout ? 0.5 : 0;
-      if (!cutout) m.alphaMap = null;
-      m.needsUpdate = true;
-    });
-  });
+  // Materials: decide for each one whether its texture's "empty" parts are real or just export junk.
+  //  - hair / eyelashes: cut out by the texture (soft strands kept)
+  //  - a little empty space (rips in jeans): cut out, so the rip shows the body underneath
+  //  - mostly empty (a jacket whose see-through channel is junk): ignore it, draw it solid
+  const mats = new Set();
+  fbx.traverse(o => { if (o.isMesh) [].concat(o.material).forEach(m => mats.add(m)); });
+  const forcedCutout = new URLSearchParams(location.search).get('cutout') === '1';
+  await Promise.all([...mats].map(async m => {
+    if (m.isMeshPhongMaterial) { m.shininess = 8; m.specular.setScalar(0.08); }
+    const isHair = /hair|lash|brow|beard/i.test(m.name || '');
+    const empty = m.map ? await emptyFraction(m.map) : 0;
+    const cutout = forcedCutout || isHair || (empty > 0.002 && empty < 0.35);
+    m.opacity = 1; m.transparent = false; m.depthWrite = true; m.side = THREE.DoubleSide;
+    m.alphaTest = isHair ? 0.25 : (cutout ? 0.5 : 0);
+    if (!cutout) m.alphaMap = null;
+    m.needsUpdate = true;
+  }));
 
   // Keep the turning of every bone, and the up-and-down bounce of the hips (scaled to this character's size).
   const animations = Object.values(set).map(a => {
