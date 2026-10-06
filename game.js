@@ -100,7 +100,7 @@ $('btnLogin').addEventListener('click', async () => {
 
 async function boot() {
   // small build tag in the corner, so you can see at once whether the newest game.js is the one running
-  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-06 alpha-check';
+  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-06 skin-shrink';
   tag.style.cssText = 'position:fixed;left:8px;bottom:4px;z-index:99;font:11px sans-serif;color:#7f8c8d;pointer-events:none';
   document.body.appendChild(tag);
   authBox.style.display = 'flex'; showPanel('pLanding');
@@ -257,6 +257,45 @@ async function emptyFraction(tex) {
   } catch (e) { return 0; }
 }
 
+// Some jeans have the "rips" painted into the picture as skin-coloured patches. Paint those patches in the denim colour.
+// Only touches a texture that is mostly grey/dark with a small orange share (so skin, leather and hair are left alone).
+async function repaintRips(tex) {
+  try {
+    const img = tex.image; if (!img || tex.userData.repainted) return;
+    if (img.decode) await img.decode().catch(() => {});
+    const w = img.width || img.naturalWidth, h = img.height || img.naturalHeight; if (!w || !h) return;
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0);
+    const im = x.getImageData(0, 0, w, h), d = im.data;
+    const isOrange = i => d[i + 3] > 128 && d[i] > 90 && d[i] - d[i + 2] > 28 && d[i] > d[i + 1] * 1.12;
+    let orange = 0, other = 0, sr = 0, sg = 0, sb = 0, sat = 0;
+    for (let i = 0; i < d.length; i += 16) {          // sample every 4th pixel
+      if (d[i + 3] < 128) continue;
+      if (isOrange(i)) orange++; else { other++; sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; sat += Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]); }
+    }
+    const total = orange + other; if (!total || !other) return;
+    const share = orange / total;
+    if (share < 0.001 || share > 0.06 || sat / other > 40) return;   // not a grey garment with a few skin patches
+    const R = sr / other, G = sg / other, B = sb / other;
+    for (let i = 0; i < d.length; i += 4) if (isOrange(i)) { d[i] = R; d[i + 1] = G; d[i + 2] = B; }
+    x.putImageData(im, 0, 0);
+    tex.image = c; tex.userData.repainted = true; tex.needsUpdate = true;
+  } catch (e) { /* leave the texture as it is */ }
+}
+
+// average colour of a texture (small copy), used to recognise the skin material
+async function meanColor(tex) {
+  try {
+    const img = tex.image; if (!img) return null;
+    if (img.decode) await img.decode().catch(() => {});
+    const c = document.createElement('canvas'); c.width = c.height = 32;
+    const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, 32, 32);
+    const d = x.getImageData(0, 0, 32, 32).data; let r = 0, gg = 0, b = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 128) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++; }
+    return n ? { r: r / n, g: gg / n, b: b / n } : null;
+  } catch (e) { return null; }
+}
+
 async function loadMixamoCharacter(file) {
   const base = file.split('/').pop();
   const gender = base.startsWith('female') ? 'female' : 'male';
@@ -285,6 +324,24 @@ async function loadMixamoCharacter(file) {
   await Promise.all([...mats].map(async m => {
     if (m.isMeshPhongMaterial) { m.shininess = 8; m.specular.setScalar(0.08); }
     const isHair = /hair|lash|brow|beard/i.test(m.name || '');
+    if (m.map && !/hair|lash|brow|beard/i.test(m.name || '')) await repaintRips(m.map);
+    // Skin sits only a few millimetres under tight clothes, so when she bends a knee it can poke through the jeans.
+    // Pull the skin surface 3.5 mm inwards (and a touch deeper in the depth buffer) so clothes always cover it.
+    const nm = m.name || '';
+    let skin = /skin|^body|base|^legs?$|^arms?$|torso|nude/i.test(nm);
+    if (!skin && m.map && !/cloth|shirt|top|jacket|coat|legging|jean|pant|trouser|short|skirt|dress|shoe|sneaker|boot|hair|lash|brow|eye|teeth|nail/i.test(nm)) {
+      const c = await meanColor(m.map);
+      skin = !!c && c.r > c.g * 1.12 && c.g > c.b * 1.05 && c.r - c.b > 40;
+    }
+    if (skin && new URLSearchParams(location.search).get('noshrink') !== '1') {
+      m.polygonOffset = true; m.polygonOffsetFactor = 1; m.polygonOffsetUnits = 1;
+      m.onBeforeCompile = sh => {
+        sh.uniforms.uShrink = { value: 0.35 };   // centimetres, because the file is in centimetres until it is scaled down
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uShrink;')
+          .replace('#include <begin_vertex>', 'vec3 transformed = vec3( position ) - normalize( normal ) * uShrink;');
+      };
+      m.customProgramCacheKey = () => 'skinshrink';
+    }
     const empty = m.map ? await emptyFraction(m.map) : 0;
     const cutout = forcedCutout || isHair || (empty > 0.002 && empty < 0.35);
     m.opacity = 1; m.transparent = false; m.depthWrite = true; m.side = THREE.DoubleSide;
