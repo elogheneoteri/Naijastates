@@ -591,6 +591,7 @@ class World {
     BUILDINGS.forEach(b => this.addBuilding(b));
     this.buildPlayer();
     this.buildHud();
+    this.initMinimap();
     this.bindInput();
     this.applyGate();
     this.connect();
@@ -804,30 +805,80 @@ class World {
     holder.add(l); holder.userData.label = l;
   }
 
-  // ----- HUD (plain HTML on top of the 3D view) -----
+  // ----- HUD (the layout lives in index.html + hud.css; here we only grab the pieces we update) -----
   buildHud() {
     const css = document.createElement('style');
     css.textContent = `
-      .hud { position: fixed; left: 12px; font-family: Georgia, serif; color: #fff; background: #00000088;
-             padding: 6px 10px; border-radius: 4px; z-index: 5; user-select: none; }
-      .hud.btn { cursor: pointer; background: #3a566d; font-size: 16px; }
       #stickBase, #stickKnob { position: fixed; border-radius: 50%; z-index: 6; display: none; pointer-events: none; }
       #stickBase { width: 110px; height: 110px; background: #ffffff26; }
       #stickKnob { width: 52px; height: 52px; background: #ffffff73; }`;
     document.head.appendChild(css);
-    const mk = (id, top, extra = '') => {
-      const d = document.createElement('div'); d.id = id; d.className = 'hud ' + extra; d.style.top = top + 'px';
-      document.body.appendChild(d); return d;
-    };
-    this.zoneText = mk('zoneText', 10); this.zoneText.style.fontSize = '20px';
-    this.testButton = mk('testButton', 50, 'btn'); this.testButton.style.background = '#2c6e9b'; this.testButton.style.display = 'none';
+    this.zoneText = document.getElementById('zoneText');
+    this.statusText = document.getElementById('statusText');
+    this.testButton = document.getElementById('testButton');
     this.testButton.addEventListener('click', () => this.toggleProgressTest());
-    this.statusText = mk('statusText', 96); this.statusText.style.color = '#ffe9a8'; this.statusText.style.fontSize = '16px';
-    this.logoutButton = mk('logoutButton', 134, 'btn'); this.logoutButton.textContent = 'Log out';
+    this.logoutButton = document.getElementById('logoutButton');
     this.logoutButton.addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
     this.stickBase = document.createElement('div'); this.stickBase.id = 'stickBase';
     this.stickKnob = document.createElement('div'); this.stickKnob.id = 'stickKnob';
     document.body.append(this.stickBase, this.stickKnob);
+  }
+
+  // ----- minimap: a real top-down render of the 3D scene, drawn into the round HUD canvas -----
+  initMinimap() {
+    const cv = document.getElementById('hudMap');
+    if (!cv) return;
+    const S = 256, half = 30;                       // 256 px image, shows 60 m x 60 m around the player
+    const lut = new Uint8Array(256);                // linear -> sRGB, because render targets are not colour-encoded
+    for (let i = 0; i < 256; i++) { const l = i / 255; lut[i] = Math.round((l <= 0.0031308 ? l * 12.92 : 1.055 * Math.pow(l, 1 / 2.4) - 0.055) * 255); }
+    const lights = []; this.scene.traverse(o => { if (o.isLight) lights.push(o); });
+    this.mm = {
+      cv, ctx: cv.getContext('2d'), S, half, lut, lights, acc: 99,
+      arrow: document.getElementById('hudArrow'),
+      rt: new THREE.WebGLRenderTarget(S, S, { samples: 4 }),
+      cam: new THREE.OrthographicCamera(-half, half, half, -half, 1, 400),
+      px: new Uint8Array(S * S * 4),
+      img: cv.getContext('2d').createImageData(S, S),
+      bg: new THREE.Color(0x0b1a33)
+    };
+  }
+
+  updateMinimap(dt) {
+    const m = this.mm;
+    if (!m) return;
+    const p = this.player.position;
+    if (m.arrow) m.arrow.style.transform = `rotate(${(-this.cam.yaw * 180 / Math.PI).toFixed(1)}deg)`;   // north is up
+    m.acc += dt;
+    if (m.acc < 0.12) return;
+    m.acc = 0;
+    try {
+      const r = this.renderer, sc = this.scene;
+      m.cam.position.set(p.x, 150, p.z); m.cam.up.set(0, 0, -1); m.cam.lookAt(p.x, 0, p.z);
+      const bg = sc.background, fog = sc.fog, rt0 = r.getRenderTarget(), shadowAuto = r.shadowMap.autoUpdate;
+      const pv = this.player.visible, old = m.lights.map(l => l.intensity);
+      sc.background = m.bg; sc.fog = null; r.shadowMap.autoUpdate = false;
+      m.lights.forEach(l => { l.intensity *= 0.5; });                 // the render target clips at 1.0, so tame the sun a bit
+      this.player.visible = false; this.others.forEach(o => { o.av.visible = false; });
+      r.setRenderTarget(m.rt); r.render(sc, m.cam);
+      r.readRenderTargetPixels(m.rt, 0, 0, m.S, m.S, m.px);
+      r.setRenderTarget(rt0);
+      sc.background = bg; sc.fog = fog; r.shadowMap.autoUpdate = shadowAuto;
+      m.lights.forEach((l, i) => { l.intensity = old[i]; });
+      this.player.visible = pv; this.others.forEach(o => { o.av.visible = true; });
+
+      const S = m.S, d = m.img.data, src = m.px, lut = m.lut;
+      for (let y = 0; y < S; y++) {                                   // GL rows run bottom-to-top: flip while copying
+        let si = (S - 1 - y) * S * 4, di = y * S * 4;
+        for (let x = 0; x < S; x++, si += 4, di += 4) { d[di] = lut[src[si]]; d[di + 1] = lut[src[si + 1]]; d[di + 2] = lut[src[si + 2]]; d[di + 3] = 255; }
+      }
+      m.ctx.putImageData(m.img, 0, 0);
+      m.ctx.lineWidth = 2; m.ctx.strokeStyle = '#0b1a33'; m.ctx.fillStyle = '#ffffff';   // other players = white dots
+      this.others.forEach(o => {
+        const x = (o.av.position.x - p.x) / (2 * m.half) * S + S / 2, y = (o.av.position.z - p.z) / (2 * m.half) * S + S / 2;
+        if (x < 0 || y < 0 || x > S || y > S) return;
+        m.ctx.beginPath(); m.ctx.arc(x, y, 5, 0, Math.PI * 2); m.ctx.stroke(); m.ctx.fill();
+      });
+    } catch (e) { console.warn('minimap disabled:', e); this.mm = null; }
   }
 
   say3d(t) { this.statusText.textContent = t; }
@@ -1069,6 +1120,7 @@ class World {
     this.sun.position.set(p.x + 30, 50, p.z + 20);
 
     this.renderer.render(this.scene, this.camera);
+    this.updateMinimap(dt);
   }
 }
 

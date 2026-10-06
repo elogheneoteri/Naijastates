@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>NaijaVerse RP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="hud.css?v=1">
 <style>
 :root { --navy:#0b1a33; --navy2:#10264a; --line:#1f4a8a; --gold:#ffc61a; --txt:#f3f6ff; --mut:#9fb3d1; }
 * { box-sizing:border-box; }
@@ -14,7 +18,7 @@ html, body { margin:0; height:100%; background:#0b1a33; overflow:hidden; font-fa
 /* ================= AUTH ================= */
 #auth { position:fixed; inset:0; z-index:10; display:none; flex-direction:column; align-items:center; overflow-y:auto; color:var(--txt);
   padding:calc(12px + env(safe-area-inset-top)) 14px 12px;
-  background:linear-gradient(180deg, rgba(11,26,51,0) 40%, rgba(11,26,51,.75) 100%), url("assets/bg.jpg") center bottom / cover no-repeat #0b1a33; }
+  background:linear-gradient(180deg, rgba(11,26,51,0) 40%, rgba(11,26,51,.75) 100%), url("assets/icons/bg.jpg") center bottom / cover no-repeat #0b1a33; }
 .logo { width:min(86vw,520px); max-height:24vh; object-fit:contain; margin-top:auto; padding-bottom:14px; filter:drop-shadow(0 4px 10px rgba(0,0,0,.5)); }
 #auth.choosing .logo { max-height:9vh; margin-top:0; padding-bottom:6px; }
 
@@ -58,55 +62,6 @@ button.soc { font:inherit; font-size:15px; padding:12px; border-radius:999px; co
 .perks { display:flex; justify-content:space-around; font-size:12px; color:var(--mut); border-top:1px solid var(--line); padding-top:10px; }
 .perks span::before { content:"★ "; color:var(--gold); }
 
-/* ================= HUD (under #auth; appears when #auth is hidden) ================= */
-#hud { position:fixed; inset:0; z-index:5; pointer-events:none; color:var(--txt); --u:min(1vw, 1.6vh); }
-.hud { left:calc(clamp(84px,24vh,130px) + 22px) !important; }
-.glass { background:rgba(8,20,44,.82); border:1px solid var(--line); border-radius:16px; backdrop-filter:blur(6px); }
-
-#mini { position:absolute; top:calc(8px + env(safe-area-inset-top)); left:calc(10px + env(safe-area-inset-left)); width:clamp(84px, 24vh, 130px); aspect-ratio:648/673; }
-#mini canvas { position:absolute; left:6%; top:11%; width:88%; height:88%; border-radius:50%; background:radial-gradient(circle,#1f4a8a,#0b1a33); }
-#mini img { position:absolute; inset:0; width:100%; height:100%; }
-#mini .ic { position:absolute; width:24%; aspect-ratio:1; display:grid; place-items:center; font-size:calc(var(--u)*2.4); }
-#mini .ic img { width:100%; height:100%; filter:drop-shadow(0 2px 3px rgba(0,0,0,.6)); }
-#mini .ic.a { left:2%; top:46%; } #mini .ic.b { right:2%; top:38%; } #mini .ic.c { left:38%; bottom:0; }
-
-#tr { position:absolute; top:calc(8px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); padding:9px 14px; width:clamp(160px, 42vw, 230px); display:grid; gap:7px; font-weight:700; font-size:clamp(12px,2.2vh,15px); }
-#tr .row { display:flex; align-items:center; gap:8px; }
-#tr .cash { font-size:1.2em; }
-.bar, .sbar { flex:1; height:9px; border-radius:6px; background:linear-gradient(180deg,#050c1c,#0e1d3c); box-shadow:inset 0 1px 3px rgba(0,0,0,.8), 0 0 0 1px rgba(80,130,220,.35); overflow:hidden; }
-.bar i, .sbar i { display:block; height:100%; border-radius:6px; transition:width .3s; position:relative; background:linear-gradient(90deg, color-mix(in srgb,var(--c) 75%,#000), var(--c) 70%, color-mix(in srgb,var(--c) 70%,#fff)); box-shadow:0 0 8px var(--c); }
-.bar i::after, .sbar i::after { content:""; position:absolute; left:0; right:0; top:0; height:48%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,rgba(255,255,255,.65),rgba(255,255,255,.05)); }
-#tr .ri { width:26px; height:26px; flex:none; filter:drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
-#tr .am { display:none; }
-
-#stats { position:absolute; left:calc(10px + env(safe-area-inset-left)); bottom:calc(8px + env(safe-area-inset-bottom)); width:min(400px, 52vw);
-  display:grid; grid-template-columns:1fr 1px 1fr; gap:0 10px; padding:8px 12px 10px; border-radius:18px;
-  background:linear-gradient(180deg,rgba(13,36,78,.92),rgba(6,16,38,.94)); border:2px solid #1f5fc4; box-shadow:0 0 14px rgba(47,139,255,.35), inset 0 0 12px rgba(47,139,255,.15); }
-#stats .div { background:linear-gradient(180deg,transparent,#2f6fd0,transparent); }
-#stats .col { display:flex; flex-direction:column; gap:7px; justify-content:flex-end; }
-#stats .head { display:flex; align-items:center; gap:8px; margin-bottom:2px; }
-#av { position:relative; width:48px; height:48px; flex:none; }
-#av .face { position:absolute; inset:13%; border-radius:50%; background:#1b3d78 center/cover; display:grid; place-items:center; font-size:20px; }
-#av img { position:absolute; inset:0; width:100%; height:100%; }
-#stats .who { line-height:1.15; font-weight:800; font-size:13px; } #hudLevel { color:#fff; display:block; } #hudRole { color:#35c8ff; font-size:12px; font-weight:700; }
-.st { display:grid; grid-template-columns:26px 1fr; gap:0 6px; align-items:center; }
-.st .ico { width:26px; height:auto; filter:drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
-.st .lab { display:flex; justify-content:space-between; font-size:10.5px; font-weight:600; color:#cfe0ff; line-height:1.1; }
-.st .lab b { color:#fff; font-weight:700; }
-.st .sbar { height:7px; margin-top:3px; background:rgba(255,255,255,.16); }
-#dock { position:absolute; left:50%; bottom:0; transform:translateX(-50%); width:clamp(190px, 50vh, 300px); aspect-ratio:620/292; }
-#dock img { width:100%; height:100%; display:block; pointer-events:none; }
-#dock button { position:absolute; transform:translate(-50%,-50%); border:0; background:transparent; border-radius:50%; cursor:pointer; pointer-events:auto; }
-#btnBag { left:20.5%; top:69.2%; width:19%; aspect-ratio:1; }
-#btnPhone { left:50%; top:44.5%; width:38%; aspect-ratio:1; }
-#btnSettings { left:79.8%; top:69.2%; width:19%; aspect-ratio:1; }
-#dock button:active { background:rgba(255,198,26,.25); }
-
-/* portrait phones: dock to the right of the stats card isn't possible, so stack */
-@media (orientation:portrait) {
-  #stats { width:calc(100vw - 20px); bottom:calc(min(62vw,300px)*0.471 + 12px + env(safe-area-inset-bottom)); }
-  #dock { width:min(62vw,300px); }
-}
 /* landscape phones: everything must fit short screens */
 @media (orientation:landscape) and (max-height:600px) {
   #auth { flex-direction:row; flex-wrap:wrap; justify-content:center; align-content:center; align-items:center; gap:4px 30px; overflow-y:auto; }
@@ -121,8 +76,6 @@ button.soc { font:inherit; font-size:15px; padding:12px; border-radius:999px; co
   #pChoose h1 { font-size:18px; }
   .body { flex-direction:row; gap:14px; } #stage { flex:1.1; min-height:0; } .side { flex:1; justify-content:center; }
   .perks { display:none; } .card { padding:12px 4px; }
-  #stats { width:min(380px, calc(50vw - 96px)); padding:6px 10px 8px; gap:0 8px; } #stats .col { gap:5px; } #av { width:40px; height:40px; } .st .ico { width:21px; } .st { grid-template-columns:21px 1fr; } .st .lab { font-size:9.5px; } .st .sbar { height:6px; margin-top:2px; }
-  #dock { width:clamp(170px,48vh,240px); }
 }
 </style>
 <script type="importmap">
@@ -134,31 +87,86 @@ button.soc { font:inherit; font-size:15px; padding:12px; border-radius:999px; co
 <body>
 <div id="game"></div>
 
-<!-- ============ IN-GAME HUD ============ -->
+<!-- ============ IN-GAME HUD (screen-space overlay; styled by hud.css, driven by hud.js) ============ -->
 <div id="hud">
-  <div id="mini"><canvas id="hudMap" width="200" height="200"></canvas><img src="assets/minimap.png" alt="">
-    <div class="ic a"><img src="assets/icons/home.png" alt=""></div><div class="ic b"><img src="assets/icons/car.png" alt=""></div><div class="ic c">👕</div></div>
-  <div id="tr" class="glass">
-    <div class="row cash"><img class="ri" src="assets/icons/cash.png" alt=""><span id="hudCash">₦0</span></div>
-    <div class="row"><img class="ri" src="assets/icons/health.png" alt=""><div class="bar"><i id="hudHealth" style="--c:#ff2d3d;width:100%"></i></div><span id="hudHealthTxt">100%</span></div>
-    <div class="row"><img class="ri" src="assets/icons/armor.png" alt=""><div class="bar"><i id="hudArmor" style="--c:#2f8bff;width:0"></i></div><span id="hudArmorTxt">0%</span></div>
-    <div class="row am"><img class="ri" src="assets/icons/ammo.png" alt=""><span id="hudAmmo">0 / 0</span></div>
+
+  <!-- 1. minimap : top-left -->
+  <div id="mini">
+    <div class="m-ring"><div class="m-in">
+      <canvas id="hudMap" width="256" height="256"></canvas>
+      <svg id="hudArrow" viewBox="0 0 30 30" aria-hidden="true"><polygon points="15,1 27,28 15,21 3,28" fill="#4cc9ff" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+    </div></div>
+    <span class="m-n">N</span>
+    <div class="m-b b-home"><img src="assets/icons/home.png" alt="" onerror="this.style.visibility='hidden'"></div>
+    <div class="m-b b-car"><img src="assets/icons/car.png" alt="" onerror="this.style.visibility='hidden'"></div>
+    <div class="m-b b-shirt"><svg viewBox="0 0 28 28" aria-hidden="true"><path fill="#7fd3ff" d="M9 3 2 8l3.4 5L8 11.4V25h12V11.4l2.6 1.6L26 8l-7-5c-.8 2-2.4 3.2-5 3.2S9.8 5 9 3z"/></svg></div>
   </div>
-  <div id="stats" class="glass">
+
+  <!-- zone / online / test / logout : under the minimap -->
+  <div id="info">
+    <div class="i-row"><div id="zoneText" class="chip">Walking</div><div id="statusText" class="chip"></div></div>
+    <button id="testButton" class="ibtn" style="display:none"></button>
+    <button id="logoutButton" class="ibtn out">Log out</button>
+  </div>
+
+  <!-- 2. money + vitals : top-right -->
+  <div id="tr">
+    <div class="row cash"><img src="assets/icons/cash.png" alt="" onerror="this.style.visibility='hidden'"><span id="hudCash">₦0</span></div>
+    <div class="row"><img src="assets/icons/health.png" alt="" onerror="this.style.visibility='hidden'"><div class="hbar"><i id="hudHealth" style="--c:#ff2d3d;width:100%"></i></div><span class="pct" id="hudHealthTxt">100%</span></div>
+    <div class="row"><img src="assets/icons/armor.png" alt="" onerror="this.style.visibility='hidden'"><div class="hbar"><i id="hudArmor" style="--c:#2f8bff;width:0"></i></div><span class="pct" id="hudArmorTxt">0%</span></div>
+  </div>
+
+  <!-- 3. player stats : bottom-left -->
+  <div id="stats">
     <div class="col" id="colL">
-      <div class="head"><div id="av"><div class="face" id="hudFace">🙂</div><img src="assets/avatar.png" alt=""></div>
-        <div class="who"><span id="hudLevel">Lv. 1</span><span id="hudRole">Civilian</span></div></div>
+      <div class="head">
+        <div id="av"><div id="hudFace">🙂</div><img id="hudFrame" src="assets/icons/avatar.png" alt="" onerror="this.style.display='none'"></div>
+        <div class="who"><span id="hudLevel">Lv. 1</span><span id="hudRole">Civilian</span></div>
+      </div>
     </div>
-    <div class="div"></div>
+    <div class="vdiv"></div>
     <div class="col" id="colR"></div>
   </div>
-  <div id="dock"><img src="assets/dock.png" alt="">
-    <button id="btnBag" aria-label="Inventory"></button><button id="btnPhone" aria-label="Phone"></button><button id="btnSettings" aria-label="Settings"></button></div>
+
+  <!-- 4. phone control : bottom-center, flush with the bottom edge -->
+  <div id="dock">
+    <svg viewBox="0 0 330 142" aria-hidden="true" style="font-family:inherit">
+      <defs>
+        <linearGradient id="dkBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16397a"/><stop offset="1" stop-color="#071531"/></linearGradient>
+        <linearGradient id="dkGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd35a"/><stop offset=".55" stop-color="#d98a0b"/><stop offset="1" stop-color="#ffb92e"/></linearGradient>
+        <radialGradient id="dkBtn" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#1f4f9a"/><stop offset="1" stop-color="#081a3d"/></radialGradient>
+      </defs>
+      <path d="M2 142 C2 80 62 40 165 40 C268 40 328 80 328 142 Z" fill="url(#dkBody)"/>
+      <path d="M14 142 C14 88 70 52 165 52 C260 52 316 88 316 142" fill="none" stroke="rgba(90,150,255,.28)" stroke-width="1.5"/>
+      <path d="M2 142 C2 80 62 40 165 40 C268 40 328 80 328 142" fill="none" stroke="url(#dkGold)" stroke-width="3.5"/>
+      <circle cx="68" cy="98" r="27" fill="url(#dkBtn)" stroke="url(#dkGold)" stroke-width="3"/>
+      <circle cx="262" cy="98" r="27" fill="url(#dkBtn)" stroke="url(#dkGold)" stroke-width="3"/>
+      <circle cx="165" cy="58" r="56" fill="url(#dkBtn)" stroke="url(#dkGold)" stroke-width="3.5"/>
+      <!-- phone -->
+      <g transform="translate(165 46)" fill="none" stroke="#eaf2ff" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="-12" y="-22" width="24" height="40" rx="5"/><line x1="-4" y1="-16" x2="4" y2="-16"/><circle cx="0" cy="12" r="1.6" fill="#eaf2ff" stroke="none"/>
+      </g>
+      <text x="165" y="92" text-anchor="middle" font-size="15" font-weight="600" fill="#fff" style="font-family:inherit">Phone</text>
+      <!-- backpack -->
+      <g transform="translate(68 98)" fill="none" stroke="#eaf2ff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M-5 -12v-2a5 5 0 0 1 10 0v2"/><rect x="-11" y="-12" width="22" height="25" rx="8"/><rect x="-6" y="1" width="12" height="8" rx="2.5"/><path d="M-11 -2h-3v9M11 -2h3v9"/>
+      </g>
+      <!-- gear -->
+      <g transform="translate(262 98)" fill="#eaf2ff">
+        <path d="M-2.8 -15h5.6v8h-5.6zM-2.8 7h5.6v8h-5.6z"/>
+        <path transform="rotate(45)" d="M-2.8 -15h5.6v8h-5.6zM-2.8 7h5.6v8h-5.6z"/>
+        <path transform="rotate(90)" d="M-2.8 -15h5.6v8h-5.6zM-2.8 7h5.6v8h-5.6z"/>
+        <path transform="rotate(135)" d="M-2.8 -15h5.6v8h-5.6zM-2.8 7h5.6v8h-5.6z"/>
+        <circle r="10.5" fill="none" stroke="#eaf2ff" stroke-width="4.5"/><circle r="3.4" fill="none" stroke="#eaf2ff" stroke-width="2.4"/>
+      </g>
+    </svg>
+    <button id="btnBag" aria-label="Inventory"></button><button id="btnPhone" aria-label="Phone"></button><button id="btnSettings" aria-label="Settings"></button>
+  </div>
 </div>
 
 <!-- ============ LOGIN / SIGN UP / CHOOSE CHARACTER ============ -->
 <div id="auth">
-<img class="logo" src="assets/logo.png" alt="NaijaVerse RP">
+<img class="logo" src="assets/icons/logo.png" alt="NaijaVerse RP" onerror="if(!this.dataset.t){this.dataset.t=1;this.src='assets/logo.png';}">
 
 <div class="panel" id="pLanding">
 <h1>Welcome <b>Back!</b></h1>
@@ -198,32 +206,7 @@ button.soc { font:inherit; font-size:15px; padding:12px; border-radius:999px; co
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<!-- HUD API: call NaijaHUD.set({...}) from game.js whenever player data changes -->
-<script>
-(function () {
-  var defs = [["social","Social","#ff3fa4","social","L"],["energy","Energy","#ffc61a","energy","L"],["hunger","Hunger","#ff8a2a","hunger","L"],
-              ["thirst","Thirst","#25a8ff","thirst","R"],["hygiene","Hygiene","#3ad0ff","hygiene","R"],["pee","Pee","#8a5cff","pee","R"],["stress","Mental Stress","#e04bff","stress","R"]];
-  defs.forEach(function (d) {
-    document.getElementById("col" + d[4]).insertAdjacentHTML("beforeend",
-      '<div class="st"><img class="ico" src="assets/icons/'+d[3]+'.png" alt=""><div><div class="lab"><span>'+d[1]+'</span><b id="st_'+d[0]+'t">100%</b></div><div class="sbar"><i id="st_'+d[0]+'" style="--c:'+d[2]+';width:100%"></i></div></div></div>');
-  });
-  function bar(id, txt, v) { v = Math.max(0, Math.min(100, v)); document.getElementById(id).style.width = v + "%"; document.getElementById(txt).textContent = Math.round(v) + "%"; }
-  window.NaijaHUD = { set: function (o) {
-    if (o.cash != null) document.getElementById("hudCash").textContent = "₦" + Number(o.cash).toLocaleString();
-    if (o.health != null) bar("hudHealth", "hudHealthTxt", o.health);
-    if (o.armor != null) bar("hudArmor", "hudArmorTxt", o.armor);
-    if (o.ammo != null) { document.querySelector("#tr .am").style.display = "flex"; document.getElementById("hudAmmo").textContent = o.ammo; }
-    if (o.level != null) document.getElementById("hudLevel").textContent = "Lv. " + o.level;
-    if (o.role) document.getElementById("hudRole").textContent = o.role;
-    if (o.avatar) { var f = document.getElementById("hudFace"); f.style.backgroundImage = "url(" + o.avatar + ")"; f.textContent = ""; }
-    if (o.stats) Object.keys(o.stats).forEach(function (k) { if (document.getElementById("st_" + k)) bar("st_" + k, "st_" + k + "t", o.stats[k]); });
-  } };
-  NaijaHUD.set({ cash:250000, health:100, armor:0, level:12, stats:{ social:100, energy:85, hunger:70, thirst:65, hygiene:80, pee:60, stress:20 } }); // demo values: remove later
-  [["btnBag","nv:inventory"],["btnPhone","nv:phone"],["btnSettings","nv:settings"]].forEach(function (b) {
-    document.getElementById(b[0]).addEventListener("click", function () { window.dispatchEvent(new CustomEvent(b[1])); });
-  });
-})();
-</script>
-<script type="module" src="game.js"></script>
+<script src="hud.js?v=1"></script>
+<script type="module" src="game.js?v=1"></script>
 </body>
 </html>
