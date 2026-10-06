@@ -64,7 +64,7 @@ const sb = configured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON
 const $ = id => document.getElementById(id);
 const authBox = $('auth'), authMsg = $('authMsg'), authEmail = $('authEmail'), authPass = $('authPass');
 function say(text) { authMsg.textContent = text; }
-function showPanel(id) { for (const p of ['pLanding', 'pSignup', 'pChoose']) $(p).style.display = p === id ? 'flex' : 'none'; say(''); }
+function showPanel(id) { for (const p of ['pLanding', 'pSignup', 'pChoose']) $(p).style.display = p === id ? 'flex' : 'none'; authBox.classList.toggle('choosing', id === 'pChoose'); say(''); }
 
 let gameStarted = false;
 function startGame() {
@@ -159,13 +159,13 @@ function animateBlocky(av, speed, dt) {
 
 // characters.json says which file belongs to which character id (free / premium / npc).
 const CHARACTER_FILES = {};
+const CHARACTER_NAMES = {};   // the "name" of each character in characters.json
 try {
   const manifest = await (await fetch('characters.json')).json();
-  for (const tier of ['free', 'premium', 'npc']) for (const c of manifest[tier] || []) CHARACTER_FILES[c.id] = c.file;
+  for (const tier of ['free', 'premium', 'npc']) for (const c of manifest[tier] || []) { CHARACTER_FILES[c.id] = c.file; CHARACTER_NAMES[c.id] = c.name; }
 } catch (e) { /* no characters.json: the old single character is used */ }
 
 const DEFAULT_CHARACTER = 'male_civilian';
-const OLD_CHARACTER_FILE = 'player_female_01.glb';   // used only if a chosen character cannot load
 
 // The character the player picked (the choose-your-character screen will set this later).
 function myCharacterId() { return localStorage.getItem('characterId') || DEFAULT_CHARACTER; }
@@ -176,82 +176,34 @@ function loadCharacterFile(file) {
   return characterLoads.get(file);
 }
 
-// ---- colours: a "look" is { top, bottom, shoes, hair }, each '#rrggbb' or null (= original colour) ----
-const isHex = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
-function cleanLook(l) { l = l || {}; return { top: isHex(l.top) ? l.top : null, bottom: isHex(l.bottom) ? l.bottom : null, shoes: isHex(l.shoes) ? l.shoes : null, hair: isHex(l.hair) ? l.hair : null }; }
-function myLook() { try { return cleanLook(JSON.parse(localStorage.getItem('look'))); } catch (e) { return cleanLook(); } }
-
-function makeTint() { return { top: new THREE.Color(), bot: new THREE.Color(), shoe: new THREE.Color(), hair: new THREE.Color(), on: new THREE.Vector4() }; }
-function setTint(t, look) {
-  look = cleanLook(look);
-  t.on.set(look.top ? 1 : 0, look.bottom ? 1 : 0, look.shoes ? 1 : 0, look.hair ? 1 : 0);
-  if (look.top) t.top.set(look.top); if (look.bottom) t.bot.set(look.bottom);
-  if (look.shoes) t.shoe.set(look.shoes); if (look.hair) t.hair.set(look.hair);
-}
-const TINT_FRAG = `
-  float yy = vY / uH;
-  float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
-  vec3 shade = vec3(clamp(0.25 + lum * 1.5, 0.0, 1.4));
-  if (uIsHair > 0.5) { if (uOn.w > 0.5) diffuseColor.rgb = uHair * shade; }
-  else if (yy < 0.07) { if (uOn.z > 0.5) diffuseColor.rgb = uShoe * shade; }
-  else if (yy < 0.50) { if (uOn.y > 0.5) diffuseColor.rgb = uBot * shade; }
-  else if (yy < 0.80) { if (uOn.x > 0.5) diffuseColor.rgb = uTop * shade; }
-`;
-// Gives this model its own materials that can be recoloured: shoes / trousers / top by height on the "body"
-// material, and the separate "hair" material (only when the character has one). Skin materials are left alone.
-function tintModel(model, tint) {
-  const names = new Set(); let H = 1.7;
-  model.traverse(o => { if (o.isMesh) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => names.add(m.name)); });
-  const box = new THREE.Box3().setFromObject(model); H = Math.max(box.max.y - box.min.y, 0.5);
-  let hasHair = false;
-  model.traverse(o => {
-    if (!o.isMesh) return;
-    const swap = m => {
-      const isHair = /hair/i.test(m.name) && names.size > 1;
-      const isBody = !isHair && (names.size === 1 || m.name === 'body');
-      if (!isHair && !isBody) return m;
-      if (isHair) hasHair = true;
-      const c = m.clone();
-      c.onBeforeCompile = sh => {
-        Object.assign(sh.uniforms, { uTop: { value: tint.top }, uBot: { value: tint.bot }, uShoe: { value: tint.shoe }, uHair: { value: tint.hair }, uOn: { value: tint.on }, uH: { value: H }, uIsHair: { value: isHair ? 1 : 0 } });
-        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvY = position.y;');
-        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vY; uniform vec3 uTop, uBot, uShoe, uHair; uniform vec4 uOn; uniform float uH, uIsHair;').replace('#include <map_fragment>', '#include <map_fragment>\n' + TINT_FRAG);
-      };
-      c.customProgramCacheKey = () => 'tint' + (isHair ? 'h' : 'b');
-      return c;
-    };
-    o.material = Array.isArray(o.material) ? o.material.map(swap) : swap(o.material);
-  });
-  return hasHair;
-}
-
 // Returns an empty holder straight away; the character appears inside it once the file has loaded.
-function makeAvatar(shirt, characterId, look) {
+function makeAvatar(shirt, characterId) {
   const holder = new THREE.Group();
-  applyCharacter(holder, shirt, characterId, look);
+  applyCharacter(holder, shirt, characterId);
   return holder;
 }
 
 // Puts (or swaps) the character model inside a holder. Safe to call again when a player changes character.
-function applyCharacter(holder, shirt, characterId, look) {
+// If a character file cannot load, the default character is used (and the broken file is named in the console).
+function applyCharacter(holder, shirt, characterId) {
   const u = holder.userData;
   const token = (u.charToken = (u.charToken || 0) + 1);
-  u.characterId = characterId; u.look = cleanLook(look);
-  const file = CHARACTER_FILES[characterId] || CHARACTER_FILES[DEFAULT_CHARACTER] || OLD_CHARACTER_FILE;
-  loadCharacterFile(file).catch(() => loadCharacterFile(OLD_CHARACTER_FILE)).then(gltf => {
+  u.characterId = characterId;
+  const file = CHARACTER_FILES[characterId] || CHARACTER_FILES[DEFAULT_CHARACTER];
+  loadCharacterFile(file).catch(err => {
+    console.error('Could not load character file:', file, err);
+    return loadCharacterFile(CHARACTER_FILES[DEFAULT_CHARACTER]);
+  }).then(gltf => {
     if (u.charToken !== token) return;
     if (u.model) holder.remove(u.model);
     const model = cloneSkinned(gltf.scene);
     model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
-    const tint = makeTint(); let hasHair = false;
-    try { hasHair = tintModel(model, tint); setTint(tint, u.look); } catch (e) { console.warn('colours unavailable', e); }
     holder.add(model);
     const mixer = new THREE.AnimationMixer(model);
     const actions = {};
     gltf.animations.forEach(c => { actions[c.name] = mixer.clipAction(c); });
     actions.idle.play();
-    Object.assign(u, { model, mixer, actions, state: 'idle', tint, hasHair });
-    if (u.onReady) u.onReady(u);
+    Object.assign(u, { model, mixer, actions, state: 'idle' });
   }).catch(() => {
     if (u.charToken !== token || u.model) return;
     const b = makeBlockyAvatar(shirt);
@@ -259,28 +211,33 @@ function applyCharacter(holder, shirt, characterId, look) {
     while (b.children.length) holder.add(b.children[0]);
   });
 }
-function applyLook(holder, look) {
-  holder.userData.look = cleanLook(look);
-  if (holder.userData.tint) setTint(holder.userData.tint, holder.userData.look);
-}
 
-// ---- the choose-your-character screen: a live 3D preview you can recolour ----
-const PALETTE = ['#c0392b', '#e67e22', '#f1c40f', '#27ae60', '#2980b9', '#8e44ad', '#ecf0f1', '#7f8c8d', '#2c3e50', '#111111', '#8d5a3b', '#f48fb1'];
-const pick = { gender: 'male', id: null, look: cleanLook() };
+// ---- the choose-your-character screen: a live 3D preview ----
+const FREE_IDS = ['male_civilian', 'male_wong', 'male_streetwear', 'female_floral', 'female_sammie', 'female_rocker'];
+const pick = { gender: 'male', id: null };
 let pv = null;
 
+function resizePreview() {
+  if (!pv) return;
+  const r = pv.stage.getBoundingClientRect();
+  const w = Math.max(Math.floor(r.width), 100), h = Math.max(Math.floor(r.height), 100);
+  pv.renderer.setSize(w, h, false);
+  pv.cam.aspect = w / h; pv.cam.updateProjectionMatrix();
+}
 function startPreview() {
   if (pv) return;
   const cv = $('prev');
   const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(260, 340, false);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.4));
   const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(2, 3, 3); scene.add(sun);
-  const cam = new THREE.PerspectiveCamera(30, 260 / 340, 0.1, 50); cam.position.set(0, 1.0, 4.6); cam.lookAt(0, 0.9, 0);
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50); cam.position.set(0, 1.0, 4.6); cam.lookAt(0, 0.9, 0);
   const holder = new THREE.Group(); scene.add(holder);
-  pv = { renderer, scene, cam, holder, clock: new THREE.Clock(), run: true };
+  pv = { renderer, scene, cam, holder, stage: $('stage'), clock: new THREE.Clock(), run: true };
+  resizePreview();
+  addEventListener('resize', resizePreview);
   (function loop() {
     if (!pv || !pv.run) return;
     const dt = pv.clock.getDelta();
@@ -290,56 +247,32 @@ function startPreview() {
     requestAnimationFrame(loop);
   })();
 }
-function stopPreview() { if (pv) { pv.run = false; pv.renderer.dispose(); pv = null; } }
+function stopPreview() { if (pv) { pv.run = false; removeEventListener('resize', resizePreview); pv.renderer.dispose(); pv = null; } }
 
-function buildSwatches() {
-  const rows = { swTop: 'top', swBottom: 'bottom', swShoes: 'shoes', swHair: 'hair' };
-  for (const [id, key] of Object.entries(rows)) {
-    const box = $(id); box.innerHTML = '';
-    const mk = (color, label) => {
-      const b = document.createElement('button'); b.className = 'sw'; b.title = label;
-      if (color) b.style.background = color; else { b.textContent = '✕'; b.style.background = '#14202b'; }
-      b.addEventListener('click', () => {
-        pick.look[key] = color; applyLook(pv.holder, pick.look);
-        [...box.children].forEach(c => c.classList.remove('on')); b.classList.add('on');
-      });
-      box.appendChild(b); return b;
-    };
-    mk(null, 'original').classList.add('on');
-    PALETTE.forEach(c => mk(c, c));
-  }
-}
-
-function listFree(gender) { return Object.keys(CHARACTER_FILES).filter(id => id.startsWith(gender + '_') && FREE_IDS.includes(id)); }
-const FREE_IDS = ['male_civilian', 'male_wong', 'male_streetwear', 'female_floral', 'female_sammie', 'female_rocker'];
-const NICE = { male_civilian: 'Brown Jacket', male_wong: 'Vest and Cap', male_streetwear: 'Streetwear', female_floral: 'Floral Dress', female_sammie: 'Pink Hair', female_rocker: 'Leather Jacket' };
-
+function listFree(gender) { return FREE_IDS.filter(id => id.startsWith(gender + '_') && CHARACTER_FILES[id]); }
 function choose(id) {
-  pick.id = id; pick.look = cleanLook();
-  buildSwatches();
+  pick.id = id;
   [...$('cards').children].forEach(c => c.classList.toggle('on', c.dataset.id === id));
-  pv.holder.userData.onReady = u => { $('rowHair').style.display = u.hasHair ? 'flex' : 'none'; };
-  applyCharacter(pv.holder, 0xffffff, id, pick.look);
+  applyCharacter(pv.holder, 0xffffff, id);
 }
 function showGender(gender) {
   pick.gender = gender;
   $('tabMale').classList.toggle('on', gender === 'male'); $('tabFemale').classList.toggle('on', gender === 'female');
   const box = $('cards'); box.innerHTML = '';
   listFree(gender).forEach(id => {
-    const b = document.createElement('button'); b.className = 'card'; b.dataset.id = id; b.textContent = NICE[id] || id;
+    const b = document.createElement('button'); b.className = 'card'; b.dataset.id = id; b.textContent = CHARACTER_NAMES[id] || id;
     b.addEventListener('click', () => choose(id)); box.appendChild(b);
   });
   const first = listFree(gender)[0]; if (first) choose(first);
 }
 function openChoose() {
-  showPanel('pChoose'); startPreview(); showGender(pick.gender);
+  showPanel('pChoose'); startPreview(); resizePreview(); showGender(pick.gender);
 }
 $('tabMale').addEventListener('click', () => showGender('male'));
 $('tabFemale').addEventListener('click', () => showGender('female'));
 $('btnPlay').addEventListener('click', () => {
   if (!pick.id) return;
   localStorage.setItem('characterId', pick.id);
-  localStorage.setItem('look', JSON.stringify(pick.look));
   startGame();
 });
 
@@ -551,7 +484,7 @@ class World {
 
   // ----- the player -----
   buildPlayer() {
-    this.player = makeAvatar(0x2c6e9b, myCharacterId(), myLook());
+    this.player = makeAvatar(0x2c6e9b, myCharacterId());
     this.player.position.set(SPAWN.x, 0, SPAWN.z);
     this.scene.add(this.player);
     this.pvel = { x: 0, z: 0 };
@@ -651,7 +584,7 @@ class World {
     this.socket.on('connect', async () => {
       const { data } = await sb.auth.getSession();
       if (!data.session) { this.say3d('Please log in again.'); return; }
-      this.socket.emit('join', { token: data.session.access_token, name: localStorage.getItem('pendingName') || '', character: myCharacterId(), look: myLook() });
+      this.socket.emit('join', { token: data.session.access_token, name: localStorage.getItem('pendingName') || '', character: myCharacterId() });
     });
 
     this.socket.on('init', data => {
@@ -663,9 +596,8 @@ class World {
       // the server is the authority on which character this account uses
       if (data.character && data.character !== this.player.userData.characterId) {
         localStorage.setItem('characterId', data.character);
-        applyCharacter(this.player, 0x2c6e9b, data.character, data.look || myLook());
+        applyCharacter(this.player, 0x2c6e9b, data.character);
       }
-      if (data.look) { localStorage.setItem('look', JSON.stringify(data.look)); applyLook(this.player, data.look); }
       data.players.forEach(p => { if (p.id !== this.myId) this.addOther(p); });
       this.applyGate();
       this.updateStatus();
@@ -678,11 +610,7 @@ class World {
       const av = d.id === this.myId ? this.player : (this.others.get(d.id) || {}).av;
       if (!av) return;
       if (d.id === this.myId) localStorage.setItem('characterId', d.character);
-      applyCharacter(av, d.id === this.myId ? 0x2c6e9b : 0xd9822b, d.character, av.userData.look);
-    });
-    this.socket.on('look', d => {
-      const av = d.id === this.myId ? this.player : (this.others.get(d.id) || {}).av;
-      if (av) applyLook(av, d.look);
+      applyCharacter(av, d.id === this.myId ? 0x2c6e9b : 0xd9822b, d.character);
     });
     this.socket.on('left', id => { this.removeOther(id); this.updateStatus(); });
     this.socket.on('moved', d => {
@@ -701,7 +629,7 @@ class World {
 
   addOther(p) {
     if (this.others.has(p.id)) return;
-    const av = makeAvatar(0xd9822b, p.character, p.look);
+    const av = makeAvatar(0xd9822b, p.character);
     av.position.set(p.x / PX_PER_M, 0, p.y / PX_PER_M);
     this.setLabel(av, p.name);
     this.scene.add(av);
