@@ -261,11 +261,11 @@ async function loadMixamoCharacter(file) {
     if (!o.isMesh) return;
     [].concat(o.material).forEach(m => {
       if (m.isMeshPhongMaterial) { m.shininess = 8; m.specular.setScalar(0.08); }
-      // Mixamo files often mark every material see-through: make skin and clothes solid,
-      // and only let hair / lashes / brows / beard use cut-out transparency
-      const cutout = /hair|lash|brow|beard/i.test(m.name || '');
+      // Mixamo files often mark every material see-through: make everything solid.
+      // Parts of a texture that are meant to be empty (hair edges, rips in jeans) are cut out cleanly with alphaTest
+      // instead of being drawn as semi-transparent or as the colour hidden behind the empty part.
       m.opacity = 1; m.transparent = false; m.depthWrite = true; m.side = THREE.FrontSide;
-      m.alphaTest = cutout ? 0.5 : 0;
+      m.alphaTest = 0.5;
       m.needsUpdate = true;
     });
   });
