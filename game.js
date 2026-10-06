@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { buildRefugeeCamp, CAMP_BOXES } from './refugee_camp.js';
 import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.js';
 
@@ -170,6 +171,56 @@ const DEFAULT_CHARACTER = 'male_civilian';
 // The character the player picked (the choose-your-character screen will set this later).
 function myCharacterId() { return localStorage.getItem('characterId') || DEFAULT_CHARACTER; }
 
+// ---------- Mixamo animations (FBX) retargeted onto our own skeleton ----------
+// Put the Mixamo files (download "FBX Binary", "Without Skin", 30 fps) in the animation/ folder.
+// Any file that is missing is skipped and the old idle / walk / run inside the character .glb is used instead.
+const MIXAMO_FILES = { idle: 'animation/Idle.fbx', walk: 'animation/Walking.fbx', run: 'animation/Running.fbx' };
+
+// Mixamo bone name (without "mixamorig") -> our bone name from build_rig.py
+const MIXAMO_TO_RIG = {
+  Hips: 'Hips', Spine: 'Spine', Spine2: 'Chest', Neck: 'Neck', Head: 'Head',
+  LeftArm: 'UpperArm_L', LeftForeArm: 'LowerArm_L', LeftHand: 'Hand_L',
+  RightArm: 'UpperArm_R', RightForeArm: 'LowerArm_R', RightHand: 'Hand_R',
+  LeftUpLeg: 'UpperLeg_L', LeftLeg: 'LowerLeg_L', LeftFoot: 'Foot_L',
+  RightUpLeg: 'UpperLeg_R', RightLeg: 'LowerLeg_R', RightFoot: 'Foot_R',
+};
+const mixKey = n => n.replace(/^mixamorig:?/, '');
+
+// Our bones have no rest rotation, so each Mixamo rotation is converted into world space
+// (parent rest * rotation * inverse of own rest) and written onto the matching bone. Position tracks are dropped (in-place movement).
+function retargetMixamo(fbx, name) {
+  fbx.updateMatrixWorld(true);
+  const bones = {};
+  fbx.traverse(o => { if (o.isBone) bones[mixKey(o.name)] = o; });
+  const src = [...fbx.animations].sort((x, y) => y.tracks.length - x.tracks.length || y.duration - x.duration)[0];
+  if (!src) throw new Error('no animation in ' + name);
+  const q = new THREE.Quaternion(), parentRest = new THREE.Quaternion(), restInv = new THREE.Quaternion();
+  const tracks = [];
+  for (const t of src.tracks) {
+    const dot = t.name.lastIndexOf('.');
+    const key = mixKey(t.name.slice(0, dot)), prop = t.name.slice(dot + 1);
+    const bone = bones[key], target = MIXAMO_TO_RIG[key];
+    if (!bone || !target || prop !== 'quaternion') continue;
+    bone.getWorldQuaternion(restInv).invert();
+    if (bone.parent) bone.parent.getWorldQuaternion(parentRest); else parentRest.identity();
+    const v = Array.from(t.values);
+    for (let i = 0; i < v.length; i += 4) { q.fromArray(v, i).premultiply(parentRest).multiply(restInv); q.toArray(v, i); }
+    tracks.push(new THREE.QuaternionKeyframeTrack(target + '.quaternion', Array.from(t.times), v));
+  }
+  return new THREE.AnimationClip(name, src.duration, tracks);
+}
+
+let mixamoClipsPromise = null;
+function loadMixamoClips() {
+  if (!mixamoClipsPromise) {
+    const loader = new FBXLoader();
+    mixamoClipsPromise = Promise.all(Object.entries(MIXAMO_FILES).map(([name, file]) =>
+      loader.loadAsync(file).then(f => retargetMixamo(f, name)).catch(e => { console.warn('Mixamo clip skipped:', file, e); return null; })
+    )).then(list => Object.fromEntries(list.filter(Boolean).map(c => [c.name, c])));
+  }
+  return mixamoClipsPromise;
+}
+
 const characterLoads = new Map();
 function loadCharacterFile(file) {
   if (!characterLoads.has(file)) characterLoads.set(file, new Promise((ok, fail) => new GLTFLoader().load(file, ok, undefined, fail)));
@@ -211,6 +262,20 @@ function applyCharacter(holder, shirt, characterId) {
       if (u.freeze) { mixer.update(0); actions.idle.paused = true; }   // the select screen shows the calm first frame
     }
     Object.assign(u, { model, mixer, actions, state: 'idle' });
+    // swap in the Mixamo clips as soon as they have loaded (the .glb clips above are the fallback)
+    loadMixamoClips().then(clips => {
+      if (u.charToken !== token || u.mixer !== mixer) return;
+      for (const [name, clip] of Object.entries(clips)) {
+        const old = u.actions[name], a = mixer.clipAction(clip);
+        if (old) old.stop();
+        u.actions[name] = a;
+        if (pose === 'tpose') continue;
+        if (pose ? pose === name : u.state === name) {
+          a.play();
+          if (name === 'idle' && u.freeze) { mixer.update(0); a.paused = true; }
+        }
+      }
+    });
   }).catch(() => {
     if (u.charToken !== token || u.model) return;
     const b = makeBlockyAvatar(shirt);
