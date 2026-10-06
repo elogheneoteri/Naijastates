@@ -133,7 +133,7 @@ def main():
     if len(sys.argv) < 4:
         print(__doc__); sys.exit(1)
     src_dir, anim_dir, out_dir = sys.argv[1:4]; only = sys.argv[4:]
-    cache = {}
+    cache = {}; failed = []
     for root, _, files in os.walk(src_dir):
         for f in sorted(files):
             if not f.endswith('.glb'): continue
@@ -150,8 +150,15 @@ def main():
                 p = os.path.join(anim_dir, v + '.glb')
                 if not os.path.exists(p):
                     print('   MISSING animation file:', p); sys.exit(1)
-            an = rig_one(src, dst, gender, cache, anim_dir)
+            try:
+                an = rig_one(src, dst, gender, cache, anim_dir)
+            except Exception as e:
+                failed.append(cid)
+                print(f'   FAILED {cid}: {type(e).__name__}: {e}')
+                continue
             print('   ok:', ', '.join(f"{a['name']} (speed {a['extras']['speed']} m/s)" for a in an))
+    print()
+    print('FAILED CHARACTERS:' if failed else 'ALL DONE, no failures.', ', '.join(failed))
 
 if __name__ == '__main__':
     main()
