@@ -99,6 +99,10 @@ $('btnLogin').addEventListener('click', async () => {
 });
 
 async function boot() {
+  // small build tag in the corner, so you can see at once whether the newest game.js is the one running
+  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-06 solid-materials';
+  tag.style.cssText = 'position:fixed;left:8px;bottom:4px;z-index:99;font:11px sans-serif;color:#7f8c8d;pointer-events:none';
+  document.body.appendChild(tag);
   authBox.style.display = 'flex'; showPanel('pLanding');
   if (!sb) return say('Set SUPABASE_URL and SUPABASE_ANON_KEY at the top of game.js');
   const { data } = await sb.auth.getSession();
