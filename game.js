@@ -56,53 +56,53 @@ const BUILDINGS = [
   }
 ];
 
-// ---------------- Login screen ----------------
+// ---------------- Login / sign-up / choose character ----------------
 
 const configured = !SUPABASE_URL.includes('YOUR-') && !SUPABASE_ANON_KEY.includes('YOUR-');
 const sb = configured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-const authBox = document.getElementById('auth');
-const authMsg = document.getElementById('authMsg');
-const authName = document.getElementById('authName');
-const authEmail = document.getElementById('authEmail');
-const authPass = document.getElementById('authPass');
-
+const $ = id => document.getElementById(id);
+const authBox = $('auth'), authMsg = $('authMsg'), authEmail = $('authEmail'), authPass = $('authPass');
 function say(text) { authMsg.textContent = text; }
+function showPanel(id) { for (const p of ['pLanding', 'pSignup', 'pChoose']) $(p).style.display = p === id ? 'flex' : 'none'; authBox.classList.toggle('choosing', id === 'pChoose'); say(''); }
 
 let gameStarted = false;
 function startGame() {
   if (gameStarted) return;
   gameStarted = true;
+  stopPreview();
   authBox.style.display = 'none';
-  new World(document.getElementById('game'));
+  new World($('game'));
 }
+// A player with no saved choice on this device picks a character first.
+function afterLogin() { if (localStorage.getItem('characterId')) startGame(); else openChoose(); }
 
-document.getElementById('btnSignup').addEventListener('click', async () => {
+$('btnCreate').addEventListener('click', () => showPanel('pSignup'));
+$('btnBack').addEventListener('click', () => showPanel('pLanding'));
+
+$('btnSignup').addEventListener('click', async () => {
   if (!sb) return say('Set SUPABASE_URL and SUPABASE_ANON_KEY at the top of game.js');
-  const name = authName.value.trim();
-  if (!name) return say('Enter a display name first.');
   say('Creating account...');
   const { data, error } = await sb.auth.signUp({ email: authEmail.value.trim(), password: authPass.value });
   if (error) return say(error.message);
-  localStorage.setItem('pendingName', name);
   if (!data.session) return say('Account created. Check your email to confirm, then log in.');
-  startGame();
+  openChoose();
 });
 
-document.getElementById('btnLogin').addEventListener('click', async () => {
+$('btnLogin').addEventListener('click', async () => {
   if (!sb) return say('Set SUPABASE_URL and SUPABASE_ANON_KEY at the top of game.js');
   say('Logging in...');
   const { error } = await sb.auth.signInWithPassword({ email: authEmail.value.trim(), password: authPass.value });
   if (error) return say(error.message);
-  startGame();
+  afterLogin();
 });
 
-(async function boot() {
-  authBox.style.display = 'flex';
+async function boot() {
+  authBox.style.display = 'flex'; showPanel('pLanding');
   if (!sb) return say('Set SUPABASE_URL and SUPABASE_ANON_KEY at the top of game.js');
   const { data } = await sb.auth.getSession();
-  if (data.session) startGame();
-})();
+  if (data.session) afterLogin();
+}
 
 // ---------------- Small helpers ----------------
 
@@ -159,13 +159,13 @@ function animateBlocky(av, speed, dt) {
 
 // characters.json says which file belongs to which character id (free / premium / npc).
 const CHARACTER_FILES = {};
+const CHARACTER_NAMES = {};   // the "name" of each character in characters.json
 try {
   const manifest = await (await fetch('characters.json')).json();
-  for (const tier of ['free', 'premium', 'npc']) for (const c of manifest[tier] || []) CHARACTER_FILES[c.id] = c.file;
+  for (const tier of ['free', 'premium', 'npc']) for (const c of manifest[tier] || []) { CHARACTER_FILES[c.id] = c.file; CHARACTER_NAMES[c.id] = c.name; }
 } catch (e) { /* no characters.json: the old single character is used */ }
 
 const DEFAULT_CHARACTER = 'male_civilian';
-const OLD_CHARACTER_FILE = 'player_female_01.glb';   // used only if a chosen character cannot load
 
 // The character the player picked (the choose-your-character screen will set this later).
 function myCharacterId() { return localStorage.getItem('characterId') || DEFAULT_CHARACTER; }
@@ -177,7 +177,6 @@ function loadCharacterFile(file) {
 }
 
 // Returns an empty holder straight away; the character appears inside it once the file has loaded.
-// If the file cannot load, the old character is tried, then the old blocky person, so the game still works.
 function makeAvatar(shirt, characterId) {
   const holder = new THREE.Group();
   applyCharacter(holder, shirt, characterId);
@@ -185,13 +184,17 @@ function makeAvatar(shirt, characterId) {
 }
 
 // Puts (or swaps) the character model inside a holder. Safe to call again when a player changes character.
+// If a character file cannot load, the default character is used (and the broken file is named in the console).
 function applyCharacter(holder, shirt, characterId) {
   const u = holder.userData;
   const token = (u.charToken = (u.charToken || 0) + 1);
   u.characterId = characterId;
-  const file = CHARACTER_FILES[characterId] || CHARACTER_FILES[DEFAULT_CHARACTER] || OLD_CHARACTER_FILE;
-  loadCharacterFile(file).catch(() => loadCharacterFile(OLD_CHARACTER_FILE)).then(gltf => {
-    if (u.charToken !== token) return;                 // a newer choice replaced this one
+  const file = CHARACTER_FILES[characterId] || CHARACTER_FILES[DEFAULT_CHARACTER];
+  loadCharacterFile(file).catch(err => {
+    console.error('Could not load character file:', file, err);
+    return loadCharacterFile(CHARACTER_FILES[DEFAULT_CHARACTER]);
+  }).then(gltf => {
+    if (u.charToken !== token) return;
     if (u.model) holder.remove(u.model);
     const model = cloneSkinned(gltf.scene);
     model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
@@ -208,6 +211,70 @@ function applyCharacter(holder, shirt, characterId) {
     while (b.children.length) holder.add(b.children[0]);
   });
 }
+
+// ---- the choose-your-character screen: a live 3D preview ----
+const FREE_IDS = ['male_civilian', 'male_wong', 'male_streetwear', 'female_floral', 'female_sammie', 'female_rocker'];
+const pick = { gender: 'male', id: null };
+let pv = null;
+
+function resizePreview() {
+  if (!pv) return;
+  const r = pv.stage.getBoundingClientRect();
+  const w = Math.max(Math.floor(r.width), 100), h = Math.max(Math.floor(r.height), 100);
+  pv.renderer.setSize(w, h, false);
+  pv.cam.aspect = w / h; pv.cam.updateProjectionMatrix();
+}
+function startPreview() {
+  if (pv) return;
+  const cv = $('prev');
+  const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.4));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(2, 3, 3); scene.add(sun);
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50); cam.position.set(0, 1.0, 4.6); cam.lookAt(0, 0.9, 0);
+  const holder = new THREE.Group(); scene.add(holder);
+  pv = { renderer, scene, cam, holder, stage: $('stage'), clock: new THREE.Clock(), run: true };
+  resizePreview();
+  addEventListener('resize', resizePreview);
+  (function loop() {
+    if (!pv || !pv.run) return;
+    const dt = pv.clock.getDelta();
+    holder.rotation.y += dt * 0.6;
+    if (holder.userData.mixer) holder.userData.mixer.update(dt);
+    renderer.render(scene, cam);
+    requestAnimationFrame(loop);
+  })();
+}
+function stopPreview() { if (pv) { pv.run = false; removeEventListener('resize', resizePreview); pv.renderer.dispose(); pv = null; } }
+
+function listFree(gender) { return FREE_IDS.filter(id => id.startsWith(gender + '_') && CHARACTER_FILES[id]); }
+function choose(id) {
+  pick.id = id;
+  [...$('cards').children].forEach(c => c.classList.toggle('on', c.dataset.id === id));
+  applyCharacter(pv.holder, 0xffffff, id);
+}
+function showGender(gender) {
+  pick.gender = gender;
+  $('tabMale').classList.toggle('on', gender === 'male'); $('tabFemale').classList.toggle('on', gender === 'female');
+  const box = $('cards'); box.innerHTML = '';
+  listFree(gender).forEach(id => {
+    const b = document.createElement('button'); b.className = 'card'; b.dataset.id = id; b.textContent = CHARACTER_NAMES[id] || id;
+    b.addEventListener('click', () => choose(id)); box.appendChild(b);
+  });
+  const first = listFree(gender)[0]; if (first) choose(first);
+}
+function openChoose() {
+  showPanel('pChoose'); startPreview(); resizePreview(); showGender(pick.gender);
+}
+$('tabMale').addEventListener('click', () => showGender('male'));
+$('tabFemale').addEventListener('click', () => showGender('female'));
+$('btnPlay').addEventListener('click', () => {
+  if (!pick.id) return;
+  localStorage.setItem('characterId', pick.id);
+  startGame();
+});
 
 function animateAvatar(av, speed, dt) {
   const u = av.userData;
@@ -697,3 +764,6 @@ class World {
     this.renderer.render(this.scene, this.camera);
   }
 }
+
+// start only after everything above has been defined
+boot();
