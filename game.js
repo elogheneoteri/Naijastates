@@ -530,16 +530,26 @@ class World {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;   // cinematic contrast instead of flat colours
+    this.renderer.toneMappingExposure = 1.05;
     parent.appendChild(this.renderer.domElement);
     this.canvas = this.renderer.domElement;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0xa9d3ee);
-    this.scene.fog = new THREE.Fog(0xa9d3ee, 70, 190);
+    { // sky: deep blue at the top fading to a warm haze at the horizon
+      const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+      const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
+      gr.addColorStop(0, '#2f6fc0'); gr.addColorStop(0.55, '#8fc2ea'); gr.addColorStop(1, '#f3dcb8');
+      g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+      const sky = new THREE.CanvasTexture(c); sky.colorSpace = THREE.SRGBColorSpace;
+      this.scene.background = sky;
+    }
+    this.scene.fog = new THREE.Fog(0xd5d9d6, 60, 200);
     this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 400);
 
-    this.scene.add(new THREE.HemisphereLight(0xdfeeff, 0x7a6a50, 1.25));
-    this.sun = new THREE.DirectionalLight(0xfff1d6, 2.0);
+    this.scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x6b5a45, 0.9));
+    this.sun = new THREE.DirectionalLight(0xffe2b0, 2.6);   // warmer, stronger sun = visible shadows and depth
     this.sun.position.set(30, 50, 20);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
