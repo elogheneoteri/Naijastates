@@ -44,6 +44,45 @@ export const CAMP_BOXES = [
   [-2.3, -1.9, 9.1, 9.5], [1.9, 2.3, 9.1, 9.5],                               // gate posts
 ];
 
+
+// ---------- mango tree helpers ----------
+const MANGO_H = 6.5;                       // real mango trees are about 6-8 m tall: change this number to resize every mango tree
+
+function mangoPlaceholder() {
+  const t = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.38, 2.6, 8), new THREE.MeshStandardMaterial({ color: 0x5b4330, roughness: 1 }));
+  trunk.position.y = 1.3; trunk.castShadow = true; t.add(trunk);
+  const leaf = new THREE.MeshStandardMaterial({ color: 0x3f6b2f, roughness: 1, flatShading: true });
+  [[0, 4.0, 0, 2.0], [1.1, 3.5, 0.5, 1.5], [-1.0, 3.6, -0.6, 1.6]].forEach(([x, y, z, r]) => {
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), leaf); b.position.set(x, y, z); b.castShadow = true; t.add(b);
+  });
+  return t;
+}
+
+// Scale a loaded tree to `h` metres tall, sit its lowest point on the ground, and make leaf textures render properly.
+function fitTree(p, h) {
+  const parent = p.parent; if (parent) parent.remove(p);          // measure in the camp's own space
+  p.updateMatrixWorld(true);
+  let box = new THREE.Box3().setFromObject(p);
+  const size = box.getSize(new THREE.Vector3());
+  if (isFinite(size.y) && size.y > 1e-3) {
+    p.scale.multiplyScalar(h / size.y);
+    p.updateMatrixWorld(true);
+    box = new THREE.Box3().setFromObject(p);
+    p.position.y -= box.min.y;
+  }
+  p.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false;
+    (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
+      m.side = THREE.DoubleSide;
+      if (m.map && m.transparent) { m.alphaTest = 0.5; m.transparent = false; m.depthWrite = true; }   // cut-out leaves, no see-through sorting glitches
+      m.needsUpdate = true;
+    });
+  });
+  if (parent) parent.add(p);
+}
+
 // ---------- textures ----------
 
 function canvasTex(w, h, draw, repeat = false) {
@@ -306,7 +345,16 @@ export function buildRefugeeCamp() {
     put('sack_burlap', 3.2, 0, 2.2, { rotY: 1.7 }), put('sack_burlap', 3.55, 0, 2.7, { rotY: 0.2 }),
   ]).then(() => { g.remove(fbMeshes.sack); g.remove(fbMeshes.bundle); }).catch(warn('sacks'));
 
-  TREES.forEach(t => put(t.name, t.x, 0, t.z, { rotY: t.rotY }).catch(warn(t.name)));
+  // Mango trees: a simple placeholder shows at once, then the real model replaces it, resized to MANGO_H metres
+  // and dropped onto the ground. If the .glb fails to load, the placeholder simply stays.
+  TREES.forEach(t => {
+    if (t.name !== 'mango_tree') { put(t.name, t.x, 0, t.z, { rotY: t.rotY }).catch(warn(t.name)); return; }
+    const ph = mangoPlaceholder(); ph.position.set(t.x, 0, t.z); ph.rotation.y = t.rotY; g.add(ph);
+    loadProp(t.name, { rotY: t.rotY }).then(p => {
+      p.position.set(t.x, 0, t.z); g.add(p);
+      fitTree(p, MANGO_H); g.remove(ph);
+    }).catch(warn(t.name));
+  });
   PLANTS.forEach((p, i) => put(p.name, p.x, 0, p.z, { rotY: i * 1.3 }).catch(warn(p.name)));
 
   const update = () => {
