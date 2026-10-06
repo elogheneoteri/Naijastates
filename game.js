@@ -154,6 +154,7 @@ const DEFAULT_CHARACTER = 'male_civilian';
 //   male_wong: 'characters/free/male_wong.fbx',
 const MIXAMO_CHARACTERS = {
   male_civilian: 'characters/free/male_civilian_for_mixamo.fbx',
+  female_sammie: 'characters/free/female_sammie_for_mixamo.fbx',
 };
 Object.assign(CHARACTER_FILES, MIXAMO_CHARACTERS);
 
@@ -161,7 +162,7 @@ Object.assign(CHARACTER_FILES, MIXAMO_CHARACTERS);
 // so these files work for all characters of that gender.
 const MIXAMO_ANIMS = {
   male:   { idle: 'animation/male/Idle.fbx',   walk: 'animation/male/Walking.fbx',   run: 'animation/male/Running.fbx' },
-  female: { idle: 'animation/female/idle.fbx', walk: 'animation/female/walking.fbx', run: 'animation/female/running.fbx' },
+  female: { idle: 'animation/female/Idle.fbx', walk: 'animation/female/Walking.fbx', run: 'animation/female/Running.fbx' },
 };
 
 // The character the player picked (the choose-your-character screen will set this later).
