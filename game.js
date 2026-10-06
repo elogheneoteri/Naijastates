@@ -202,7 +202,14 @@ function applyCharacter(holder, shirt, characterId) {
     const mixer = new THREE.AnimationMixer(model);
     const actions = {};
     gltf.animations.forEach(c => { actions[c.name] = mixer.clipAction(c); });
-    actions.idle.play();
+    // test link: add ?pose=walk, ?pose=run, ?pose=idle or ?pose=tpose to the web address to see one pose only
+    const pose = new URLSearchParams(location.search).get('pose');
+    if (pose === 'tpose') { /* no animation: the plain T-pose */ }
+    else if (pose && actions[pose]) actions[pose].play();
+    else {
+      actions.idle.play();
+      if (u.freeze) { mixer.update(0); actions.idle.paused = true; }   // the select screen shows the calm first frame
+    }
     Object.assign(u, { model, mixer, actions, state: 'idle' });
   }).catch(() => {
     if (u.charToken !== token || u.model) return;
@@ -235,6 +242,7 @@ function startPreview() {
   const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(2, 3, 3); scene.add(sun);
   const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50); cam.position.set(0, 1.0, 4.6); cam.lookAt(0, 0.9, 0);
   const holder = new THREE.Group(); scene.add(holder);
+  holder.userData.freeze = true;
   pv = { renderer, scene, cam, holder, stage: $('stage'), clock: new THREE.Clock(), run: true };
   resizePreview();
   addEventListener('resize', resizePreview);
