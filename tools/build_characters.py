@@ -56,6 +56,14 @@ class Adder:
         if mm: a['min'], a['max'] = mm
         self.j['accessors'].append(a); return len(self.j['accessors']) - 1
 
+def fit_relaxed(P):
+    """backup for characters whose arms hang at the sides: same fit, wider arm search"""
+    import inspect
+    src = inspect.getsource(R.fit_skeleton)
+    src = src.replace('side * P[:, 0] > 0.14 * H', 'side * P[:, 0] > 0.06 * H').replace('P[:, 1] > 0.35 * H', 'P[:, 1] > 0.25 * H')
+    ns = dict(vars(R)); exec(src, ns)
+    return ns['fit_skeleton'](P)
+
 def sanity(J, H, info, name):
     warn = []
     if J[R.IX['LowerLeg_L']][0] <= 0 or J[R.IX['LowerLeg_R']][0] >= 0:
@@ -74,7 +82,11 @@ def rig_one(src, dst, gender, clips_cache, anim_dir):
                   idx=g.acc(p['indices']).reshape(-1, 3).astype(np.int64))
              for p in j['meshes'][0]['primitives']]
     P = np.concatenate([p['pos'] for p in prims])
-    J, H, info, toe = R.fit_skeleton(P)
+    try:
+        J, H, info, toe = R.fit_skeleton(P)
+    except Exception as e:
+        print(f'   normal fit failed ({type(e).__name__}: {e}) - trying the arms-down backup')
+        J, H, info, toe = fit_relaxed(P)
     sanity(J, H, info, os.path.basename(src))
     jn, wt = R.skin_weights(prims, J, H, toe)
 
