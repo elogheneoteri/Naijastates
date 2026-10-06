@@ -264,8 +264,12 @@ async function loadMixamoCharacter(file) {
       // Mixamo files often mark every material see-through: make everything solid.
       // Parts of a texture that are meant to be empty (hair edges, rips in jeans) are cut out cleanly with alphaTest
       // instead of being drawn as semi-transparent or as the colour hidden behind the empty part.
-      m.opacity = 1; m.transparent = false; m.depthWrite = true; m.side = THREE.FrontSide;
-      m.alphaTest = 0.5;
+      // Only hair and eyelashes are cut out by their texture. Clothes and skin are fully solid and drawn from both sides,
+      // so nothing can look see-through. (Add ?cutout=1 to the web address to get the old "cut out everything" look back.)
+      const cutout = new URLSearchParams(location.search).get('cutout') === '1' || /hair|lash|brow|beard/i.test(m.name || '');
+      m.opacity = 1; m.transparent = false; m.depthWrite = true; m.side = THREE.DoubleSide;
+      m.alphaTest = cutout ? 0.5 : 0;
+      if (!cutout) m.alphaMap = null;
       m.needsUpdate = true;
     });
   });
