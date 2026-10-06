@@ -168,6 +168,24 @@ try {
 
 const DEFAULT_CHARACTER = 'male_civilian';
 
+// ---------- Mixamo characters (rigged in Mixamo, downloaded "With Skin") ----------
+// A character listed here is loaded straight from its Mixamo .fbx and animated with the shared animation files below.
+// Any character NOT listed here keeps using its older .glb from characters.json.
+// When the next character is rigged and uploaded, add ONE line, for example:
+//   male_wong: 'characters/free/male_wong.fbx',
+const GLB_CHARACTER_FILES = { ...CHARACTER_FILES };   // older .glb files, kept as a fallback
+const MIXAMO_CHARACTERS = {
+  male_civilian: 'characters/free/male_civilian_for_maximo.fbx',
+};
+Object.assign(CHARACTER_FILES, MIXAMO_CHARACTERS);
+
+// One animation set per gender (Mixamo: "FBX Binary", In Place, 30 fps). Every Mixamo character shares the same skeleton,
+// so these files work for all characters of that gender.
+const MIXAMO_ANIMS = {
+  male:   { idle: 'animation/male/idle.fbx',   walk: 'animation/male/walking.fbx',   run: 'animation/male/running.fbx' },
+  female: { idle: 'animation/female/idle.fbx', walk: 'animation/female/walking.fbx', run: 'animation/female/running.fbx' },
+};
+
 // The character the player picked (the choose-your-character screen will set this later).
 function myCharacterId() { return localStorage.getItem('characterId') || DEFAULT_CHARACTER; }
 
@@ -221,9 +239,75 @@ function loadMixamoClips() {
   return mixamoClipsPromise;
 }
 
+// ---- loading a Mixamo character (.fbx) together with its gender's animation files ----
+const fbxLoader = new FBXLoader();
+const TARGET_HEIGHT = 1.75;   // only used if a character comes out a strange size
+const hipsBone = root => { let h = null; root.traverse(o => { if (!h && o.isBone && /Hips$/.test(o.name)) h = o; }); return h; };
+
+const mixamoSetLoads = {};
+function loadMixamoSet(gender) {
+  if (!mixamoSetLoads[gender]) {
+    mixamoSetLoads[gender] = Promise.all(Object.entries(MIXAMO_ANIMS[gender]).map(([name, file]) =>
+      fbxLoader.loadAsync(file).then(fbx => {
+        const clip = [...fbx.animations].sort((a, b) => b.duration - a.duration || b.tracks.length - a.tracks.length)[0];
+        if (!clip) throw new Error('no animation inside ' + file);
+        const h = hipsBone(fbx);
+        return { name, clip, hipsY: h ? h.position.y : 0 };
+      }).catch(e => { console.warn('Animation file missing or broken:', file, e); return null; })
+    )).then(list => Object.fromEntries(list.filter(Boolean).map(a => [a.name, a])));
+  }
+  return mixamoSetLoads[gender];
+}
+
+async function loadMixamoCharacter(file) {
+  const base = file.split('/').pop();
+  const gender = base.startsWith('female') ? 'female' : 'male';
+  const [fbx, set] = await Promise.all([fbxLoader.loadAsync(file), loadMixamoSet(gender)]);
+  if (!set.idle) throw new Error('the ' + gender + ' idle animation could not be loaded');
+
+  const hips = hipsBone(fbx);
+  const charHipsY = hips ? hips.position.y : 0;
+
+  // Mixamo files are in centimetres: shrink to metres (or fit to a normal height if the size looks wrong)
+  fbx.updateMatrixWorld(true);
+  const height = new THREE.Box3().setFromObject(fbx).getSize(new THREE.Vector3()).y || 170;
+  let scale = 0.01;
+  if (height * scale < 1.2 || height * scale > 2.4) scale = TARGET_HEIGHT / height;
+  fbx.scale.setScalar(scale);
+  fbx.updateMatrixWorld(true);
+  fbx.position.y -= new THREE.Box3().setFromObject(fbx).min.y;   // feet on the ground
+
+  fbx.traverse(o => {
+    if (!o.isMesh) return;
+    [].concat(o.material).forEach(m => { if (m.isMeshPhongMaterial) { m.shininess = 8; m.specular.setScalar(0.08); } });
+  });
+
+  // Keep the turning of every bone, and the up-and-down bounce of the hips (scaled to this character's size).
+  const animations = Object.values(set).map(a => {
+    const ratio = a.hipsY && charHipsY ? charHipsY / a.hipsY : 1;
+    const tracks = [];
+    for (const t of a.clip.tracks) {
+      const dot = t.name.lastIndexOf('.');
+      const bone = t.name.slice(0, dot), prop = t.name.slice(dot + 1);
+      if (prop === 'quaternion') tracks.push(t);
+      else if (prop === 'position' && /Hips$/.test(bone)) {
+        const v = Array.from(t.values, x => x * ratio);
+        tracks.push(new THREE.VectorKeyframeTrack(t.name, Array.from(t.times), v));
+      }
+    }
+    return new THREE.AnimationClip(a.name, a.clip.duration, tracks);
+  });
+
+  const scene = new THREE.Group();
+  scene.add(fbx);
+  return { scene, animations, mixamoNative: true };
+}
+
 const characterLoads = new Map();
 function loadCharacterFile(file) {
-  if (!characterLoads.has(file)) characterLoads.set(file, new Promise((ok, fail) => new GLTFLoader().load(file, ok, undefined, fail)));
+  if (!characterLoads.has(file)) characterLoads.set(file, /\.fbx$/i.test(file)
+    ? loadMixamoCharacter(file)
+    : new Promise((ok, fail) => new GLTFLoader().load(file, ok, undefined, fail)));
   return characterLoads.get(file);
 }
 
@@ -243,7 +327,9 @@ function applyCharacter(holder, shirt, characterId) {
   const file = CHARACTER_FILES[characterId] || CHARACTER_FILES[DEFAULT_CHARACTER];
   loadCharacterFile(file).catch(err => {
     console.error('Could not load character file:', file, err);
-    return loadCharacterFile(CHARACTER_FILES[DEFAULT_CHARACTER]);
+    const backup = GLB_CHARACTER_FILES[characterId] || GLB_CHARACTER_FILES[DEFAULT_CHARACTER];
+    if (!backup || backup === file) throw err;
+    return loadCharacterFile(backup);
   }).then(gltf => {
     if (u.charToken !== token) return;
     if (u.model) holder.remove(u.model);
@@ -263,7 +349,7 @@ function applyCharacter(holder, shirt, characterId) {
     }
     Object.assign(u, { model, mixer, actions, state: 'idle' });
     // swap in the Mixamo clips as soon as they have loaded (the .glb clips above are the fallback)
-    loadMixamoClips().then(clips => {
+    if (!gltf.mixamoNative) loadMixamoClips().then(clips => {
       if (u.charToken !== token || u.mixer !== mixer) return;
       for (const [name, clip] of Object.entries(clips)) {
         const old = u.actions[name], a = mixer.clipAction(clip);
