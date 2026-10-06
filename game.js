@@ -223,6 +223,7 @@ const TARGET_HEIGHT = 1.75;   // only used if a character comes out a strange si
 const hipsBone = root => { let h = null; root.traverse(o => { if (!h && o.isBone && /Hips$/.test(o.name)) h = o; }); return h; };
 
 const mixamoSetLoads = {};
+const mixamoErrors = { male: [], female: [] };   // the real reason an animation file failed, shown in the red banner
 function loadMixamoSet(gender) {
   if (!mixamoSetLoads[gender]) {
     mixamoSetLoads[gender] = Promise.all(Object.entries(MIXAMO_ANIMS[gender]).map(([name, file]) =>
@@ -231,7 +232,7 @@ function loadMixamoSet(gender) {
         if (!clip) throw new Error('no animation inside ' + file);
         const h = hipsBone(fbx);
         return { name, clip, hipsY: h ? h.position.y : 0 };
-      }).catch(e => { console.warn('Animation file missing or broken:', file, e); return null; })
+      }).catch(e => { console.warn('Animation file missing or broken:', file, e); mixamoErrors[gender].push(file + ' -> ' + (e && e.message ? e.message : String(e))); return null; })
     )).then(list => Object.fromEntries(list.filter(Boolean).map(a => [a.name, a])));
   }
   return mixamoSetLoads[gender];
@@ -241,7 +242,7 @@ async function loadMixamoCharacter(file) {
   const base = file.split('/').pop();
   const gender = base.startsWith('female') ? 'female' : 'male';
   const [fbx, set] = await Promise.all([fbxLoader.loadAsync(file), loadMixamoSet(gender)]);
-  if (!set.idle) throw new Error('the ' + gender + ' idle animation could not be loaded');
+  if (!set.idle) throw new Error('the ' + gender + ' idle animation could not be loaded. ' + mixamoErrors[gender].join(' | '));
 
   const hips = hipsBone(fbx);
   const charHipsY = hips ? hips.position.y : 0;
