@@ -124,36 +124,15 @@ function makeLabel(text, bg = 'rgba(0,0,0,0.6)', color = '#fff', size = 34) {
   return spr;
 }
 
-// Simple placeholder person (until the proper 3D character exists).
-function makeBlockyAvatar(shirt) {
-  const g = new THREE.Group();
-  const skin = new THREE.MeshStandardMaterial({ color: 0x8d5a3b, roughness: 0.8 });
-  const cloth = new THREE.MeshStandardMaterial({ color: shirt, roughness: 0.8 });
-  const pants = new THREE.MeshStandardMaterial({ color: 0x2b2f3a, roughness: 0.9 });
-  const add = (geo, mat, x, y, z, parent = g) => {
-    const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m;
-  };
-  add(new THREE.BoxGeometry(0.46, 0.62, 0.26), cloth, 0, 1.08, 0);
-  add(new THREE.SphereGeometry(0.17, 16, 12), skin, 0, 1.56, 0);
-  const mkLimb = (geo, mat, x, y, drop) => {
-    const pivot = new THREE.Group(); pivot.position.set(x, y, 0); g.add(pivot);
-    add(geo, mat, 0, -drop, 0, pivot); return pivot;
-  };
-  g.userData.legL = mkLimb(new THREE.BoxGeometry(0.17, 0.78, 0.2), pants, -0.12, 0.78, 0.39);
-  g.userData.legR = mkLimb(new THREE.BoxGeometry(0.17, 0.78, 0.2), pants, 0.12, 0.78, 0.39);
-  g.userData.armL = mkLimb(new THREE.BoxGeometry(0.12, 0.6, 0.14), cloth, -0.3, 1.36, 0.27);
-  g.userData.armR = mkLimb(new THREE.BoxGeometry(0.12, 0.6, 0.14), cloth, 0.3, 1.36, 0.27);
-  g.userData.phase = 0;
-  return g;
-}
-
-function animateBlocky(av, speed, dt) {
-  const u = av.userData;
-  u.phase += dt * (3 + speed * 1.6);
-  const amp = Math.min(speed / SPEED, 1) * 0.7;
-  const s = Math.sin(u.phase) * amp;
-  u.legL.rotation.x = s; u.legR.rotation.x = -s;
-  u.armL.rotation.x = -s; u.armR.rotation.x = s;
+// Shows a red message at the top of the screen when a character or animation file fails to load.
+function showLoadError(msg) {
+  let box = document.getElementById('loadError');
+  if (!box) {
+    box = document.createElement('div'); box.id = 'loadError';
+    box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#b00020;color:#fff;font:14px sans-serif;padding:8px 12px;white-space:pre-wrap';
+    document.body.appendChild(box);
+  }
+  box.textContent += (box.textContent ? '\n' : '') + msg;
 }
 
 // ---------- The 3D character (player_female_01.glb: has a skeleton and idle / walk / run animations) ----------
@@ -173,16 +152,15 @@ const DEFAULT_CHARACTER = 'male_civilian';
 // Any character NOT listed here keeps using its older .glb from characters.json.
 // When the next character is rigged and uploaded, add ONE line, for example:
 //   male_wong: 'characters/free/male_wong.fbx',
-const GLB_CHARACTER_FILES = { ...CHARACTER_FILES };   // older .glb files, kept as a fallback
 const MIXAMO_CHARACTERS = {
-  male_civilian: 'characters/free/male_civilian_for_maximo.fbx',
+  male_civilian: 'characters/free/male_civilian_for_mixamo.fbx',
 };
 Object.assign(CHARACTER_FILES, MIXAMO_CHARACTERS);
 
 // One animation set per gender (Mixamo: "FBX Binary", In Place, 30 fps). Every Mixamo character shares the same skeleton,
 // so these files work for all characters of that gender.
 const MIXAMO_ANIMS = {
-  male:   { idle: 'animation/male/idle.fbx',   walk: 'animation/male/walking.fbx',   run: 'animation/male/running.fbx' },
+  male:   { idle: 'animation/male/Idle.fbx',   walk: 'animation/male/Walking.fbx',   run: 'animation/male/Running.fbx' },
   female: { idle: 'animation/female/idle.fbx', walk: 'animation/female/walking.fbx', run: 'animation/female/running.fbx' },
 };
 
@@ -319,18 +297,13 @@ function makeAvatar(shirt, characterId) {
 }
 
 // Puts (or swaps) the character model inside a holder. Safe to call again when a player changes character.
-// If a character file cannot load, the default character is used (and the broken file is named in the console).
+// If a character file cannot load, a red message names the file (no fallback character).
 function applyCharacter(holder, shirt, characterId) {
   const u = holder.userData;
   const token = (u.charToken = (u.charToken || 0) + 1);
   u.characterId = characterId;
   const file = CHARACTER_FILES[characterId] || CHARACTER_FILES[DEFAULT_CHARACTER];
-  loadCharacterFile(file).catch(err => {
-    console.error('Could not load character file:', file, err);
-    const backup = GLB_CHARACTER_FILES[characterId] || GLB_CHARACTER_FILES[DEFAULT_CHARACTER];
-    if (!backup || backup === file) throw err;
-    return loadCharacterFile(backup);
-  }).then(gltf => {
+  loadCharacterFile(file).then(gltf => {
     if (u.charToken !== token) return;
     if (u.model) holder.remove(u.model);
     const model = cloneSkinned(gltf.scene);
@@ -362,11 +335,9 @@ function applyCharacter(holder, shirt, characterId) {
         }
       }
     });
-  }).catch(() => {
-    if (u.charToken !== token || u.model) return;
-    const b = makeBlockyAvatar(shirt);
-    Object.assign(u, b.userData);
-    while (b.children.length) holder.add(b.children[0]);
+  }).catch(err => {
+    console.error('Could not load character file:', file, err);
+    showLoadError('Could not load ' + file + ': ' + (err && err.message ? err.message : 'file not found (check the name and capital letters)'));
   });
 }
 
@@ -437,7 +408,7 @@ $('btnPlay').addEventListener('click', () => {
 
 function animateAvatar(av, speed, dt) {
   const u = av.userData;
-  if (!u.mixer) { if (u.legL) animateBlocky(av, speed, dt); return; }
+  if (!u.mixer) return;
   const want = speed < 0.3 ? 'idle' : speed < 2.5 ? 'walk' : 'run';
   if (want !== u.state) {
     const next = u.actions[want], prev = u.actions[u.state];
