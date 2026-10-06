@@ -63,11 +63,19 @@ def load_clip(path):
         for c in nodes[i].get('children', []): visit(c)
     for r in j['scenes'][0]['nodes']: visit(r)
     pos = {k: np.zeros((F, 3)) for k in keyidx}; rot = {k: np.zeros((F, 4)) for k in keyidx}
+    bind = {}
     for f in range(F):
         W = {}
         for i in order:
             W[i] = (W[par[i]] if i in par else np.eye(4)) @ local(i, f)
+        if f == 0 and j.get('skins'):
+            # bind pose of the source skeleton (its T-pose): world matrix of each joint = inverse(IBM) (glTF skinning ignores the mesh node)
+            sk = j['skins'][0]; mesh_node = [i for i, n in enumerate(nodes) if n.get('skin') == 0][0]
+            ibm = g.acc(sk['inverseBindMatrices']).reshape(-1, 4, 4).transpose(0, 2, 1)
+            for k, i in keyidx.items():
+                B = np.linalg.inv(ibm[sk['joints'].index(i)])
+                Rb = B[:3, :3] / np.linalg.norm(B[:3, :3], axis=0); bind[k] = mat_to_quat(Rb)
         for k, i in keyidx.items():
             M = W[i]; pos[k][f] = M[:3, 3]
             R = M[:3, :3] / np.linalg.norm(M[:3, :3], axis=0); rot[k][f] = mat_to_quat(R)
-    return dict(times=times, pos=pos, rot=rot, F=F)
+    return dict(times=times, pos=pos, rot=rot, bind=bind, F=F)
