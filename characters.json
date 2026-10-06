@@ -23,18 +23,18 @@
       "preview": "characters/previews/male_streetwear.png"
     },
     {
-      "id": "female_jeans",
-      "name": "Denim Shorts",
+      "id": "female_floral",
+      "name": "Floral Dress",
       "gender": "female",
-      "file": "characters/free/female_jeans.glb",
-      "preview": "characters/previews/female_jeans.png"
+      "file": "characters/free/female_floral.glb",
+      "preview": "characters/previews/female_floral.png"
     },
     {
-      "id": "female_elizabeth",
-      "name": "Striped Top",
+      "id": "female_sammie",
+      "name": "Pink Hair",
       "gender": "female",
-      "file": "characters/free/female_elizabeth.glb",
-      "preview": "characters/previews/female_elizabeth.png"
+      "file": "characters/free/female_sammie.glb",
+      "preview": "characters/previews/female_sammie.png"
     },
     {
       "id": "female_rocker",
@@ -46,12 +46,12 @@
   ],
   "premium": [
     {
-      "id": "female_sammie",
-      "name": "Pink Hair",
+      "id": "female_elizabeth",
+      "name": "Striped Top",
       "gender": "female",
-      "price": 500,
-      "file": "characters/premium/female_sammie.glb",
-      "preview": "characters/previews/female_sammie.png"
+      "file": "characters/premium/female_elizabeth.glb",
+      "preview": "characters/previews/female_elizabeth.png",
+      "price": 500
     },
     {
       "id": "female_summer",
@@ -70,12 +70,12 @@
       "preview": "characters/previews/female_emma.png"
     },
     {
-      "id": "female_floral",
-      "name": "Floral Dress",
+      "id": "female_jeans",
+      "name": "Denim Shorts",
       "gender": "female",
       "price": 500,
-      "file": "characters/premium/female_floral.glb",
-      "preview": "characters/previews/female_floral.png"
+      "file": "characters/premium/female_jeans.glb",
+      "preview": "characters/previews/female_jeans.png"
     }
   ],
   "npc": [
