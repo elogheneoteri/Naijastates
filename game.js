@@ -100,7 +100,7 @@ $('btnLogin').addEventListener('click', async () => {
 
 async function boot() {
   // small build tag in the corner, so you can see at once whether the newest game.js is the one running
-  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-06 hide-legs-2';
+  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-06 stable-1';
   tag.style.cssText = 'position:fixed;left:8px;bottom:4px;z-index:99;font:11px sans-serif;color:#7f8c8d;pointer-events:none';
   document.body.appendChild(tag); window.__buildTag = tag;
   authBox.style.display = 'flex'; showPanel('pLanding');
@@ -307,8 +307,6 @@ async function loadMixamoCharacter(file) {
   //  - mostly empty (a jacket whose see-through channel is junk): ignore it, draw it solid
   const mats = new Set();
   fbx.traverse(o => { if (o.isMesh) [].concat(o.material).forEach(m => mats.add(m)); });
-  // Trousers cover the legs completely, so the separate bare-legs part underneath is not drawn at all
-  // (otherwise it shows through the jeans as orange patches when she moves).
   // Mixamo names look like "m4_Legsmat": drop the "m4_" at the start and the "mat" at the end
   const plain = n => (n || '').replace(/^m\d+_/i, '').replace(/mat$/i, '');
   const matNames = [...mats].map(m => m.name || '');
@@ -316,8 +314,6 @@ async function loadMixamoCharacter(file) {
     window.__buildTag.style.cssText += ';white-space:normal;max-width:90vw;font-size:14px;color:#fff;background:#000a;padding:4px';
     window.__buildTag.textContent = 'materials: ' + matNames.join(', ');
   }
-  if (matNames.some(n => /legging|jean|pant|trouser/i.test(plain(n))))
-    fbx.traverse(o => { if (o.isMesh && [].concat(o.material).every(m => /^legs?\d*$/i.test(plain(m.name)))) o.visible = false; });
   const forcedCutout = new URLSearchParams(location.search).get('cutout') === '1';
   await Promise.all([...mats].map(async m => {
     if (m.isMeshPhongMaterial) { m.shininess = 8; m.specular.setScalar(0.08); }
