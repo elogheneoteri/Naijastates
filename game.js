@@ -258,7 +258,15 @@ async function loadMixamoCharacter(file) {
 
   fbx.traverse(o => {
     if (!o.isMesh) return;
-    [].concat(o.material).forEach(m => { if (m.isMeshPhongMaterial) { m.shininess = 8; m.specular.setScalar(0.08); } });
+    [].concat(o.material).forEach(m => {
+      if (m.isMeshPhongMaterial) { m.shininess = 8; m.specular.setScalar(0.08); }
+      // Mixamo files often mark every material see-through: make skin and clothes solid,
+      // and only let hair / lashes / brows / beard use cut-out transparency
+      const cutout = /hair|lash|brow|beard/i.test(m.name || '');
+      m.opacity = 1; m.transparent = false; m.depthWrite = true; m.side = THREE.FrontSide;
+      m.alphaTest = cutout ? 0.5 : 0;
+      m.needsUpdate = true;
+    });
   });
 
   // Keep the turning of every bone, and the up-and-down bounce of the hips (scaled to this character's size).
