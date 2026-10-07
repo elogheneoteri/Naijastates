@@ -11,16 +11,17 @@
 //
 // WHAT IS HERE
 //   Frontage:   paved forecourt, green-and-white painted kerb (NOT a fence, you can walk over it anywhere), school signboard,
-//               flagpole with a waving Nigerian flag, white-painted tyre planters with flowers, "Veronica" hand-wash bucket.
-//   West wing:  tuck shop under a zinc-roof shed (kiosk, benches), borehole house + water tank on a steel tower,
-//               generator under its own small roof, mango trees, a parked keke.
+//               flagpole with a waving Nigerian flag, white-painted tyre planters with flowers.
+//   West wing:  tuck shop under a zinc-roof shed (kiosk, benches), borehole house + water tank on its steel stand,
+//               generator under its own small roof, mango trees. Every roof is your zinc_roof.glb and every post is your iron rod.
 //   East wing:  football pitch on laterite with painted lines and two goals, mango trees.
 //   Road:       zebra crossing, two speed bumps, two SCHOOL signs, street lamps, an electric pole.
 //
 // PROPS USED FROM YOUR UPLOAD (nothing new needed to run this):
 //   mango_tree, coconut_palm, plastic_tank, bench_3seat, bush_flowers, flower_clump   (props_library.js)
-//   kiosk_wooden.glb, generator.glb, street_lamp.glb, electric_pole.glb, autorikshaw_-_indian_tuk_tuk (2).glb   (props/ folder)
-// Everything else (shed roofs, signboard, flag, tyres, tower, goals, markings) is built in code.
+//   kiosk_wooden.glb, generator.glb, street_lamp.glb, electric_pole.glb   (props/ folder)
+//   NEW in props/:  zinc_roof.glb (all roofs), free_iron_rod.glb (all posts and beams), water_tank_stand.glb (the tank stand, cut from your water_tank.glb)
+// Everything else (signboard, flag, tyres, goals, markings) is built in code.
 // If a .glb fails to load, the game keeps running (a plain stand-in shows or the item is skipped; see the console).
 //
 // ADDING THE NEW PROPS YOU GET (okada, neem tree, ...): see NEW_PROPS near the bottom. Drop the file in props/, set have: true.
@@ -39,18 +40,16 @@ const PATH_X = [-1.9, 5.7];                 // the school steps (x range); the p
 
 const FLAG = { x: -9, z: 10.2 };
 const SIGN = { x: -19.5, z: 10.0, w: 4.6, h: 1.7 };
-const BUCKET = { x: -2.9, z: 9.6 };
 const TYRES = [[-3.9, 10.3, 0], [-4.8, 10.3, 1], [-5.7, 10.3, 0], [6.6, 10.3, 0], [7.5, 10.3, 1], [8.4, 10.3, 0]];   // x, z, colour (0 white, 1 green)
 const BUSHES = [8.0, 9.8, 11.6, 13.4].map(x => ({ x, z: 9.2 }));
 
-const TOWER = { x: -20.5, z: -7.0 };        // steel tower with the water tank
+const TOWER = { x: -20.5, z: -7.0 };        // water tank on its steel stand
+const STAND_FILE = 'water_tank_stand.glb';   // the stand cut from your water_tank.glb (legs lengthened so it is a proper tower)
 const PUMP = { x: -23.6, z: -7.4 };         // borehole pump house
 const GEN = { x: -18.2, z: 3.0 };           // generator shed
 const SHED = { x: -31.0, z: 4.2, w: 7.2, d: 3.6 };   // tuck-shop shed
 const KIOSK = { x: -32.8, z: 2.9 };
 const BENCHES = [{ x: -30.6, z: 5.2 }, { x: -28.5, z: 5.2 }];
-const KEKE = { x: -25.0, z: 11.8, rotY: 0 };
-const KEKE_FILE = 'keke_optimised.glb';   // your autorickshaw model, shrunk from 33 MB / 956,000 triangles to 0.5 MB / 24,000
 
 const PITCH = { x: 28.5, z: 0, len: 22, wid: 18 };         // football pitch (east wing)
 const GOAL_X = [PITCH.x - PITCH.len / 2, PITCH.x + PITCH.len / 2];      // the two goal lines
@@ -67,7 +66,7 @@ const TREES = [
 
 // along the pavement (z 12.4 .. 14.0)
 const LAMPS = [-38, -16, 11, 36].map(x => ({ x, z: 13.4 }));
-const POLE = { x: 22, z: 13.3 };
+const POLE = { x: -27, z: 13.5 };             // electric pole on the pavement, well away from the football pitch
 const ZONE_SIGNS = [{ x: -6, z: 13.4 }, { x: 14, z: 13.4 }];
 const ZEBRA_X = 2.0;                                       // centre of the zebra crossing (in line with the school steps)
 const BUMPS_X = [-12, 16];
@@ -80,12 +79,11 @@ const NEW_PROPS = [
   // have: true = the file is in props/ and is loaded. have: false = skipped (nothing loaded, nothing blocked).
   // maxXZ / height = size in metres, hw/hd = half width / half depth of the collision box, rotY turns it round (radians),
   // rotX stands up a model that was saved lying down.
-  { have: true,  file: 'red_motorcycle.glb', maxXZ: 2.0, rotX: -Math.PI / 2, x: -21.5, z: 11.8, rotY: Math.PI / 2 + 0.15, hw: 1.0, hd: 0.45 },   // okada 1
-  { have: true,  file: 'red_motorcycle.glb', maxXZ: 2.0, rotX: -Math.PI / 2, x: -18.9, z: 11.9, rotY: Math.PI / 2 - 0.1,  hw: 1.0, hd: 0.45 },   // okada 2
   { have: true,  file: 'hedge.glb', height: 0.9, x: 18.0, z: 9.9, rotY: 0, hw: 1.2, hd: 0.75 },                                               // hedge, east front corner
   { have: true,  file: 'hedge.glb', height: 0.9, x: 20.4, z: 9.9, rotY: 0, hw: 1.2, hd: 0.75 },
   { have: true,  file: 'hedge.glb', height: 0.9, x: 22.8, z: 9.9, rotY: 0, hw: 1.2, hd: 0.75 },
-  { have: true,  file: 'bus_stop_shelter.glb', maxXZ: 3.0, x: 29.0, z: 13.0, rotY: 0, hw: 1.4, hd: 0.15 },                                      // bus stop on the pavement (turn with rotY if it faces the wrong way)
+  // bus stop: the open side of your model is +X, so rotY -90 degrees turns it to face the road. The solid box is only the back panel.
+  { have: true,  file: 'bus_stop_shelter.glb', maxXZ: 2.8, x: 29.0, z: 12.1, rotY: -Math.PI / 2, hw: 1.4, hd: 0.2, boxDz: -0.5 },
   { have: true,  file: 'sour_orange_optimised.glb', height: 4.5, x: 33.5, z: 10.3, rotY: 0, hw: 0.35, hd: 0.35 },                          // your sour orange tree, shrunk from 26 MB / 340,000 triangles to 1.4 MB / 18,000
   { have: false, file: 'school_bell_gong.glb', height: 1.8, x: -15.5, z: 6.5, rotY: 0, hw: 0.4, hd: 0.4 },                                       // optional, not got yet
 ];
@@ -94,16 +92,15 @@ export const HS_EXTERIOR_BOXES = [
   ...TREES.map(t => R(t.x, t.z, t.r)),
   R(FLAG.x, FLAG.z, 0.35),
   R(SIGN.x, SIGN.z, SIGN.w / 2, 0.2),
-  R(TOWER.x, TOWER.z, 1.1), R(PUMP.x, PUMP.z, 1.0, 0.9),
+  R(TOWER.x, TOWER.z, 0.95), R(PUMP.x, PUMP.z, 1.0, 0.9),
   R(GEN.x, GEN.z, 1.3, 0.9),
   R(KIOSK.x, KIOSK.z, 1.4, 0.8),
   ...BENCHES.map(b => R(b.x, b.z, 1.05, 0.4)),
-  ...[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => R(SHED.x + sx * (SHED.w / 2 - 0.15), SHED.z + sz * (SHED.d / 2 - 0.15), 0.12)),   // shed posts
-  R(KEKE.x, KEKE.z, 1.4, 0.7),
+  ...[-1, 0, 1].flatMap(sx => [-1, 1].map(sz => R(SHED.x + sx * (SHED.w / 2 - 0.15), SHED.z + sz * (SHED.d / 2 - 0.15), 0.12))),   // shed posts
   ...GOAL_X.flatMap(x => [R(x, PITCH.z - GOAL_HALF, 0.12), R(x, PITCH.z + GOAL_HALF, 0.12)]),
   ...LAMPS.map(l => R(l.x, l.z, 0.25)), R(POLE.x, POLE.z, 0.3),
   ...ZONE_SIGNS.map(s => R(s.x, s.z, 0.25)),
-  ...NEW_PROPS.filter(p => p.have).map(p => R(p.x, p.z, p.hw, p.hd)),
+  ...NEW_PROPS.filter(p => p.have).map(p => R(p.x, p.z + (p.boxDz || 0), p.hw, p.hd)),
 ];
 
 // ---------- small helpers ----------
@@ -139,9 +136,21 @@ const box = (parent, mat, w, h, d, x, y, z, o) => mesh(parent, BOX, mat, w, h, d
 const cyl = (parent, mat, r, h, x, y, z, o) => mesh(parent, CYL, mat, r, h, r, x, y, z, o);
 
 // loads one of your own .glb files (not in props_library.js), sizes it in metres, feet on the ground, centred
+// foot: true     = the model's BASE (not the middle of the whole model) sits exactly on x, z. Use it for poles and lamps with arms.
+// armToward: true = a lamp's arm is turned to point toward +z (the road)    alongX: true = the long way of the model runs along x
 const gltfLoader = new GLTFLoader();
 const modelCache = new Map();
-async function loadAny(file, { height, maxXZ, rotY = 0, rotX = 0 } = {}) {
+function footPoint(root, b) {                       // x/z middle of the lowest 4% of the model = where the pole stands
+  const lim = b.min.y + (b.max.y - b.min.y) * 0.04, v = new THREE.Vector3();
+  let sx = 0, sz = 0, n = 0;
+  root.traverse(o => {
+    if (!o.isMesh || !o.geometry.attributes.position) return;
+    const p = o.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); if (v.y <= lim) { sx += v.x; sz += v.z; n++; } }
+  });
+  return n ? new THREE.Vector3(sx / n, b.min.y, sz / n) : b.getCenter(new THREE.Vector3()).setY(b.min.y);
+}
+async function loadAny(file, { height, maxXZ, rotY = 0, rotX = 0, rotZ = 0, foot = false, armToward = false, alongX = false } = {}) {
   if (!modelCache.has(file)) modelCache.set(file, gltfLoader.loadAsync(PROPS_DIR + file));
   const gltf = await modelCache.get(file);
   const root = gltf.scene.clone(true);
@@ -150,7 +159,7 @@ async function loadAny(file, { height, maxXZ, rotY = 0, rotX = 0 } = {}) {
     o.castShadow = false; o.receiveShadow = true;
     (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m && 'metalness' in m && m.metalness > 0.6 && !m.metalnessMap) m.metalness = 0.3; });
   });
-  root.rotation.x = rotX;                       // stands up models that were exported lying down (Z-up)
+  root.rotation.x = rotX; root.rotation.z = rotZ;   // stands up models that were exported lying down
   root.updateMatrixWorld(true);
   let b = new THREE.Box3().setFromObject(root);
   const size = b.getSize(new THREE.Vector3());
@@ -158,9 +167,13 @@ async function loadAny(file, { height, maxXZ, rotY = 0, rotX = 0 } = {}) {
   if (height && size.y > 0) s = height / size.y; else if (maxXZ) s = maxXZ / Math.max(size.x, size.z, 1e-6);
   root.scale.multiplyScalar(s); root.updateMatrixWorld(true);
   b = new THREE.Box3().setFromObject(root);
-  const c = b.getCenter(new THREE.Vector3());
+  const mid = b.getCenter(new THREE.Vector3());
+  const c = foot ? footPoint(root, b) : mid;
   root.position.set(-c.x, -b.min.y, -c.z);
-  const pivot = new THREE.Group(); pivot.add(root); pivot.rotation.y = rotY;
+  let spin = rotY;
+  if (alongX && (b.max.z - b.min.z) > (b.max.x - b.min.x)) spin += Math.PI / 2;
+  if (armToward) { const dx = mid.x - c.x, dz = mid.z - c.z; if (Math.hypot(dx, dz) > 0.3) spin += -Math.atan2(dx, dz); }
+  const pivot = new THREE.Group(); pivot.add(root); pivot.rotation.y = spin;
   const wrap = new THREE.Group(); wrap.add(pivot); return wrap;
 }
 
@@ -170,19 +183,76 @@ const put = (parent, name, promise, x, y, z, fallback) =>
     .then(o => { if (!o) return null; o.position.set(x, y, z); parent.add(o); return o; });
 const noShadow = o => { o.traverse(m => { if (m.isMesh) m.castShadow = false; }); return o; };
 
-// corrugated zinc roof: a thin tilted sheet, high at the back (-z), low at the front (+z)
-const zincBase = canvasTex(64, 64, (g, w, h) => {
-  for (let i = 0; i < 4; i++) {
-    const grad = g.createLinearGradient(i * 16, 0, i * 16 + 16, 0);
-    grad.addColorStop(0, '#8f979c'); grad.addColorStop(0.5, '#d3d9dc'); grad.addColorStop(1, '#8f979c');
-    g.fillStyle = grad; g.fillRect(i * 16, 0, 16, h);
-  }
-  for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(140,84,52,0.18)'; g.fillRect(rand() * w, rand() * h, 2 + rand() * 6, 1 + rand() * 3); }   // a little rust
-});
-function zincRoof(parent, cx, cy, cz, w, d, tilt = 0.1) {
-  const t = zincBase.clone(); t.needsUpdate = true; t.repeat.set(w / 0.72, 1);
-  const m = box(parent, std(0xffffff, 0.45, 0.35), w, 0.05, d / Math.cos(tilt), cx, cy, cz, { rx: tilt, shadow: true });
-  m.material.map = t; return m;
+// ---------- your iron rod (free_iron_rod.glb): every post and beam ----------
+const ROD_FILE = 'free_iron_rod.glb';
+let rodPromise = null;
+function getRod() {
+  if (!rodPromise) rodPromise = gltfLoader.loadAsync(PROPS_DIR + ROD_FILE).then(g => {
+    const root = g.scene; root.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(root), c = b.getCenter(new THREE.Vector3());
+    root.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
+    root.position.sub(c);                                  // rod centred on its own middle, long way along x
+    const tpl = new THREE.Group(); tpl.add(root);
+    return { tpl, size: b.getSize(new THREE.Vector3()) };
+  });
+  return rodPromise;
+}
+// one rod, centred at x, y, z. dir 'y' = standing post, 'x' / 'z' = beam. len and thick in metres.
+function addRod(parent, dir, len, x, y, z, thick = 0.1) {
+  return getRod().then(({ tpl, size }) => {
+    const inner = tpl.clone(true);
+    inner.scale.set(len / size.x, thick / size.y, thick / size.z);
+    const g = new THREE.Group(); g.add(inner);
+    if (dir === 'y') g.rotation.z = Math.PI / 2; else if (dir === 'z') g.rotation.y = Math.PI / 2;
+    g.position.set(x, y, z); parent.add(g); return g;
+  }).catch(e => { console.warn('high school exterior: could not load ' + ROD_FILE, e); return null; });
+}
+const roofY = (cy, cz, tilt, z) => cy - (z - cz) * Math.tan(tilt);     // height of a roof (high at the back, low at the front) at depth z
+
+// ---------- your zinc roof (zinc_roof.glb): real corrugated sheets laid side by side ----------
+const ROOF_FILE = 'zinc_roof.glb';
+let sheetPromise = null;
+function loadSheets() {
+  if (!sheetPromise) sheetPromise = gltfLoader.loadAsync(PROPS_DIR + ROOF_FILE).then(g => {
+    g.scene.updateMatrixWorld(true);
+    const out = {};
+    g.scene.traverse(o => {
+      if (!o.isMesh) return;
+      const geo = o.geometry.clone(); geo.applyMatrix4(o.matrixWorld); geo.computeBoundingBox();
+      const bb = geo.boundingBox, c = bb.getCenter(new THREE.Vector3());
+      geo.translate(-c.x, -c.y, -c.z);                    // sheet centred, width along x, length along z
+      const mat = Array.isArray(o.material) ? o.material[0] : o.material;
+      mat.side = THREE.DoubleSide;
+      if ('metalness' in mat && mat.metalness > 0.6 && !mat.metalnessMap) mat.metalness = 0.4;
+      out[/rust/i.test(mat.name || o.name) ? 'rust' : 'plain'] = { geo, mat, w: bb.max.x - bb.min.x, l: bb.max.z - bb.min.z };
+    });
+    return out;
+  });
+  return sheetPromise;
+}
+// jobs: [cx, cy, cz, width, depth, tilt]. The roof is high at the back (-z) and low at the front (+z).
+function buildRoofs(parent, jobs) {
+  loadSheets().then(sh => {
+    const kinds = ['plain', 'rust'].filter(k => sh[k]);
+    if (!kinds.length) return;
+    const lists = { plain: [], rust: [] }, o = new THREE.Object3D();
+    jobs.forEach(([cx, cy, cz, w, d, tilt]) => {
+      const n = Math.max(1, Math.round(w / 0.82)), pitch = w / n, len = d / Math.cos(tilt) + 0.3;
+      for (let i = 0; i < n; i++) {
+        let k = (i * 7 + Math.round(cx * 3)) % 6 === 4 ? 'rust' : 'plain';     // a rusty sheet here and there
+        if (!sh[k]) k = kinds[0];
+        o.position.set(cx - w / 2 + pitch * (i + 0.5), cy, cz); o.rotation.set(tilt, 0, 0);
+        o.scale.set((pitch + 0.06) / sh[k].w, 1, len / sh[k].l);              // 6 cm overlap between sheets
+        o.updateMatrix(); lists[k].push(o.matrix.clone());
+      }
+    });
+    kinds.forEach(k => {
+      if (!lists[k].length) return;
+      const im = new THREE.InstancedMesh(sh[k].geo, sh[k].mat, lists[k].length);
+      lists[k].forEach((m, i) => im.setMatrixAt(i, m));
+      im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false; parent.add(im);
+    });
+  }).catch(e => console.warn('high school exterior: could not load ' + ROOF_FILE, e));
 }
 
 // ---------- the build ----------
@@ -190,6 +260,8 @@ function zincRoof(parent, cx, cy, cz, w, d, tilt = 0.1) {
 export function buildHighSchoolExterior() {
   const group = new THREE.Group();
   const updates = [];
+  const roofs = [];                                        // every roof is collected here and built from zinc_roof.glb at the end
+  const zincRoof = (cx, cy, cz, w, d, tilt) => roofs.push([cx, cy, cz, w, d, tilt]);
 
   // ----- paved forecourt along the front of the school, and the path to the road -----
   const paving = (w, d) => {
@@ -256,38 +328,45 @@ export function buildHighSchoolExterior() {
   });
   BUSHES.forEach(b => put(group, 'bush_flowers', loadProp('bush_flowers', { rotY: rand() * 6 }).then(noShadow), b.x, 0, b.z));
 
-  // ----- "Veronica" hand-wash bucket on a stand, by the steps -----
-  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => box(group, M.steel, 0.04, 0.85, 0.04, BUCKET.x + sx * 0.17, 0.425, BUCKET.z + sz * 0.17));
-  box(group, M.steel, 0.42, 0.04, 0.42, BUCKET.x, 0.87, BUCKET.z);
-  cyl(group, M.white, 0.19, 0.34, BUCKET.x, 1.06, BUCKET.z);
-  cyl(group, M.blue, 0.2, 0.04, BUCKET.x, 1.25, BUCKET.z);
-  cyl(group, M.blue, 0.025, 0.1, BUCKET.x, 0.98, BUCKET.z + 0.22, { rx: Math.PI / 2 });
-
-  // ----- borehole: pump house + water tank on a steel tower -----
-  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => box(group, M.steel, 0.12, 4.3, 0.12, TOWER.x + sx * 0.85, 2.15, TOWER.z + sz * 0.85, { shadow: true }));
-  [1.4, 2.8].forEach(y => [[0, -0.85], [0, 0.85]].forEach(([, z]) => box(group, M.steel, 1.7, 0.06, 0.06, TOWER.x, y, TOWER.z + z)));
-  box(group, M.steel, 2.2, 0.1, 2.2, TOWER.x, 4.35, TOWER.z, { shadow: true });
-  [[-0.14, 0], [0.14, 0]].forEach(([dx]) => box(group, M.steel, 0.04, 4.3, 0.04, TOWER.x + dx, 2.15, TOWER.z + 1.05));        // ladder rails
-  for (let y = 0.4; y < 4.3; y += 0.35) box(group, M.steel, 0.28, 0.03, 0.03, TOWER.x, y, TOWER.z + 1.05);                       // ladder rungs
-  put(group, 'plastic_tank', loadProp('plastic_tank', { scale: 1.5 }).then(noShadow), TOWER.x, 4.4, TOWER.z,
-    () => { const g = new THREE.Group(); cyl(g, M.dark, 0.8, 1.7, 0, 0.85, 0); return g; });
+  // ----- borehole: pump house + water tank standing on the stand from your water_tank.glb -----
+  (async () => {
+    const tank = noShadow(await loadProp('plastic_tank', { scale: 1.5 }).catch(e => { console.warn('high school exterior: tank not loaded', e); return null; }) || new THREE.Group());
+    let top = 0;
+    try {
+      const ts = new THREE.Box3().setFromObject(tank).getSize(new THREE.Vector3());
+      const stand = await loadAny(STAND_FILE, { maxXZ: Math.max(ts.x, ts.z, 1.2) * 1.12 });      // stand a little wider than the tank
+      top = new THREE.Box3().setFromObject(stand).max.y;
+      stand.position.set(TOWER.x, 0, TOWER.z); group.add(stand);
+    } catch (e) { console.warn('high school exterior: could not load ' + STAND_FILE, e); }
+    tank.position.set(TOWER.x, top - 0.02, TOWER.z); group.add(tank);
+  })();
   box(group, M.plaster, 2.0, 1.9, 1.8, PUMP.x, 0.95, PUMP.z, { shadow: true });
   box(group, M.blue, 0.8, 1.6, 0.06, PUMP.x, 0.8, PUMP.z + 0.92);
-  zincRoof(group, PUMP.x, 2.0, PUMP.z, 2.3, 2.1, 0.12);
+  zincRoof(PUMP.x, 2.06, PUMP.z, 2.3, 2.1, 0.12);
   cyl(group, M.steel, 0.05, 1.2, PUMP.x + 1.25, 0.6, PUMP.z + 0.4);                                                               // pipe from the pump house
 
   // ----- generator under a small roof -----
   box(group, M.concrete, 2.6, 0.08, 1.8, GEN.x, 0.04, GEN.z);
-  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => box(group, M.steel, 0.08, 1.9, 0.08, GEN.x + sx * 1.2, 0.95, GEN.z + sz * 0.8));
-  zincRoof(group, GEN.x, 1.95, GEN.z, 2.8, 2.0, 0.08);
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
+    const h = roofY(1.95, GEN.z, 0.08, GEN.z + sz * 0.8) - 0.05;
+    addRod(group, 'y', h, GEN.x + sx * 1.2, h / 2, GEN.z + sz * 0.8, 0.09);
+  });
+  [-0.8, 0.8].forEach(dz => addRod(group, 'x', 2.5, GEN.x, roofY(1.95, GEN.z, 0.08, GEN.z + dz) - 0.09, GEN.z + dz, 0.07));   // beams under the roof
+  zincRoof(GEN.x, 1.95, GEN.z, 2.8, 2.0, 0.08);
   put(group, 'generator', loadAny('generator.glb', { maxXZ: 1.1 }), GEN.x, 0.08, GEN.z,
     () => { const g = new THREE.Group(); box(g, std(0xc2452d, 0.6), 1.0, 0.7, 0.6, 0, 0.35, 0); return g; });
 
   // ----- tuck shop: zinc-roof shed, kiosk, benches, signboard -----
   box(group, M.concrete, SHED.w, 0.06, SHED.d, SHED.x, 0.03, SHED.z);
-  [[-1, -1, 3.1], [1, -1, 3.1], [-1, 1, 2.7], [1, 1, 2.7]].forEach(([sx, sz, h]) =>
-    box(group, M.wood, 0.14, h, 0.14, SHED.x + sx * (SHED.w / 2 - 0.15), h / 2, SHED.z + sz * (SHED.d / 2 - 0.15), { shadow: true }));
-  zincRoof(group, SHED.x, 2.9, SHED.z, SHED.w + 0.5, SHED.d + 0.3, 0.1);
+  [-1, 0, 1].forEach(sx => [-1, 1].forEach(sz => {
+    const z = SHED.z + sz * (SHED.d / 2 - 0.15), h = roofY(2.9, SHED.z, 0.1, z) - 0.05;
+    addRod(group, 'y', h, SHED.x + sx * (SHED.w / 2 - 0.15), h / 2, z, 0.12);
+  }));
+  [-1, 1].forEach(sz => {                                  // beams along the front and back, under the roof
+    const z = SHED.z + sz * (SHED.d / 2 - 0.15);
+    addRod(group, 'x', SHED.w, SHED.x, roofY(2.9, SHED.z, 0.1, z) - 0.1, z, 0.09);
+  });
+  zincRoof(SHED.x, 2.9, SHED.z, SHED.w + 0.5, SHED.d + 0.3, 0.1);
   const tuckTex = canvasTex(512, 128, (g, w, h) => {
     g.fillStyle = '#0a7d3e'; g.fillRect(0, 0, w, h); g.strokeStyle = '#ffffff'; g.lineWidth = 5; g.strokeRect(5, 5, w - 10, h - 10);
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffffff'; g.font = 'bold 54px Arial, sans-serif'; g.fillText('TUCK SHOP', w / 2, 46);
@@ -342,9 +421,6 @@ export function buildHighSchoolExterior() {
     }
   })();
 
-  // ----- keke parked at the front (your Indian tuk-tuk model stands in until you get a Nigerian keke, see the props list) -----
-  put(group, 'keke', loadAny(KEKE_FILE, { maxXZ: 2.7, rotY: KEKE.rotY }), KEKE.x, 0, KEKE.z);
-
   // ----- road: zebra crossing, speed bumps, SCHOOL signs, lamps, pole (the main road is at z 14.0 .. 17.5 here) -----
   const zebraMat = polyOff(new THREE.MeshStandardMaterial({ color: 0xf2f0ea, roughness: 0.9 }), -8);
   for (let i = -4; i <= 4; i++) {
@@ -355,22 +431,27 @@ export function buildHighSchoolExterior() {
     box(group, polyOff(std(0xf2c200, 0.8), -4), 0.55, 0.07, 3.4, x, 0.02, 15.75);
     box(group, polyOff(std(0x1d1d1d, 0.8), -6), 0.12, 0.075, 3.4, x, 0.02, 15.75);
   });
-  const zoneTex = canvasTex(256, 256, (g, w, h) => {
+  const zoneTex = canvasTex(256, 320, (g, w, h) => {
     g.fillStyle = '#f2c200'; g.fillRect(0, 0, w, h); g.strokeStyle = '#111'; g.lineWidth = 12; g.strokeRect(10, 10, w - 20, h - 20);
-    g.fillStyle = '#111'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 62px Arial, sans-serif'; g.fillText('SCHOOL', w / 2, h * 0.38);
-    g.font = 'bold 40px Arial, sans-serif'; g.fillText('SLOW', w / 2, h * 0.68);
+    g.fillStyle = '#111'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = 'bold 60px Arial, sans-serif'; g.fillText('SCHOOL', w / 2, h * 0.24);
+    g.font = 'bold 60px Arial, sans-serif'; g.fillText('ZONE', w / 2, h * 0.46);
+    g.fillRect(34, h * 0.58, w - 68, 8);
+    g.fillStyle = '#b3121a'; g.font = 'bold 72px Arial, sans-serif'; g.fillText('SLOW', w / 2, h * 0.76);
   });
-  ZONE_SIGNS.forEach(s => {
-    cyl(group, M.steel, 0.04, 2.6, s.x, 1.3, s.z);
+  ZONE_SIGNS.forEach(s => {                                  // flat, upright plate on a post, facing the road (+z)
+    addRod(group, 'y', 2.8, s.x, 1.4, s.z, 0.07);
     const d = new THREE.Mesh(BOX, [M.steel, M.steel, M.steel, M.steel, new THREE.MeshStandardMaterial({ map: zoneTex, roughness: 0.6 }), M.steel]);
-    d.scale.set(0.75, 0.75, 0.03); d.position.set(s.x, 2.45, s.z + 0.05); d.rotation.z = Math.PI / 4; group.add(d);
+    d.scale.set(0.8, 1.0, 0.03); d.position.set(s.x, 2.2, s.z + 0.06); group.add(d);
   });
-  LAMPS.forEach(l => put(group, 'street_lamp', loadAny('street_lamp.glb', { height: 6.5 }), l.x, 0, l.z));
-  put(group, 'electric_pole', loadAny('electric_pole.glb', { height: 9 }), POLE.x, 0, POLE.z);
+  // foot: true = the BASE of the pole stands on the pavement spot; armToward = the lamp arm reaches over the road; alongX = pole cross-arms run along the road
+  LAMPS.forEach(l => put(group, 'street_lamp', loadAny('street_lamp.glb', { height: 6.5, foot: true, armToward: true }), l.x, 0, l.z));
+  put(group, 'electric_pole', loadAny('electric_pole.glb', { height: 9, foot: true, alongX: true }), POLE.x, 0, POLE.z);
 
   // ----- new props you add later (see the props list file) -----
   NEW_PROPS.filter(p => p.have).forEach(p =>
     put(group, p.file, loadAny(p.file, { height: p.height, maxXZ: p.maxXZ, rotY: p.rotY || 0, rotX: p.rotX || 0 }), p.x, 0, p.z));
 
+  buildRoofs(group, roofs);
   return { group, update: () => updates.forEach(f => f()) };
 }
