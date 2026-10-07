@@ -104,6 +104,9 @@ const VISITOR_Z = -6.9;
 // The staff chairs are on the west side of each counter, also facing east.
 const RECEPTION = [{ x: -6.5, z: 0.4 }, { x: -6.5, z: 3.2 }];
 const REC_W = 2.6;                                              // counter width (the model is 2.5 : 1.3 deep)
+// Ivory (the NPC who issues NIN cards) stands behind the second counter (the one nearer the front door), where its staff chair
+// would be, facing east toward the waiting area. nin.js and server.js (IVORY_PX) use this spot, so keep them in step if you move it.
+export const IVORY_SPOT = { x: RECEPTION[1].x - 1.2, z: RECEPTION[1].z, rotY: Math.PI / 2 };
 // Waiting area: two columns of 3-seat benches in the east half of the hall, facing WEST toward the reception counters.
 const WAIT_COLS_X = [3.0, 4.8];
 const WAIT_BENCH_Z = [0.6, 2.8, 5.0];                           // centres of the three benches in each column
@@ -164,6 +167,8 @@ export const IMMIGRATION_BOXES = [
     w.alongX ? [a - 0.1, b + 0.1, w.fixed - 0.15, w.fixed + 0.15] : [w.fixed - 0.15, w.fixed + 0.15, a - 0.1, b + 0.1])),
   // reception counters
   ...RECEPTION.map(r => [r.x - 0.7, r.x + 0.7, r.z - REC_W / 2, r.z + REC_W / 2]),
+  // Ivory's spot (nobody walks through her)
+  [IVORY_SPOT.x - 0.4, IVORY_SPOT.x + 0.4, IVORY_SPOT.z - 0.4, IVORY_SPOT.z + 0.4],
   // waiting chairs
   ...WAIT_COLS_X.map(x => [x - 0.35, x + 0.35, WAIT_BENCH_Z[0] - BENCH_W / 2, WAIT_BENCH_Z[WAIT_BENCH_Z.length - 1] + BENCH_W / 2]),
   // toilets, basins, bookshelves, copier, plants
@@ -339,7 +344,7 @@ export function buildImmigrationOffice() {
   // ----- reception hall -----
   RECEPTION.forEach(r => {
     mine(group, 'reception_desk.glb', { axis: 'x', size: REC_W, rotY: Math.PI / 2 }, r.x, 0, r.z);   // front faces east (+x)
-    lib(group, 'office_chair', r.x - 1.5, 0, r.z, Math.PI / 2);                                       // staff chair, west of the counter, faces east
+    if (r.z !== IVORY_SPOT.z) lib(group, 'office_chair', r.x - 1.5, 0, r.z, Math.PI / 2);             // staff chair, west of the counter, faces east (Ivory stands at hers)
   });
   WAIT_COLS_X.forEach(x => WAIT_BENCH_Z.forEach(z => lib(group, 'bench_3seat', x, 0, z, -Math.PI / 2)));   // benches face west
   lib(group, 'filing_cabinet', -11.9, 0, -4.05);

@@ -9,6 +9,7 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { buildRefugeeCamp, CAMP_BOXES } from './refugee_camp.js';
 import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.js';
+import { initNin, IVORY_FILE } from './nin.js';
 import { loadProp } from './props_library.js';
 
 // >>> Your three values (same as before). <<<
@@ -270,6 +271,7 @@ const MIXAMO_CHARACTERS = {
   female_sammie: 'characters/free/female_sammie_for_mixamo.fbx',
 };
 Object.assign(CHARACTER_FILES, MIXAMO_CHARACTERS);
+if (!CHARACTER_FILES.female_ivory) CHARACTER_FILES.female_ivory = IVORY_FILE;   // Ivory, the NPC at the Immigration Office (nin.js)
 
 // One animation set per gender (Mixamo: "FBX Binary", In Place, 30 fps). Every Mixamo character shares the same skeleton,
 // so these files work for all characters of that gender.
@@ -629,6 +631,9 @@ class World {
     this.initMinimap();
     this.bindInput();
     this.applyGate();
+    try {                                // the NIN card quest: Ivory, the form, the wait, the card (nin.js)
+      this.nin = initNin({ world: this, building: BUILDINGS.find(b => b.key === 'immigration'), makeAvatar, animateAvatar });
+    } catch (e) { console.error('NIN quest could not start:', e); this.nin = null; }
     this.connect();
     this.renderer.setAnimationLoop(() => this.frame());
   }
@@ -1048,10 +1053,13 @@ class World {
       }
       data.players.forEach(p => { if (p.id !== this.myId) this.addOther(p); });
       this.applyGate();
+      if (this.nin) { this.nin.setDev(this.devTools); this.nin.setState(data.nin); }
       this.updateStatus();
     });
 
-    this.socket.on('progress', d => { this.progress = d.progress; this.applyGate(); });
+    this.socket.on('progress', d => { this.progress = d.progress; this.applyGate(); if (this.nin) this.nin.refreshQuest(); });
+    this.socket.on('nin', s => { if (this.nin) this.nin.setState(s); });
+    this.socket.on('nin_error', msg => { if (this.nin) this.nin.error(msg); else this.say3d(msg); });
     this.socket.on('correct', d => { this.player.position.set(d.x / PX_PER_M, 0, d.y / PX_PER_M); });
     this.socket.on('joined', p => { this.addOther(p); this.updateStatus(); });
     this.socket.on('character', d => {
@@ -1207,6 +1215,9 @@ class World {
       }
       if (inside) b.room.setCamera(this.camera.position.x - b.x, this.camera.position.z - b.z);
     });
+
+    // Ivory, "Talk to Ivory", the countdown and the quest text (after the interior check above, which sets b.inside)
+    if (this.nin) { try { this.nin.update(dt); } catch (e) { console.error('NIN quest stopped:', e); this.nin = null; } }
 
     // keep the sun's shadow box around the player
     this.sun.target.position.set(p.x, 0, p.z);
