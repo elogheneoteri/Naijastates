@@ -29,7 +29,7 @@
   left: calc(var(--s) * 18px + env(safe-area-inset-left, 0px)); top: calc(var(--s) * 18px + env(safe-area-inset-top, 0px));
   transform: scale(var(--s)); transform-origin: 0 0; }
 #mini .m-ring { position: absolute; inset: 0; border-radius: 50%; padding: 2.5px;
-  background: linear-gradient(150deg, #f3d489, #a77d2c 60%, #e3b756);
+  background: linear-gradient(150deg, #eef2f6, #8a95a1 55%, #d5dbe2);
   box-shadow: 0 0 0 1px rgba(0,0,0,.55), 0 8px 22px rgba(0,0,0,.45); }
 #mini .m-in { position: relative; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: #0c1626; }
 #hudMap { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -55,43 +55,56 @@
   background: var(--glass); border: 1px solid var(--edge); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 #info .chip:empty { display: none; }
 #statusText::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: #3ddc97; vertical-align: 1px; }
+#quest { width: 176px; padding: 8px 12px 9px; border-radius: 12px; pointer-events: auto; }
+#quest button { pointer-events: auto; cursor: pointer; width: 100%; display: flex; justify-content: space-between; align-items: center;
+  font: inherit; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; color: var(--txt); background: none; border: 0; padding: 0; }
+#quest button .ic { width: 15px; height: 15px; transition: transform .2s; }
+#quest.off button .ic { transform: rotate(-90deg); }
+#questTask { margin-top: 6px; font-size: 11.5px; font-weight: 500; color: rgba(226,234,244,.9); line-height: 1.3; }
+#quest.off #questTask { display: none; }
 #info .ibtn { pointer-events: auto; cursor: pointer; font: inherit; font-size: 11px; font-weight: 600; line-height: 1; letter-spacing: .01em;
   padding: 8px 12px; border-radius: 9px; color: var(--txt); text-align: left;
   background: var(--glass); border: 1px solid var(--edge); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 #info .ibtn.out { color: #ff9aa5; }
 #info .ibtn:active { background: rgba(255,255,255,.14); }
 
-/* ================= 2. MONEY + VITALS (top-right) ================= */
-#tr { position: absolute; width: 196px; padding: 11px 14px 12px; display: grid; gap: 9px;
+/* ================= 2. CASH (top-right) ================= */
+#tr { position: absolute; display: flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px;
   right: calc(var(--s) * 18px + env(safe-area-inset-right, 0px)); top: calc(var(--s) * 18px + env(safe-area-inset-top, 0px));
-  transform: scale(var(--s)); transform-origin: 100% 0; }
-#tr .row { display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 600; }
-#tr .row .ic { width: 16px; height: 16px; }
-#tr .cash { font-size: 20px; font-weight: 700; letter-spacing: -.01em; line-height: 1; }
-#tr .cash .ic { width: 20px; height: 20px; color: #3ddc97; }
-#tr .row span.pct { width: 36px; text-align: right; color: var(--mut); font-size: 11.5px; }
+  transform: scale(var(--s)); transform-origin: 100% 0; font-size: 16px; font-weight: 700; letter-spacing: -.01em; line-height: 1; }
+#tr .ic { width: 18px; height: 18px; color: #3ddc97; }
 
-/* ================= 3. PLAYER STATS (bottom-left) ================= */
-#stats { position: absolute; width: 360px; padding: 12px 14px 13px;
+/* ================= 3. PLAYER CARD (bottom-left, collapsible) ================= */
+#stats { position: absolute; width: 420px;
   left: calc(var(--s) * 18px + env(safe-area-inset-left, 0px)); bottom: calc(var(--s) * 36px + env(safe-area-inset-bottom, 0px));
-  transform: scale(var(--s)); transform-origin: 0 100%;
-  display: grid; grid-template-columns: 1fr 1px 1fr; gap: 0 14px; }
+  transform: scale(var(--s)); transform-origin: 0 100%; }
+#stats .s-tabs { display: flex; align-items: flex-end; gap: 8px; margin-bottom: -1px; }
+#stats .s-tab { font-size: 11.5px; font-weight: 700; letter-spacing: .08em; line-height: 1; padding: 9px 16px; border-radius: 12px 12px 0 0;
+  background: var(--glass); border: 1px solid var(--edge); border-bottom: 0; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+#stats .s-btn { pointer-events: auto; cursor: pointer; font: inherit; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; line-height: 1;
+  color: var(--txt); padding: 7px 11px; margin-bottom: 4px; border-radius: 999px; display: flex; align-items: center; gap: 5px;
+  background: var(--glass); border: 1px solid var(--edge); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+#stats .s-btn .ic { width: 12px; height: 12px; transition: transform .2s; }
+#stats.off .s-btn .ic { transform: rotate(180deg); }
+#stats .s-body { display: grid; grid-template-columns: 92px 1px 1fr; gap: 0 14px; padding: 13px 14px; border-radius: 0 14px 14px 14px; }
+#stats.off .s-body { display: none; }
 #stats .vdiv { background: linear-gradient(180deg, transparent, rgba(255,255,255,.14), transparent); }
+#stats .who { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; }
+#stats .s-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; min-width: 0; }
 #stats .col { display: flex; flex-direction: column; justify-content: space-between; gap: 9px; min-width: 0; }
-#stats .head { display: flex; align-items: center; gap: 10px; margin-bottom: 1px; }
-#av { position: relative; width: 44px; height: 44px; flex: none; border-radius: 50%;
-  background: linear-gradient(160deg, #1d2c47, #0e1626); border: 1.5px solid rgba(227,183,86,.85); box-shadow: 0 2px 8px rgba(0,0,0,.5); }
+#av { position: relative; width: 58px; height: 58px; flex: none; border-radius: 50%;
+  background: linear-gradient(160deg, #1d2c47, #0e1626); border: 1.5px solid rgba(190,205,220,.8); box-shadow: 0 2px 8px rgba(0,0,0,.5); }
 #hudFace { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center; color: rgba(255,255,255,.7);
   background: center / cover no-repeat; }
-#hudFace .ic { width: 22px; height: 22px; stroke-width: 1.6; }
-#hudFrame { display: none; }              /* ornate avatar.png ring: set display:block + #av{border:0} to bring it back */
+#hudFace .ic { width: 28px; height: 28px; stroke-width: 1.6; }
+#hudFrame { display: none; }
 #hudLevel { display: block; font-size: 14px; font-weight: 700; color: #fff; line-height: 1.15; }
-#hudRole  { display: block; font-size: 11.5px; font-weight: 600; color: var(--gold); line-height: 1.2; letter-spacing: .02em; }
+#hudRole  { display: block; font-size: 12px; font-weight: 600; color: var(--gold); line-height: 1.2; letter-spacing: .02em; }
 .st { display: grid; grid-template-columns: 18px 1fr; gap: 0 9px; align-items: center; }
 .st > .ic { color: var(--c); }
 .st .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: 10px; font-weight: 600; letter-spacing: .07em;
-  text-transform: uppercase; color: var(--mut); line-height: 1; }
-.st .lab b { color: #fff; font-weight: 700; font-size: 11px; letter-spacing: 0; }
+  text-transform: uppercase; color: var(--mut); line-height: 1; white-space: nowrap; }
+.st .lab b { color: #fff; font-weight: 700; font-size: 11px; letter-spacing: 0; margin-left: 6px; }
 .st .hbar { margin-top: 5px; }
 
 /* ================= 4. PHONE DOCK (bottom-center, flush) ================= */
@@ -101,8 +114,16 @@
 #dock button { position: absolute; transform: translate(-50%, -50%); border: 0; padding: 0; background: transparent;
   border-radius: 50%; cursor: pointer; pointer-events: auto; -webkit-tap-highlight-color: transparent; }
 #dock button:active { background: rgba(255,255,255,.14); }
-#btnBag      { left: 20.67%; top: 70%; width: 14.7%; aspect-ratio: 1; }
+#btnBag      { left: 20.67%; top: 65%; width: 14.7%; aspect-ratio: 1; }
 #btnPhone    { left: 50%;    top: 40%; width: 29.3%; aspect-ratio: 1; }
-#btnSettings { left: 79.33%; top: 70%; width: 14.7%; aspect-ratio: 1; }
+#btnSettings { left: 79.33%; top: 65%; width: 14.7%; aspect-ratio: 1; }
 
 #hud.stacked #stats { bottom: calc(var(--s) * 130px + env(safe-area-inset-bottom, 0px)); }
+
+/* ================= 5. CHAT (bottom-right) ================= */
+#btnChat { position: absolute; width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; padding: 0; cursor: pointer;
+  pointer-events: auto; color: var(--txt); -webkit-tap-highlight-color: transparent;
+  right: calc(var(--s) * 18px + env(safe-area-inset-right, 0px)); bottom: calc(var(--s) * 36px + env(safe-area-inset-bottom, 0px));
+  transform: scale(var(--s)); transform-origin: 100% 100%; }
+#btnChat .ic { width: 38px; height: 38px; stroke-width: 1.6; }
+#btnChat:active { background: rgba(255,255,255,.18); }

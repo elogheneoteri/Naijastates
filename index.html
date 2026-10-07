@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap">
-<link rel="stylesheet" href="hud.css?v=2">
+<link rel="stylesheet" href="hud.css?v=3">
 <style>
 :root { --navy:#0b1a33; --navy2:#10264a; --line:#1f4a8a; --gold:#ffc61a; --txt:#f3f6ff; --mut:#9fb3d1; }
 * { box-sizing:border-box; }
@@ -106,14 +106,16 @@ button.soc { font:inherit; font-size:15px; padding:12px; border-radius:999px; co
 <symbol id="i-phone" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M12 18h.01"/></symbol>
 <symbol id="i-bag" viewBox="0 0 24 24"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5M8 10h8"/></symbol>
 <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
 </defs></svg>
 <div id="hud">
 
-  <!-- 1. minimap : top-left -->
+  <!-- 1. minimap : top-left (silver ring, N at the top, white arrow, three place markers) -->
   <div id="mini">
     <div class="m-ring"><div class="m-in">
       <canvas id="hudMap" width="256" height="256"></canvas>
-      <svg id="hudArrow" viewBox="0 0 30 30" aria-hidden="true"><polygon points="15,2 26,27 15,21 4,27" fill="#fff" stroke="#2c8cff" stroke-width="2.2" stroke-linejoin="round"/></svg>
+      <svg id="hudArrow" viewBox="0 0 30 30" aria-hidden="true"><polygon points="15,2 26,27 15,21 4,27" fill="#fff" stroke="#1b2a3c" stroke-width="2.2" stroke-linejoin="round"/></svg>
     </div></div>
     <span class="m-n">N</span>
     <div class="m-b b-home"><svg class="ic"><use href="#i-home"/></svg></div>
@@ -121,50 +123,60 @@ button.soc { font:inherit; font-size:15px; padding:12px; border-radius:999px; co
     <div class="m-b b-shirt"><svg class="ic"><use href="#i-shirt"/></svg></div>
   </div>
 
-  <!-- zone / online / test / logout : under the minimap -->
+  <!-- under the minimap: Walking + Online pills, collapsible Quest card, small test / log out buttons -->
   <div id="info">
     <div class="i-row"><div id="zoneText" class="chip">Walking</div><div id="statusText" class="chip"></div></div>
+    <div id="quest" class="glass">
+      <button id="questHead" type="button"><span>QUEST</span><svg class="ic"><use href="#i-chev"/></svg></button>
+      <div id="questTask">TASK: Become Indigene</div>
+    </div>
     <button id="testButton" class="ibtn" style="display:none"></button>
     <button id="logoutButton" class="ibtn out">Log out</button>
   </div>
 
-  <!-- 2. money + vitals : top-right -->
-  <div id="tr" class="glass">
-    <div class="row cash"><svg class="ic"><use href="#i-cash"/></svg><span id="hudCash">₦0</span></div>
-    <div class="row" style="color:#ff5c6c"><svg class="ic"><use href="#i-heart"/></svg><div class="hbar"><i id="hudHealth" style="--c:#ff5c6c;width:100%"></i></div><span class="pct" id="hudHealthTxt">100%</span></div>
-    <div class="row" style="color:#4da3ff"><svg class="ic"><use href="#i-shield"/></svg><div class="hbar"><i id="hudArmor" style="--c:#4da3ff;width:0"></i></div><span class="pct" id="hudArmorTxt">0%</span></div>
-  </div>
+  <!-- 2. cash only : top-right -->
+  <div id="tr" class="glass"><svg class="ic"><use href="#i-cash"/></svg><span id="hudCash">₦0</span></div>
 
-  <!-- 3. player stats : bottom-left -->
-  <div id="stats" class="glass">
-    <div class="col" id="colL">
-      <div class="head">
-        <div id="av"><div id="hudFace"><svg class="ic"><use href="#i-user"/></svg></div><img id="hudFrame" src="assets/icons/avatar.png" alt=""></div>
-        <div class="who"><span id="hudLevel">Lv. 1</span><span id="hudRole">Civilian</span></div>
-      </div>
+  <!-- 3. player card : bottom-left (collapsible; health lives in here now) -->
+  <div id="stats">
+    <div class="s-tabs">
+      <div class="s-tab">PLAYER CARD</div>
+      <button class="s-btn" id="statsToggle" type="button"><span>STATS</span><svg class="ic"><use href="#i-chev"/></svg></button>
     </div>
-    <div class="vdiv"></div>
-    <div class="col" id="colR"></div>
+    <div class="s-body glass">
+      <div class="who">
+        <span id="hudLevel">Lv. 1</span>
+        <div id="av"><div id="hudFace"><svg class="ic"><use href="#i-user"/></svg></div><img id="hudFrame" src="assets/icons/avatar.png" alt=""></div>
+        <span id="hudRole">Civilian</span>
+      </div>
+      <div class="vdiv"></div>
+      <div class="s-grid"><div class="col" id="colL"></div><div class="col" id="colR"></div></div>
+    </div>
   </div>
 
   <!-- 4. phone control : bottom-center, flush with the bottom edge -->
   <div id="dock">
     <svg class="dk" viewBox="0 0 300 120" aria-hidden="true" style="font-family:inherit">
-      <defs><linearGradient id="dkGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3d489"/><stop offset=".6" stop-color="#a77d2c"/><stop offset="1" stop-color="#e3b756"/></linearGradient></defs>
+      <defs><linearGradient id="dkRing" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#35e0ff"/><stop offset=".35" stop-color="#8b7bff"/><stop offset=".68" stop-color="#ff4fd8"/><stop offset="1" stop-color="#ffb347"/></linearGradient></defs>
       <path d="M1 120 C1 66 52 34 150 34 C248 34 299 66 299 120 Z" fill="rgba(10,15,26,.66)"/>
       <path d="M1 120 C1 66 52 34 150 34 C248 34 299 66 299 120" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="1.5"/>
-      <circle cx="62" cy="84" r="22" fill="rgba(16,24,40,.92)" stroke="rgba(255,255,255,.20)" stroke-width="1.2"/>
-      <circle cx="238" cy="84" r="22" fill="rgba(16,24,40,.92)" stroke="rgba(255,255,255,.20)" stroke-width="1.2"/>
-      <circle cx="150" cy="48" r="44" fill="rgba(14,22,38,.96)" stroke="url(#dkGold)" stroke-width="2"/>
+      <circle cx="62" cy="76" r="20" fill="rgba(16,24,40,.92)" stroke="rgba(255,255,255,.20)" stroke-width="1.2"/>
+      <circle cx="238" cy="76" r="20" fill="rgba(16,24,40,.92)" stroke="rgba(255,255,255,.20)" stroke-width="1.2"/>
+      <circle cx="150" cy="48" r="44" fill="rgba(14,22,38,.96)" stroke="url(#dkRing)" stroke-width="2.6" style="filter:drop-shadow(0 0 5px rgba(90,210,255,.75))"/>
       <g class="ic" style="color:#fff;stroke-width:1.7">
-        <use href="#i-phone" x="136" y="22" width="28" height="28"/>
-        <use href="#i-bag" x="50" y="72" width="24" height="24"/>
-        <use href="#i-gear" x="226" y="72" width="24" height="24"/>
+        <use href="#i-phone" x="136" y="20" width="28" height="28"/>
+        <use href="#i-bag" x="51" y="65" width="22" height="22"/>
+        <use href="#i-gear" x="227" y="65" width="22" height="22"/>
       </g>
-      <text x="150" y="70" text-anchor="middle" font-size="11" font-weight="600" fill="#fff" letter-spacing=".04em" style="font-family:inherit">Phone</text>
+      <text x="150" y="68" text-anchor="middle" font-size="10" font-weight="700" fill="#fff" letter-spacing=".08em" style="font-family:inherit">PHONE</text>
+      <text x="62" y="112" text-anchor="middle" font-size="8.5" font-weight="600" fill="rgba(235,242,250,.85)" letter-spacing=".06em" style="font-family:inherit">INVENTORY</text>
+      <text x="238" y="112" text-anchor="middle" font-size="8.5" font-weight="600" fill="rgba(235,242,250,.85)" letter-spacing=".06em" style="font-family:inherit">SETTINGS</text>
     </svg>
     <button id="btnBag" aria-label="Inventory"></button><button id="btnPhone" aria-label="Phone"></button><button id="btnSettings" aria-label="Settings"></button>
   </div>
+
+  <!-- 5. chat : bottom-right (the only button on this side) -->
+  <button id="btnChat" class="glass" type="button" aria-label="Chat"><svg class="ic"><use href="#i-chat"/></svg></button>
 </div>
 
 <!-- ============ LOGIN / SIGN UP / CHOOSE CHARACTER ============ -->
@@ -209,7 +221,7 @@ button.soc { font:inherit; font-size:15px; padding:12px; border-radius:999px; co
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<script src="hud.js?v=2"></script>
+<script src="hud.js?v=3"></script>
 <script type="module" src="game.js?v=1"></script>
 </body>
 </html>
