@@ -29,6 +29,8 @@
 // carpet_staff.jpg + carpet_office.jpg (the two carpets, cut out of your empty room models so the big room files are not loaded).
 // Props from your existing library: office_chair, personal_computer, standing_fan, water_dispenser, gta_marker_blue,
 // pbr_material_floor_tiles.glb (hall and toilet floor).
+// New files: toilet_stalls_4.glb (your stalls, cut to 4 and split at 1.1 m), office_door_a.glb + office_door_b.glb (your office_doors.glb
+// split in two), toilet__exit_door.glb.
 // New props from props_library.js: toilet, sink_wall, bench_3seat, bookshelf, bin_office, fire_extinguisher, plant_pot,
 // plant_monstera, printer_floor. (noticeboard and printer_desk stay in the library but are not placed in the office.)
 // NOT used: standing_air_conditioner.glb (about 1,000,000 triangles), mini_office_room_vr_scaled.glb (29 MB),
@@ -107,23 +109,21 @@ const WAIT_COLS_X = [3.0, 4.8];
 const WAIT_BENCH_Z = [0.6, 2.8, 5.0];                           // centres of the three benches in each column
 const BENCH_W = 2.1;                                            // bench length (matches props_library.js)
 // Toilets: two toilets against the south wall of each room (facing north), a wall basin on the wall next to the hall.
-const WC = [-11.4, -9.4, 9.4, 11.4].map(x => ({ x, z: S_IN - 0.33 }));
 const SINKS = [{ x: X_TM - T_IN / 2 - 0.27, z: 9.6, rot: -Math.PI / 2 }, { x: X_TF + T_IN / 2 + 0.27, z: 9.6, rot: Math.PI / 2 }];
 // Bookshelves on the west wall of each private office (the shelf front faces +x).
 const SHELVES = [X_STAFF_E + T_IN / 2 + 0.33, X_PO_SPLIT + T_IN / 2 + 0.33].map(x => ({ x, z: -5.95 }));
-// Toilet cubicles: a panel between the two toilets in each room and a front panel with an open doorway (no door model yet).
-const STALL_Z = 10.1, STALL_DOOR = 0.4;                          // front of the cubicles; half width of each doorway
-const STALL_ROOMS = [
-  { room: 'tm', edges: [W_IN, -10.4, X_TM - T_IN / 2], wc: [-11.4, -9.4] },
-  { room: 'tf', edges: [X_TF + T_IN / 2, 10.4, E_IN], wc: [9.4, 11.4] },
-];
-const STALL_PANELS = STALL_ROOMS.flatMap(r => [
-  { room: r.room, x0: r.edges[1] - 0.03, x1: r.edges[1] + 0.03, z0: STALL_Z, z1: S_IN },   // between the two toilets
-  ...[0, 1].flatMap(i => [
-    { room: r.room, x0: r.edges[i], x1: r.wc[i] - STALL_DOOR, z0: STALL_Z - 0.03, z1: STALL_Z + 0.03 },
-    { room: r.room, x0: r.wc[i] + STALL_DOOR, x1: r.edges[i + 1], z0: STALL_Z - 0.03, z1: STALL_Z + 0.03 },
-  ]),
-]);
+// Toilet cubicles: your toilet_stalls.glb cut down to 4 stalls (toilet_stalls_4.glb), one block in each toilet room, flush with
+// the outer wall and opening toward the door. Numbers below are measured from that file.
+const STALL_FILE = 'toilet_stalls_4.glb';
+const STALL_W = 3.151, STALL_D = 1.641;                          // size of the 4-stall block (metres)
+const STALL_WC = [-1.1625, -0.395, 0.3725, 1.1425];              // toilet positions across the block, from its centre
+const STALL_PLANES = [-1.5475, -0.7775, -0.0125, 0.7525, 1.5275]; // the five partition panels, from its centre
+const STALL_BLOCKS = [{ room: 'tm', cx: W_IN + STALL_W / 2 }, { room: 'tf', cx: E_IN - STALL_W / 2 }];
+const STALL_CZ = S_IN - STALL_D / 2;                             // the back of the block touches the south wall
+// The block is turned round (rotY = PI), so everything across it runs the opposite way: world x = cx - offset.
+const WC = STALL_BLOCKS.flatMap(b => STALL_WC.map(o => ({ x: b.cx - o, z: S_IN - 0.33 })));
+// Doors: all swung open 90 degrees against the doorway so nobody walks through a closed door.
+const DOOR_SIZE = DOOR_H - 0.1;
 const PRINTER = { x: -4.4, z: N_IN + 0.33 };                    // floor copier in the staff office, against the north wall
 const PLANTS = [{ x: -2.6, z: 11.2, p: 'plant_monstera' }, { x: 2.6, z: 11.2, p: 'plant_pot' }, { x: 11.6, z: 8.5, p: 'plant_pot' },
                 { x: X_PO_SPLIT - T_IN / 2 - 0.5, z: N_IN + 0.5, p: 'plant_pot' }, { x: E_IN - 0.5, z: N_IN + 0.5, p: 'plant_pot' }];
@@ -168,7 +168,7 @@ export const IMMIGRATION_BOXES = [
   ...WAIT_COLS_X.map(x => [x - 0.35, x + 0.35, WAIT_BENCH_Z[0] - BENCH_W / 2, WAIT_BENCH_Z[WAIT_BENCH_Z.length - 1] + BENCH_W / 2]),
   // toilets, basins, bookshelves, copier, plants
   ...WC.map(w => [w.x - 0.3, w.x + 0.3, S_IN - 0.7, S_IN]),
-  ...STALL_PANELS.map(q => [q.x0 - 0.05, q.x1 + 0.05, q.z0 - 0.05, q.z1 + 0.05]),
+  ...STALL_BLOCKS.flatMap(b => STALL_PLANES.map(o => [b.cx - o - 0.07, b.cx - o + 0.07, S_IN - STALL_D, S_IN])),
   [X_TM - T_IN / 2 - 0.5, X_TM - T_IN / 2, 9.3, 9.9], [X_TF + T_IN / 2, X_TF + T_IN / 2 + 0.5, 9.3, 9.9],
   ...SHELVES.map(b => [b.x - 0.33, b.x + 0.33, b.z - 1.35, b.z + 1.35]),
   [PRINTER.x - 0.55, PRINTER.x + 0.55, N_IN, N_IN + 0.66],
@@ -381,21 +381,38 @@ export function buildImmigrationOffice() {
   });
 
   // ----- toilets -----
-  // cubicle panels: the lower part (0.15 to 1.1 m) is always shown, the upper part (to 1.8 m) only when the camera is in that room
+  // stalls: the file holds a low part (to 1.1 m, always shown) and a high part (above 1.1 m, shown only when the camera is in that room)
   const stallUp = { tm: new THREE.Group(), tf: new THREE.Group() };
   Object.entries(stallUp).forEach(([room, g]) => { group.add(g); uppers.push({ up: g, rooms: [room] }); });
-  STALL_PANELS.forEach(q => {
-    const panel = (y0, y1, g) => {
-      const m = new THREE.Mesh(BOX, M.stall);
-      m.scale.set(q.x1 - q.x0, y1 - y0, q.z1 - q.z0); m.position.set((q.x0 + q.x1) / 2, (y0 + y1) / 2, (q.z0 + q.z1) / 2);
-      m.receiveShadow = true; g.add(m);
-    };
-    panel(0.15, 1.1, lowG); panel(1.1, 1.8, stallUp[q.room]);
+  STALL_BLOCKS.forEach(b => {
+    mine(group, STALL_FILE, { axis: 'x', size: STALL_W, rotY: Math.PI, hide: /StallHigh/ }, b.cx, 0, STALL_CZ);
+    mine(stallUp[b.room], STALL_FILE, { axis: 'x', size: STALL_W, rotY: Math.PI, hide: /StallLow/ }, b.cx, 0, STALL_CZ);
   });
   WC.forEach(w => lib(group, 'toilet', w.x, 0, w.z, Math.PI));            // bowl faces north, into the room
   SINKS.forEach(k => lib(group, 'sink_wall', k.x, 0.4, k.z, k.rot));      // basin hung at 0.4 m, on the wall next to the hall
   lib(group, 'bin_office', X_TM - T_IN / 2 - 0.3, 0, Z_TOILET + 0.4);
   lib(group, 'bin_office', X_TF + T_IN / 2 + 0.3, 0, Z_TOILET + 0.4);
+
+  // ----- doors (open, hung on one side of each doorway) -----
+  const doorUp = {};
+  ['staff', 'po1', 'po2', 'tm', 'tf'].forEach(r => { doorUp[r] = new THREE.Group(); group.add(doorUp[r]); uppers.push({ up: doorUp[r], rooms: [r] }); });
+  // hinge = which end of the model the hinge is on (+1 = right end, -1 = left end); rotY turns the leaf to point north or south
+  const hangDoor = async (parent, file, hinge, x, z, rotY) => {
+    try {
+      const leaf = await fit(file, { axis: 'y', size: DOOR_SIZE });
+      const w = new THREE.Box3().setFromObject(leaf).getSize(new THREE.Vector3()).x;
+      const pivot = new THREE.Group(); leaf.position.x = -hinge * w / 2; pivot.add(leaf);
+      pivot.position.set(x, 0, z); pivot.rotation.y = rotY; parent.add(pivot);
+    } catch (e) { warn(file)(e); }
+  };
+  const NORTH_OF_BACK = Z_BACK - T_IN / 2 - 0.02, SOUTH_OF_TOILET = Z_TOILET + T_IN / 2 + 0.02, JAMB = GAP / 2 - 0.04;
+  // back wall: the doors swing north into the offices (hinge on the east side of each doorway)
+  hangDoor(doorUp.staff, 'office_door_b.glb', 1, DOOR_STAFF + JAMB, NORTH_OF_BACK, -Math.PI / 2);
+  hangDoor(doorUp.po1,   'office_door_a.glb', 1, DOOR_PO1 + JAMB,   NORTH_OF_BACK, -Math.PI / 2);
+  hangDoor(doorUp.po2,   'office_door_a.glb', 1, DOOR_PO2 + JAMB,   NORTH_OF_BACK, -Math.PI / 2);
+  // toilets: the doors swing south into the rooms
+  hangDoor(doorUp.tm, 'toilet__exit_door.glb', -1, DOOR_TM + JAMB, SOUTH_OF_TOILET, -Math.PI / 2);
+  hangDoor(doorUp.tf, 'toilet__exit_door.glb', -1, DOOR_TF - JAMB, SOUTH_OF_TOILET, -Math.PI / 2);
 
   // ----- plants -----
   PLANTS.forEach(q => lib(group, q.p, q.x, 0, q.z));
