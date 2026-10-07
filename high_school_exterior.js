@@ -29,7 +29,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { loadProp, PROPS_DIR } from './props_library.js';
 
-const SCHOOL_NAME = 'NAIJASTATES HIGH SCHOOL';
+const SCHOOL_NAME = 'DELTA HIGH SCHOOL';
 const SCHOOL_MOTTO = 'Knowledge  \u00B7  Discipline  \u00B7  Integrity';
 
 // ---------- layout (local metres). Change a number here and the picture and the collision box move together ----------
@@ -49,10 +49,13 @@ const GEN = { x: -18.2, z: 3.0 };           // generator shed
 const SHED = { x: -31.0, z: 4.2, w: 7.2, d: 3.6 };   // tuck-shop shed
 const KIOSK = { x: -32.8, z: 2.9 };
 const BENCHES = [{ x: -30.6, z: 5.2 }, { x: -28.5, z: 5.2 }];
-const KEKE = { x: -25.0, z: 11.8, rotY: Math.PI / 2 };    // parked in front of the plot, between kerb and pavement
+const KEKE = { x: -25.0, z: 11.8, rotY: 0 };
+const KEKE_FILE = 'keke_optimised.glb';   // your autorickshaw model, shrunk from 33 MB / 956,000 triangles to 0.5 MB / 24,000
 
-const PITCH = { x: 28.5, z: 0, len: 24, wid: 18 };         // football pitch (east wing)
-const GOAL_X = [PITCH.x - PITCH.len / 2 + 0.1, PITCH.x + PITCH.len / 2 - 0.1];
+const PITCH = { x: 28.5, z: 0, len: 22, wid: 18 };         // football pitch (east wing)
+const GOAL_X = [PITCH.x - PITCH.len / 2, PITCH.x + PITCH.len / 2];      // the two goal lines
+const GOAL_FILE = '3d_model_of_soccer__football_goal_post.glb';
+const GOAL_HALF = 2.1;                                                  // half the width of the goal mouth
 
 const TREES = [
   { name: 'mango_tree', x: -36.5, z: -5.5, rotY: 0.6, r: 0.45 }, { name: 'mango_tree', x: -27.5, z: -8.0, rotY: 2.1, r: 0.45 },
@@ -74,14 +77,17 @@ const R = (x, z, hw, hd = hw) => [x - hw, x + hw, z - hd, z + hd];
 
 // New props you switch on below add their own box here.
 const NEW_PROPS = [
-  // have: false = the file is not in props/ yet, so nothing is loaded and nothing is blocked. Set have: true after you add it.
-  // maxXZ = longest side in metres, hw/hd = half width / half depth of the collision box. rotY turns it (radians).
-  { have: false, file: 'okada_motorcycle.glb',  maxXZ: 2.0,  x: -21.2, z: 11.8, rotY: 0.2,  hw: 1.0, hd: 0.4 },   // parked okada
-  { have: false, file: 'okada_motorcycle.glb',  maxXZ: 2.0,  x: -19.9, z: 11.9, rotY: -0.1, hw: 1.0, hd: 0.4 },   // a second one
-  { have: false, file: 'neem_tree.glb',         height: 8.0, x: -9.5,  z: -10.0, rotY: 0, hw: 0.4, hd: 0.4 },     // neem or almond tree behind the school
-  { have: false, file: 'hawker_table_basin.glb', maxXZ: 1.6, x: -26.0, z: 8.5,  rotY: 0, hw: 0.8, hd: 0.5 },     // hawker with "pure water" sachets
-  { have: false, file: 'hibiscus_hedge.glb',    maxXZ: 4.0,  x: 16.0,  z: 9.6,  rotY: 0, hw: 2.0, hd: 0.5 },     // flowering hedge on the east front corner
-  { have: false, file: 'school_bell_gong.glb',  height: 1.8, x: -15.5, z: 6.5,  rotY: 0, hw: 0.4, hd: 0.4 },     // hanging iron gong / rail bell
+  // have: true = the file is in props/ and is loaded. have: false = skipped (nothing loaded, nothing blocked).
+  // maxXZ / height = size in metres, hw/hd = half width / half depth of the collision box, rotY turns it round (radians),
+  // rotX stands up a model that was saved lying down.
+  { have: true,  file: 'red_motorcycle.glb', maxXZ: 2.0, rotX: -Math.PI / 2, x: -21.5, z: 11.8, rotY: Math.PI / 2 + 0.15, hw: 1.0, hd: 0.45 },   // okada 1
+  { have: true,  file: 'red_motorcycle.glb', maxXZ: 2.0, rotX: -Math.PI / 2, x: -18.9, z: 11.9, rotY: Math.PI / 2 - 0.1,  hw: 1.0, hd: 0.45 },   // okada 2
+  { have: true,  file: 'hedge.glb', height: 0.9, x: 18.0, z: 9.9, rotY: 0, hw: 1.2, hd: 0.75 },                                               // hedge, east front corner
+  { have: true,  file: 'hedge.glb', height: 0.9, x: 20.4, z: 9.9, rotY: 0, hw: 1.2, hd: 0.75 },
+  { have: true,  file: 'hedge.glb', height: 0.9, x: 22.8, z: 9.9, rotY: 0, hw: 1.2, hd: 0.75 },
+  { have: true,  file: 'bus_stop_shelter.glb', maxXZ: 3.0, x: 29.0, z: 13.0, rotY: 0, hw: 1.4, hd: 0.15 },                                      // bus stop on the pavement (turn with rotY if it faces the wrong way)
+  { have: true,  file: 'sour_orange_optimised.glb', height: 4.5, x: 33.5, z: 10.3, rotY: 0, hw: 0.35, hd: 0.35 },                          // your sour orange tree, shrunk from 26 MB / 340,000 triangles to 1.4 MB / 18,000
+  { have: false, file: 'school_bell_gong.glb', height: 1.8, x: -15.5, z: 6.5, rotY: 0, hw: 0.4, hd: 0.4 },                                       // optional, not got yet
 ];
 
 export const HS_EXTERIOR_BOXES = [
@@ -94,7 +100,7 @@ export const HS_EXTERIOR_BOXES = [
   ...BENCHES.map(b => R(b.x, b.z, 1.05, 0.4)),
   ...[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => R(SHED.x + sx * (SHED.w / 2 - 0.15), SHED.z + sz * (SHED.d / 2 - 0.15), 0.12)),   // shed posts
   R(KEKE.x, KEKE.z, 1.4, 0.7),
-  ...GOAL_X.flatMap(x => [R(x, PITCH.z - 2.0, 0.12), R(x, PITCH.z + 2.0, 0.12)]),
+  ...GOAL_X.flatMap(x => [R(x, PITCH.z - GOAL_HALF, 0.12), R(x, PITCH.z + GOAL_HALF, 0.12)]),
   ...LAMPS.map(l => R(l.x, l.z, 0.25)), R(POLE.x, POLE.z, 0.3),
   ...ZONE_SIGNS.map(s => R(s.x, s.z, 0.25)),
   ...NEW_PROPS.filter(p => p.have).map(p => R(p.x, p.z, p.hw, p.hd)),
@@ -135,7 +141,7 @@ const cyl = (parent, mat, r, h, x, y, z, o) => mesh(parent, CYL, mat, r, h, r, x
 // loads one of your own .glb files (not in props_library.js), sizes it in metres, feet on the ground, centred
 const gltfLoader = new GLTFLoader();
 const modelCache = new Map();
-async function loadAny(file, { height, maxXZ, rotY = 0 } = {}) {
+async function loadAny(file, { height, maxXZ, rotY = 0, rotX = 0 } = {}) {
   if (!modelCache.has(file)) modelCache.set(file, gltfLoader.loadAsync(PROPS_DIR + file));
   const gltf = await modelCache.get(file);
   const root = gltf.scene.clone(true);
@@ -144,6 +150,7 @@ async function loadAny(file, { height, maxXZ, rotY = 0 } = {}) {
     o.castShadow = false; o.receiveShadow = true;
     (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m && 'metalness' in m && m.metalness > 0.6 && !m.metalnessMap) m.metalness = 0.3; });
   });
+  root.rotation.x = rotX;                       // stands up models that were exported lying down (Z-up)
   root.updateMatrixWorld(true);
   let b = new THREE.Box3().setFromObject(root);
   const size = b.getSize(new THREE.Vector3());
@@ -314,12 +321,18 @@ export function buildHighSchoolExterior() {
   });
   const lines = new THREE.Mesh(new THREE.PlaneGeometry(PITCH.len, PITCH.wid), polyOff(new THREE.MeshStandardMaterial({ map: linesTex, transparent: true, roughness: 1 }), -5));
   lines.rotation.x = -Math.PI / 2; lines.position.set(PITCH.x, 0.02, PITCH.z); group.add(lines);
-  const goal = x => {
-    [-2, 2].forEach(dz => cyl(group, M.white, 0.06, 2.1, x, 1.05, PITCH.z + dz, { shadow: true }));
-    cyl(group, M.white, 0.06, 4.12, x, 2.1, PITCH.z, { rx: Math.PI / 2 });
-    [-2, 2].forEach(dz => box(group, M.white, 0.04, 0.04, 1.2, x + (x < PITCH.x ? -0.6 : 0.6), 2.08, PITCH.z + dz));
+  // your goal model (the mouth faces +z in the file; the net is behind it). Plain white goal posts show if the file is missing.
+  const plainGoal = dir => () => {
+    const g = new THREE.Group();
+    [-GOAL_HALF, GOAL_HALF].forEach(dz => cyl(g, M.white, 0.06, 2.1, 0, 1.05, dz));
+    cyl(g, M.white, 0.06, GOAL_HALF * 2, 0, 2.1, 0, { rx: Math.PI / 2 });
+    [-GOAL_HALF, GOAL_HALF].forEach(dz => box(g, M.white, 1.2, 0.04, 0.04, -dir * 0.6, 2.08, dz));
+    return g;
   };
-  GOAL_X.forEach(goal);
+  GOAL_X.forEach((x, i) => {
+    const dir = i === 0 ? 1 : -1;                                  // +1: the goal faces east into the pitch, -1: it faces west
+    put(group, 'goal', loadAny(GOAL_FILE, { maxXZ: 5.2, rotY: dir * Math.PI / 2 }), x - dir * 1.1, 0, PITCH.z, plainGoal(dir));
+  });
 
   // ----- trees -----
   (async () => {
@@ -330,7 +343,7 @@ export function buildHighSchoolExterior() {
   })();
 
   // ----- keke parked at the front (your Indian tuk-tuk model stands in until you get a Nigerian keke, see the props list) -----
-  put(group, 'keke', loadAny('autorikshaw_-_indian_tuk_tuk (2).glb', { maxXZ: 2.7, rotY: KEKE.rotY }), KEKE.x, 0, KEKE.z);
+  put(group, 'keke', loadAny(KEKE_FILE, { maxXZ: 2.7, rotY: KEKE.rotY }), KEKE.x, 0, KEKE.z);
 
   // ----- road: zebra crossing, speed bumps, SCHOOL signs, lamps, pole (the main road is at z 14.0 .. 17.5 here) -----
   const zebraMat = polyOff(new THREE.MeshStandardMaterial({ color: 0xf2f0ea, roughness: 0.9 }), -8);
@@ -357,7 +370,7 @@ export function buildHighSchoolExterior() {
 
   // ----- new props you add later (see the props list file) -----
   NEW_PROPS.filter(p => p.have).forEach(p =>
-    put(group, p.file, loadAny(p.file, { height: p.height, maxXZ: p.maxXZ, rotY: p.rotY || 0 }), p.x, 0, p.z));
+    put(group, p.file, loadAny(p.file, { height: p.height, maxXZ: p.maxXZ, rotY: p.rotY || 0, rotX: p.rotX || 0 }), p.x, 0, p.z));
 
   return { group, update: () => updates.forEach(f => f()) };
 }

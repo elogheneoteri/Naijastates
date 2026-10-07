@@ -9,6 +9,7 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { buildRefugeeCamp, CAMP_BOXES } from './refugee_camp.js';
 import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.js';
+import { buildHighSchoolExterior, HS_EXTERIOR_BOXES } from './high_school_exterior.js';
 import { initNin, IVORY_FILE } from './nin.js';
 import { loadProp } from './props_library.js';
 import { buildCity, cityClearRects, JUNCTION_GAPS_X, CITY, plotAt } from './city.js';
@@ -69,8 +70,10 @@ const BUILDINGS = [
     x: HS_PLOT.x, z: HS_PLOT.z, rotY: HS_PLOT.rotY,
     boxes: [
       [-14.6, 14.6, -9.7, 8.2],            // the school building
-      [-1.9, 5.7, 8.1, 10.8]               // the front steps and ramp
+      [-1.9, 5.7, 8.1, 10.8],              // the front steps and ramp
+      ...HS_EXTERIOR_BOXES                 // Step 2: trees, shed, tower, goals, lamps ... (high_school_exterior.js)
     ],
+    extras: buildHighSchoolExterior,       // Step 2: the props around the school
     fallback: [29.2, 11.1, 21.4]
   }
 ];
@@ -886,6 +889,12 @@ class World {
       root.add(b.room.group, b.room.marker);
     }
 
+    if (b.extras) {                      // props around the building (kept visible when the player is inside)
+      const ex = b.extras();
+      root.add(ex.group);
+      if (ex.update) this.animators.push(ex.update);
+    }
+
     if (b.build) {                       // building made in code instead of a .glb file
       const built = b.build();
       root.add(built.group);
@@ -1265,3 +1274,5 @@ class World {
 
 // start only after everything above has been defined
 boot();
+
+
