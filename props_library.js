@@ -63,7 +63,6 @@ export const PROPS = {
   plant_monstera:  { file: 'monstera_deliciosa_potted_mid-century_plant.glb', height: 1.4, tags: ['office', 'plant'] },
   printer_floor:   { file: 'mfp_office_printer.glb', height: 1.2, tags: ['office', 'printer'] },        // big floor-standing copier on wheels
   printer_desk:    { file: 'printer_copy_machine_and_scanner_in_one.glb', height: 0.4, tags: ['office', 'printer'] },   // desktop printer / scanner
-  ceiling_lights:  { file: 'fluorescent_light_fixtures_-_4x_4096px2.glb', maxXZ: 1.25, tags: ['office', 'light'] },    // four 0.6 m panels in one file. Place it with y = ceiling height (it sits on the ground by default)
 
   // ----- firewood -----
   wood_logs:      { file: 'wood-logs.glb', unit: 0.0143, tags: ['camp', 'wood'] },   // three logs stacked, about 1 m long
