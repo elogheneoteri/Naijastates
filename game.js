@@ -10,6 +10,7 @@ import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { buildRefugeeCamp, CAMP_BOXES } from './refugee_camp.js';
 import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.js';
 import { buildHighSchoolExterior, HS_EXTERIOR_BOXES } from './high_school_exterior.js';
+import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
 import { initNin, IVORY_FILE } from './nin.js';
 import { loadProp } from './props_library.js';
 import { buildCity, cityClearRects, JUNCTION_GAPS_X, CITY, plotAt } from './city.js';
@@ -65,12 +66,15 @@ const BUILDINGS = [
     // Realistic 3-storey school (your high_school.glb). The model is already in metres (47 m wide, 34.5 m deep with the steps),
     // so scale 0.62 shrinks it to fit the 84 x 22 m plot: about 29 m wide, 21 m deep and 11 m tall.
     // Make it bigger or smaller with scale (do not go above 0.64 or the front steps stick out of the plot).
-    // Step 1: outside only. The walls and front steps are solid for now; the inside comes in a later step.
+    // Step 3: you can walk in. The front door is in the south wall (x = 1.9 from the school centre, in line with the steps), marked by the
+    // blue marker outside. Inside, the outside model hides and the ground floor shows (high_school_interior.js).
     scale: 0.62,
     x: HS_PLOT.x, z: HS_PLOT.z, rotY: HS_PLOT.rotY,
+    interior: buildHighSchoolInterior,     // Step 3: classrooms, corridor, hall, toilets, store, principal's office
     boxes: [
-      [-14.6, 14.6, -9.7, 8.2],            // the school building
-      [-1.9, 5.7, 8.1, 10.8],              // the front steps and ramp
+      ...HS_INTERIOR_BOXES,                // walls (with the front doorway and the room doorways), desks, counter, stalls ...
+      [-1.9, 0.6, 8.1, 10.8],              // the front steps, left of the walkway to the door
+      [3.2, 5.7, 8.1, 10.8],               // the front steps, right of the walkway to the door
       ...HS_EXTERIOR_BOXES                 // Step 2: trees, shed, tower, goals, lamps ... (high_school_exterior.js)
     ],
     extras: buildHighSchoolExterior,       // Step 2: the props around the school
@@ -1251,7 +1255,7 @@ class World {
     // buildings with an interior: show the room (and hide the outside model) while the player is inside it
     BUILDINGS.forEach(b => {
       if (!b.room) return;
-      const inside = Math.abs(p.x - b.x) < b.room.halfW - 0.1 && Math.abs(p.z - b.z) < b.room.halfD - 0.1;
+      const inside = Math.abs(p.x - b.x) < b.room.halfW - 0.1 && Math.abs(p.z - (b.z + (b.room.cz || 0))) < b.room.halfD - 0.1;   // cz = the room's centre is not always the building centre (the school)
       if (inside !== b.inside) {
         b.inside = inside;
         b.room.setInside(inside);
@@ -1274,5 +1278,3 @@ class World {
 
 // start only after everything above has been defined
 boot();
-
-
