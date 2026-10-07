@@ -12,15 +12,16 @@
 // WHAT IS HERE
 //   Frontage:   paved forecourt, green-and-white painted kerb (NOT a fence, you can walk over it anywhere), school signboard,
 //               flagpole with a waving Nigerian flag, white-painted tyre planters with flowers.
-//   West wing:  tuck shop under a zinc-roof shed (kiosk, benches), borehole house + water tank on its steel stand,
+//   West wing:  tuck shop under a zinc-roof shed (kiosk, two outdoor benches), borehole house + water tank on its steel stand,
 //               generator under its own small roof, mango trees. Every roof is your zinc_roof.glb and every post is your iron rod.
 //   East wing:  football pitch on laterite with painted lines and two goals, mango trees.
 //   Road:       zebra crossing, two speed bumps, two SCHOOL signs, street lamps, an electric pole.
 //
 // PROPS USED FROM YOUR UPLOAD (nothing new needed to run this):
-//   mango_tree, coconut_palm, plastic_tank, bench_3seat, bush_flowers, flower_clump   (props_library.js)
+//   mango_tree, coconut_palm, plastic_tank, bush_flowers, flower_clump   (props_library.js)
 //   kiosk_wooden.glb, generator.glb, street_lamp.glb, electric_pole.glb   (props/ folder)
-//   NEW in props/:  zinc_roof.glb (all roofs), free_iron_rod.glb (all posts and beams), water_tank_stand.glb (the tank stand, cut from your water_tank.glb)
+//   NEW in props/:  zinc_roof.glb (all roofs), free_iron_rod.glb (all posts and beams), water_tank_stand.glb (the tank stand, cut from your water_tank.glb),
+//                   old_outdoor_bench_optimised.glb (tuck shop benches, your old_outdoor_bench.glb shrunk from 3 MB to 116 KB)
 // Everything else (signboard, flag, tyres, goals, markings) is built in code.
 // If a .glb fails to load, the game keeps running (a plain stand-in shows or the item is skipped; see the console).
 //
@@ -49,7 +50,8 @@ const PUMP = { x: -23.6, z: -7.4 };         // borehole pump house
 const GEN = { x: -18.2, z: 3.0 };           // generator shed
 const SHED = { x: -31.0, z: 4.2, w: 7.2, d: 3.6 };   // tuck-shop shed
 const KIOSK = { x: -32.8, z: 2.9 };
-const BENCHES = [{ x: -30.6, z: 5.2 }, { x: -28.5, z: 5.2 }];
+const BENCHES = [{ x: -30.4, z: 5.2 }, { x: -28.4, z: 5.2 }];
+const BENCH_FILE = 'old_outdoor_bench_optimised.glb';   // your old outdoor bench; made 1.9 m long and a normal seat height (0.42 m)
 
 const PITCH = { x: 28.5, z: 0, len: 22, wid: 18 };         // football pitch (east wing)
 const GOAL_X = [PITCH.x - PITCH.len / 2, PITCH.x + PITCH.len / 2];      // the two goal lines
@@ -93,9 +95,10 @@ export const HS_EXTERIOR_BOXES = [
   R(FLAG.x, FLAG.z, 0.35),
   R(SIGN.x, SIGN.z, SIGN.w / 2, 0.2),
   R(TOWER.x, TOWER.z, 0.95), R(PUMP.x, PUMP.z, 1.0, 0.9),
+  ...[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => R(PUMP.x + sx * 1.1, PUMP.z + sz * 0.95, 0.1)),   // borehole shed posts
   R(GEN.x, GEN.z, 1.3, 0.9),
   R(KIOSK.x, KIOSK.z, 1.4, 0.8),
-  ...BENCHES.map(b => R(b.x, b.z, 1.05, 0.4)),
+  ...BENCHES.map(b => R(b.x, b.z, 0.95, 0.3)),
   ...[-1, 0, 1].flatMap(sx => [-1, 1].map(sz => R(SHED.x + sx * (SHED.w / 2 - 0.15), SHED.z + sz * (SHED.d / 2 - 0.15), 0.12))),   // shed posts
   ...GOAL_X.flatMap(x => [R(x, PITCH.z - GOAL_HALF, 0.12), R(x, PITCH.z + GOAL_HALF, 0.12)]),
   ...LAMPS.map(l => R(l.x, l.z, 0.25)), R(POLE.x, POLE.z, 0.3),
@@ -342,6 +345,11 @@ export function buildHighSchoolExterior() {
   })();
   box(group, M.plaster, 2.0, 1.9, 1.8, PUMP.x, 0.95, PUMP.z, { shadow: true });
   box(group, M.blue, 0.8, 1.6, 0.06, PUMP.x, 0.8, PUMP.z + 0.92);
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {          // iron rod posts at the four roof corners
+    const h = roofY(2.06, PUMP.z, 0.12, PUMP.z + sz * 0.95) - 0.05;
+    addRod(group, 'y', h, PUMP.x + sx * 1.1, h / 2, PUMP.z + sz * 0.95, 0.1);
+  });
+  [-0.95, 0.95].forEach(dz => addRod(group, 'x', 2.3, PUMP.x, roofY(2.06, PUMP.z, 0.12, PUMP.z + dz) - 0.1, PUMP.z + dz, 0.08));   // beams under the roof
   zincRoof(PUMP.x, 2.06, PUMP.z, 2.3, 2.1, 0.12);
   cyl(group, M.steel, 0.05, 1.2, PUMP.x + 1.25, 0.6, PUMP.z + 0.4);                                                               // pipe from the pump house
 
@@ -356,8 +364,7 @@ export function buildHighSchoolExterior() {
   put(group, 'generator', loadAny('generator.glb', { maxXZ: 1.1 }), GEN.x, 0.08, GEN.z,
     () => { const g = new THREE.Group(); box(g, std(0xc2452d, 0.6), 1.0, 0.7, 0.6, 0, 0.35, 0); return g; });
 
-  // ----- tuck shop: zinc-roof shed, kiosk, benches, signboard -----
-  box(group, M.concrete, SHED.w, 0.06, SHED.d, SHED.x, 0.03, SHED.z);
+  // ----- tuck shop: zinc-roof shed, kiosk, benches (no platform, no signboard) -----
   [-1, 0, 1].forEach(sx => [-1, 1].forEach(sz => {
     const z = SHED.z + sz * (SHED.d / 2 - 0.15), h = roofY(2.9, SHED.z, 0.1, z) - 0.05;
     addRod(group, 'y', h, SHED.x + sx * (SHED.w / 2 - 0.15), h / 2, z, 0.12);
@@ -367,16 +374,8 @@ export function buildHighSchoolExterior() {
     addRod(group, 'x', SHED.w, SHED.x, roofY(2.9, SHED.z, 0.1, z) - 0.1, z, 0.09);
   });
   zincRoof(SHED.x, 2.9, SHED.z, SHED.w + 0.5, SHED.d + 0.3, 0.1);
-  const tuckTex = canvasTex(512, 128, (g, w, h) => {
-    g.fillStyle = '#0a7d3e'; g.fillRect(0, 0, w, h); g.strokeStyle = '#ffffff'; g.lineWidth = 5; g.strokeRect(5, 5, w - 10, h - 10);
-    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffffff'; g.font = 'bold 54px Arial, sans-serif'; g.fillText('TUCK SHOP', w / 2, 46);
-    g.fillStyle = '#ffe9a0'; g.font = '28px Arial, sans-serif'; g.fillText('Pure Water  \u00B7  Meat Pie  \u00B7  Bread', w / 2, 94);
-  });
-  const tuck = new THREE.Mesh(BOX, [edge, edge, edge, edge, new THREE.MeshStandardMaterial({ map: tuckTex, roughness: 0.7 }), edge]);
-  tuck.scale.set(3.2, 0.8, 0.05); tuck.position.set(SHED.x, 2.2, SHED.z + SHED.d / 2 - 0.05); group.add(tuck);
-  put(group, 'kiosk', loadAny('kiosk_wooden.glb', { height: 2.3 }), KIOSK.x, 0.06, KIOSK.z,
-    () => { const g = new THREE.Group(); box(g, M.wood, 2.4, 2.2, 1.4, 0, 1.1, 0); return g; });
-  BENCHES.forEach(b => put(group, 'bench_3seat', loadProp('bench_3seat').then(noShadow), b.x, 0.06, b.z));
+  put(group, 'kiosk', loadAny('kiosk_wooden.glb', { height: 2.3 }), KIOSK.x, 0, KIOSK.z);
+  BENCHES.forEach(b => put(group, 'bench', loadAny(BENCH_FILE, { maxXZ: 1.9 }).then(o => { o.scale.y = 1.35; return o; }), b.x, 0, b.z));   // taller legs so the seat is about 0.42 m
 
   // ----- football pitch on laterite, painted lines, two goals -----
   const dirt = canvasTex(256, 256, (g, w, h) => {
@@ -440,7 +439,7 @@ export function buildHighSchoolExterior() {
     g.fillStyle = '#b3121a'; g.font = 'bold 72px Arial, sans-serif'; g.fillText('SLOW', w / 2, h * 0.76);
   });
   ZONE_SIGNS.forEach(s => {                                  // flat, upright plate on a post, facing the road (+z)
-    addRod(group, 'y', 2.8, s.x, 1.4, s.z, 0.07);
+    addRod(group, 'y', 2.8, s.x, 1.4, s.z, 0.1);
     const d = new THREE.Mesh(BOX, [M.steel, M.steel, M.steel, M.steel, new THREE.MeshStandardMaterial({ map: zoneTex, roughness: 0.6 }), M.steel]);
     d.scale.set(0.8, 1.0, 0.03); d.position.set(s.x, 2.2, s.z + 0.06); group.add(d);
   });
