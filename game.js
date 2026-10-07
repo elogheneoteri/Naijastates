@@ -11,6 +11,7 @@ import { buildRefugeeCamp, CAMP_BOXES } from './refugee_camp.js';
 import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.js';
 import { initNin, IVORY_FILE } from './nin.js';
 import { loadProp } from './props_library.js';
+import { buildCity, cityClearRects, JUNCTION_GAPS_X, CITY } from './city.js';
 
 // >>> Your three values (same as before). <<<
 const SERVER_URL = 'https://naija-server.onrender.com';
@@ -20,8 +21,8 @@ const SUPABASE_ANON_KEY = 'sb_publishable_dUT0e10wO4IK7t0fzD02Yw_zmuh2ruE';
 // ---------------- World settings ----------------
 
 const PX_PER_M = 30;                       // server pixels per metre
-const WORLD_W = 3900 / PX_PER_M;           // 130 m
-const WORLD_H = 1500 / PX_PER_M;           // 50 m
+const WORLD_W = 10800 / PX_PER_M;          // 360 m (the arrival area is the west strip; the city lies east of the gate)
+const WORLD_H = 7200 / PX_PER_M;           // 240 m (the arrival area only uses z 0 to 52)
 const SPEED = 5.0;                         // metres per second (server allows up to 190 px/s = 6.3 m/s)
 const GATE_X = 2000 / PX_PER_M;            // border wall (66.7 m); server blocks players past x = 1995 px
 const SEND_EVERY_MS = 66;
@@ -692,7 +693,7 @@ class World {
     const cz = (ROAD_Z0 + ROAD_Z1) / 2, roadW = ROAD_Z1 - ROAD_Z0;
 
     // Keep-clear boxes around the buildings (no grass clumps there, and the ground is bare sand)
-    const clear = BUILDINGS.map(b => { const [w, , d] = b.fallback || [20, 0, 20]; return { x0: b.x - w / 2 - 2, x1: b.x + w / 2 + 2, z0: b.z - d / 2 - 2, z1: b.z + d / 2 + 2 }; });
+    const clear = BUILDINGS.map(b => { const [w, , d] = b.fallback || [20, 0, 20]; return { x0: b.x - w / 2 - 2, x1: b.x + w / 2 + 2, z0: b.z - d / 2 - 2, z1: b.z + d / 2 + 2 }; }).concat(cityClearRects());
 
     // Ground = red sand (10 m tiles) mixed with grass (10 m tiles). A map of the whole world says where each one shows.
     const sand = tex(512, 512, paintSand, WORLD_W / 10, WORLD_H / 10);
@@ -725,12 +726,18 @@ class World {
     const pave = tex(512, 512, paintPavers, WORLD_W / 2, 0.8);
     const paveMat = new THREE.MeshStandardMaterial({ map: pave, bumpMap: pave, bumpScale: 0.5, roughness: 0.95 });
     const kerbMat = new THREE.MeshStandardMaterial({ color: 0xaaa79f, roughness: 0.9 });
+    // (the pavement and kerb are cut into pieces so the city avenues can join the main road)
+    const pieces = []; { let a = 0; JUNCTION_GAPS_X.forEach(([g0, g1]) => { pieces.push([a, g0]); a = g1; }); pieces.push([a, WORLD_W]); }
     [-1, 1].forEach(side => {
       const edge = side < 0 ? ROAD_Z0 : ROAD_Z1;
-      const kerb = new THREE.Mesh(new THREE.BoxGeometry(WORLD_W, 0.1, 0.15), kerbMat);
-      kerb.position.set(WORLD_W / 2, 0.03, edge + side * 0.075); kerb.receiveShadow = true; this.scene.add(kerb);
-      const walk = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, 1.6), paveMat);
-      walk.rotation.x = -Math.PI / 2; walk.position.set(WORLD_W / 2, -0.01, edge + side * (0.15 + 0.8)); walk.receiveShadow = true; this.scene.add(walk);
+      pieces.forEach(([x0, x1]) => {
+        const len = x1 - x0, mx = (x0 + x1) / 2;
+        const kerb = new THREE.Mesh(new THREE.BoxGeometry(len, 0.1, 0.15), kerbMat);
+        kerb.position.set(mx, 0.03, edge + side * 0.075); kerb.receiveShadow = true; this.scene.add(kerb);
+        const pm = pave.clone(); pm.needsUpdate = true; pm.repeat.set(len / 2, 0.8);
+        const walk = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.6), new THREE.MeshStandardMaterial({ map: pm, bumpMap: pm, bumpScale: 0.5, roughness: 0.95 }));
+        walk.rotation.x = -Math.PI / 2; walk.position.set(mx, -0.01, edge + side * (0.15 + 0.8)); walk.receiveShadow = true; this.scene.add(walk);
+      });
     });
 
     // Grass tufts: two crossed cards per clump, 1 draw call each, kept away from the road and the buildings
@@ -738,7 +745,7 @@ class World {
     const tuftTex = new THREE.CanvasTexture(tc); tuftTex.colorSpace = THREE.SRGBColorSpace; tuftTex.anisotropy = aniso;
     const tuftMat = new THREE.MeshStandardMaterial({ map: tuftTex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1 });
     const spots = [];
-    for (let tries = 0; spots.length < 2600 && tries < 30000; tries++) {
+    for (let tries = 0; spots.length < 5500 && tries < 60000; tries++) {
       const x = rnd() * WORLD_W, z = rnd() * WORLD_H;
       const gm = mask.at(x, z); if (rnd() > gm * gm + 0.03) continue;           // thick on the grass, a few stray ones on the sand
       if (z > ROAD_Z0 - 2.4 && z < ROAD_Z1 + 2.4) continue;
@@ -810,6 +817,14 @@ class World {
     };
     seg(0, ROAD_Z0 - 0.6);
     seg(ROAD_Z1 + 0.6, WORLD_H);
+
+    // The arrival area (refugee camp, immigration office, airport) ends at a wall; everything south of it is not part of the map.
+    { const wz = CITY.arrivalWallZ, m = new THREE.Mesh(new THREE.BoxGeometry(gx, H, T), wallMat);
+      m.position.set(gx / 2, H / 2, wz + T / 2); m.castShadow = m.receiveShadow = true; this.scene.add(m);
+      this.boxes.push({ x0: 0, x1: gx, z0: wz, z1: wz + T }); }
+
+    // The city east of the gate: roads, junctions, lamps, palms and the empty, labelled building plots (city.js)
+    this.city = buildCity(loadProp); this.scene.add(this.city.group);
 
     // Checkpoint barrier in the road gap: closed until the server says progress = indigene
     this.gateGroup = new THREE.Group();
@@ -1058,6 +1073,10 @@ class World {
     });
 
     this.socket.on('progress', d => { this.progress = d.progress; this.applyGate(); if (this.nin) this.nin.refreshQuest(); });
+    this.socket.on('renamed', d => {                      // a player's name tag changed (their NIN card was issued)
+      if (d.id === this.myId) this.setLabel(this.player, d.name);
+      else { const o = this.others.get(d.id); if (o) this.setLabel(o.av, d.name); }
+    });
     this.socket.on('nin', s => { if (this.nin) this.nin.setState(s); });
     this.socket.on('nin_error', msg => { if (this.nin) this.nin.error(msg); else this.say3d(msg); });
     this.socket.on('correct', d => { this.player.position.set(d.x / PX_PER_M, 0, d.y / PX_PER_M); });
@@ -1109,6 +1128,7 @@ class World {
     const open = this.progress === 'indigene';
     this.gateClosed = !open;
     this.gateGroup.visible = !open;
+    if (window.NaijaHUD) window.NaijaHUD.set({ role: open ? 'Indigene' : 'Refugee' });          // status on the player card
     this.testButton.style.display = this.devTools ? 'block' : 'none';
     this.testButton.textContent = open ? 'Test: reset to arrived' : 'Test: become indigene';
   }

@@ -49,10 +49,7 @@
   document.getElementById('questHead').addEventListener('click', function () { quest.classList.toggle('off'); });
   if (window.innerWidth < 760 || window.innerHeight < 460) { stats.classList.add('off'); quest.classList.add('off'); }
 
-  // ---- quest text follows the game's progress: game.js sets the test button to "Test: reset to arrived" once you are Indigene ----
-  var tb = document.getElementById('testButton'), qt = document.getElementById('questTask');
-  function syncQuest() { qt.textContent = /reset/i.test(tb.textContent) ? 'TASK: Done. You are Indigene' : 'TASK: Become Indigene'; }
-  if (tb) { new MutationObserver(syncQuest).observe(tb, { childList: true, characterData: true, subtree: true }); syncQuest(); }
+  // (the quest text is written by nin.js, which knows the NIN steps and the Indigene status)
 
   window.NaijaHUD = {
     set: function (o) {

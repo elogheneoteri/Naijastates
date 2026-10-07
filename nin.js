@@ -15,6 +15,7 @@ const TEMPLATE_URL = 'props/nin_card_template.webp';
 const IVORY_FILE = 'characters/npc/female_ivory.glb';
 const TALK_RANGE = 3.6;            // metres from Ivory at which "Talk to Ivory" appears
 const AGE_MIN = 16, AGE_MAX = 40;  // the server checks this too
+const BAG_SLOTS = 10;              // the bag holds 10 items in total
 const NAME_RE = /^[A-Za-z][A-Za-z'\- ]{1,19}$/;
 
 // ===== QR START ==========================================================================================================
@@ -218,24 +219,35 @@ async function drawCard(card, photo) {
 }
 // ===== CARD END ==========================================================================================================
 
-// A head-and-shoulders picture of the player's own character (drawn once, in a small private renderer).
-function capturePhoto(player) {
+// A picture of the player's own character (drawn in a small private renderer). The camera is aimed at the head bone, so the
+// face sits in the upper middle with the shoulders below it. vis = how many metres of the character fit in the picture height.
+function capturePhoto(player, w = 440, h = 552, vis = 0.62) {
   try {
     const src = player.userData.model; if (!src) return null;
     const model = cloneSkinned(src);
     const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    renderer.setPixelRatio(1); renderer.setSize(300, 370, false); renderer.outputColorSpace = THREE.SRGBColorSpace;
-    const scene = new THREE.Scene(); scene.background = new THREE.Color(0xd9e6f2);
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.5)); const sun = new THREE.DirectionalLight(0xffffff, 1.8); sun.position.set(1.5, 2.5, 3); scene.add(sun);
+    renderer.setPixelRatio(1); renderer.setSize(w, h, false); renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+    const scene = new THREE.Scene();
+    { const c = document.createElement('canvas'); c.width = 2; c.height = 128; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 128);
+      gr.addColorStop(0, '#eef4fa'); gr.addColorStop(1, '#b7cadd'); g.fillStyle = gr; g.fillRect(0, 0, 2, 128);
+      const bg = new THREE.CanvasTexture(c); bg.colorSpace = THREE.SRGBColorSpace; scene.background = bg; }
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa7b5, 1.1));
+    const key = new THREE.DirectionalLight(0xfff2e0, 1.9); key.position.set(1.2, 1.8, 2.6); scene.add(key);
+    const fill = new THREE.DirectionalLight(0xcfe0ff, 0.7); fill.position.set(-1.8, 0.6, 2.0); scene.add(fill);
     scene.add(model);
     const idle = player.userData.actions && player.userData.actions.idle;      // calm standing pose
     if (idle) { const mixer = new THREE.AnimationMixer(model); mixer.clipAction(idle.getClip()).play(); mixer.update(0.05); }
     model.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(model), top = box.max.y;
-    const cam = new THREE.PerspectiveCamera(26, 300 / 370, 0.05, 20);
-    cam.position.set(0, top - 0.24, 1.55); cam.lookAt(0, top - 0.27, 0);
+    let head = null; model.traverse(o => { if (!head && o.isBone && /head$/i.test(o.name) && !/top|end/i.test(o.name)) head = o; });
+    const hp = new THREE.Vector3(), top = new THREE.Box3().setFromObject(model).max.y;
+    let faceY;
+    if (head) { head.getWorldPosition(hp); faceY = hp.y + 0.10; } else { hp.set(0, 0, 0); faceY = top - 0.13; }
+    const fov = 24, dist = (vis / 2) / Math.tan(THREE.MathUtils.degToRad(fov / 2));
+    const cam = new THREE.PerspectiveCamera(fov, w / h, 0.05, 20);
+    cam.position.set(hp.x, faceY - 0.02, hp.z + dist); cam.lookAt(hp.x, faceY - 0.04, hp.z);
     renderer.render(scene, cam);
-    const out = document.createElement('canvas'); out.width = 300; out.height = 370;
+    const out = document.createElement('canvas'); out.width = w; out.height = h;
     out.getContext('2d').drawImage(renderer.domElement, 0, 0);
     renderer.dispose(); if (renderer.forceContextLoss) renderer.forceContextLoss();
     return out;
@@ -265,11 +277,14 @@ const CSS = `
   background:rgba(8,20,44,.96);border:1px solid #1f4a8a;border-radius:22px}
 .nin-mid h2{margin:0 0 10px;font-size:20px}.nin-mid h2 b{color:#ffc61a}
 .nin-mid canvas{width:100%;height:auto;display:block;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.5);margin-bottom:12px}
-.nin-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
-.nin-slot{aspect-ratio:1;border-radius:14px;border:1px solid #1f4a8a;background:rgba(16,38,74,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:6px;font-size:12px;font-weight:700;color:#9fb3d1;text-align:center;padding:6px;cursor:default}
-.nin-slot.has{cursor:pointer;border-color:#ffc61a;color:#ffc61a;background:rgba(40,60,20,.55)}
-.nin-slot .ic{font-size:30px}.nin-empty{font-size:14px;color:#9fb3d1;margin:6px 0 14px}
+.nin-slots{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}
+.nin-slot{aspect-ratio:1;border-radius:10px;border:1px dashed #274a7a;background:rgba(16,38,74,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1px;font-size:9px;font-weight:700;color:#9fb3d1;text-align:center;padding:2px;cursor:default;min-width:0}
+.nin-slot.has{cursor:pointer;border:1px solid #ffc61a;color:#ffc61a;background:rgba(40,60,20,.55)}
+.nin-slot .ic{font-size:19px;line-height:1}.nin-empty{font-size:13px;color:#9fb3d1;margin:4px 0 12px}
+#ninBag .nin-mid{width:min(92vw,330px);padding:12px}#ninBag .nin-mid h2{font-size:17px;margin-bottom:8px}
+#ninView .nin-mid{width:min(86vw,360px);padding:12px}#ninView .nin-mid h2{font-size:17px;margin-bottom:8px}
+#ninView .nin-mid canvas{margin-bottom:10px}
 `;
 
 export function initNin(opts) {
@@ -388,11 +403,15 @@ export function initNin(opts) {
   }
   function openBag() {
     const slots = $('ninSlots'); slots.innerHTML = '';
-    if (st.status === 'issued') {
-      const s = document.createElement('div'); s.className = 'nin-slot has'; s.innerHTML = '<div class="ic">\u{1FAAA}</div>NIN Card';
-      s.addEventListener('click', () => { close(bag); showCard('Your <b>NIN</b> card'); }); slots.appendChild(s);
+    const items = [];                                                     // what the player carries (more items come later)
+    if (st.status === 'issued') items.push({ icon: '\u{1FAAA}', label: 'NIN', open: () => { close(bag); showCard('Your <b>NIN</b> card'); } });
+    for (let i = 0; i < BAG_SLOTS; i++) {
+      const it = items[i], s = document.createElement('div');
+      s.className = 'nin-slot' + (it ? ' has' : '');
+      if (it) { s.innerHTML = '<div class="ic">' + it.icon + '</div>' + it.label; s.addEventListener('click', it.open); }
+      slots.appendChild(s);
     }
-    $('ninEmpty').textContent = st.status === 'issued' ? 'Tap an item to look at it.' : 'Your bag is empty.';
+    $('ninEmpty').textContent = items.length ? items.length + ' of ' + BAG_SLOTS + ' slots used. Tap an item to look at it.' : 'Your bag is empty (' + BAG_SLOTS + ' slots).';
     open(bag);
   }
   // take over the bag button (capture phase, so it runs before anything else bound to it)
@@ -439,9 +458,19 @@ export function initNin(opts) {
     });
   }
 
+  // ----- the character's face on the HUD player card (made again whenever the character changes) -----
+  let hudKey = '', hudTick = 0;
+  function syncHudAvatar() {
+    const m = world.player.userData.model; if (!m || !window.NaijaHUD) return;
+    const key = (world.player.userData.characterId || '') + '|' + m.uuid; if (key === hudKey) return;
+    const c = capturePhoto(world.player, 256, 256, 0.42);
+    if (c) { window.NaijaHUD.set({ avatar: c.toDataURL('image/jpeg', 0.88) }); hudKey = key; }
+  }
+
   // ----- every frame -----
   let tick = 0;
   function update(dt) {
+    if ((hudTick += dt) > 1) { hudTick = 0; syncHudAvatar(); }
     ivory.visible = !!b.inside;
     if (ivory.visible) animateAvatar(ivory, 0, dt);
     const p = world.player.position, d = Math.hypot(p.x - ivory.position.x, p.z - ivory.position.z);
