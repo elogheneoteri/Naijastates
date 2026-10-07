@@ -9,6 +9,7 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { buildRefugeeCamp, CAMP_BOXES } from './refugee_camp.js';
 import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.js';
+import { loadProp } from './props_library.js';
 
 // >>> Your three values (same as before). <<<
 const SERVER_URL = 'https://naija-server.onrender.com';
@@ -85,14 +86,17 @@ function paintGrass(ctx, W, H, rnd) {
   }
   for (let i = 0; i < 260; i++) { ctx.fillStyle = `rgba(${110 + rnd() * 40},${90 + rnd() * 30},${60 + rnd() * 20},0.45)`; ctx.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 2.5, 1 + rnd() * 2.5); }
 }
-function paintPatches(ctx, W, H, rnd) {               // big dry / dark patches that stop the grass looking repeated
-  ctx.clearRect(0, 0, W, H);
-  const cols = ['rgba(150,128,84,0.40)', 'rgba(176,170,96,0.30)', 'rgba(52,84,38,0.35)', 'rgba(120,104,72,0.30)'];
-  for (let i = 0; i < 70; i++) {
-    const x = rnd() * W, y = rnd() * H, r = 30 + rnd() * 120, c = cols[(rnd() * cols.length) | 0];
-    ctx.save(); ctx.translate(x, y); ctx.scale(1 + rnd() * 1.2, 1); ctx.translate(-x, -y);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, c); g.addColorStop(1, c.replace(/[\d.]+\)$/, '0)'));
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill(); ctx.restore();
+function paintSand(ctx, W, H, rnd) {                  // red-orange sandy soil (laterite), one tile = 10 m
+  ctx.fillStyle = '#c47a48'; ctx.fillRect(0, 0, W, H);
+  const blotch = ['rgba(150,82,46,0.38)', 'rgba(226,160,106,0.32)', 'rgba(176,96,56,0.38)', 'rgba(214,138,84,0.30)', 'rgba(120,70,44,0.26)'];
+  for (let i = 0; i < 60; i++) wrapBlob(ctx, W, H, rnd() * W, rnd() * H, 30 + rnd() * 90, blotch[(rnd() * blotch.length) | 0]);
+  for (let i = 0; i < 14000; i++) {                   // fine grains
+    const v = rnd(); ctx.fillStyle = v < 0.5 ? `rgba(${120 + rnd() * 40},${64 + rnd() * 24},${36 + rnd() * 18},0.40)` : `rgba(${226 + rnd() * 24},${160 + rnd() * 30},${110 + rnd() * 30},0.34)`;
+    ctx.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 1.8, 1 + rnd() * 1.8);
+  }
+  for (let i = 0; i < 140; i++) {                     // small pale stones
+    const x = rnd() * W, y = rnd() * H, r = 1 + rnd() * 2.2;
+    ctx.fillStyle = `rgba(${200 + rnd() * 40},${170 + rnd() * 30},${140 + rnd() * 30},0.55)`; ctx.beginPath(); ctx.ellipse(x, y, r * 1.3, r, rnd() * 3, 0, 6.2832); ctx.fill();
   }
 }
 function paintAsphalt(ctx, W, H, rnd) {               // one tile = 4 m along the road, full road width across
@@ -129,6 +133,37 @@ function paintTuft(ctx, S, rnd) {                     // a clump of grass blades
     ctx.fillStyle = `rgb(${70 + rnd() * 50},${120 + rnd() * 55},${40 + rnd() * 30})`;
     ctx.beginPath(); ctx.moveTo(x0 - w, S); ctx.quadraticCurveTo(x0, S - h * 0.6, x0 + lean, S - h); ctx.quadraticCurveTo(x0 + w * 0.2, S - h * 0.5, x0 + w, S); ctx.fill();
   }
+}
+
+// ---------------- Where the grass grows ----------------
+// One value per spot of the world: 255 = grass, 0 = bare sand. Made from smooth random noise (so the edges look natural),
+// pushed towards sand beside the road and around the buildings, and towards grass at the edges of the world.
+function makeGrassMask(w, h, clear, roadMid, roadHalf, rnd) {
+  const N = 64, lat = [0, 1, 2, 3].map(() => { const a = new Float32Array(N * N); for (let i = 0; i < a.length; i++) a[i] = rnd(); return a; });
+  const vn = (g, x, y) => {
+    const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    const at = (i, j) => g[((j & 63) << 6) | (i & 63)];
+    return (at(xi, yi) * (1 - u) + at(xi + 1, yi) * u) * (1 - v) + (at(xi, yi + 1) * (1 - u) + at(xi + 1, yi + 1) * u) * v;
+  };
+  const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const data = new Uint8Array(w * h), canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d'), img = ctx.createImageData(w, h);
+  for (let j = 0; j < h; j++) {
+    const Z = (j + 0.5) / h * WORLD_H;
+    for (let i = 0; i < w; i++) {
+      const X = (i + 0.5) / w * WORLD_W;
+      let n = 0.52 * vn(lat[0], X / 15, Z / 15) + 0.28 * vn(lat[1], X / 5.5, Z / 5.5) + 0.14 * vn(lat[2], X / 1.8, Z / 1.8) + 0.06 * vn(lat[3], X / 0.5, Z / 0.5);
+      n -= 0.40 * (1 - ss(0, 6, Math.abs(Z - roadMid) - roadHalf));                       // sandy shoulders beside the road
+      let nearest = 99;
+      for (const r of clear) nearest = Math.min(nearest, Math.hypot(Math.max(r.x0 - X, 0, X - r.x1), Math.max(r.z0 - Z, 0, Z - r.z1)));
+      n -= 0.42 * (1 - ss(0, 5, nearest));                                                  // bare ground around buildings
+      n += 0.40 * (1 - ss(0, 6, Math.min(X, WORLD_W - X, Z, WORLD_H - Z)));                 // grass at the world edge, so it meets the horizon
+      const g = Math.round(255 * ss(0.46, 0.53, n)), k = (j * w + i);
+      data[k] = g; img.data[k * 4] = img.data[k * 4 + 1] = img.data[k * 4 + 2] = g; img.data[k * 4 + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return { data, w, h, canvas, at: (x, z) => data[Math.min(h - 1, Math.max(0, (z / WORLD_H * h) | 0)) * w + Math.min(w - 1, Math.max(0, (x / WORLD_W * w) | 0))] / 255 };
 }
 
 // ---------------- Login / sign-up / choose character ----------------
@@ -651,13 +686,26 @@ class World {
     };
     const cz = (ROAD_Z0 + ROAD_Z1) / 2, roadW = ROAD_Z1 - ROAD_Z0;
 
-    // Grass (10 m tiles) + one big non-repeating layer of dry/dark patches on top of it
+    // Keep-clear boxes around the buildings (no grass clumps there, and the ground is bare sand)
+    const clear = BUILDINGS.map(b => { const [w, , d] = b.fallback || [20, 0, 20]; return { x0: b.x - w / 2 - 2, x1: b.x + w / 2 + 2, z0: b.z - d / 2 - 2, z1: b.z + d / 2 + 2 }; });
+
+    // Ground = red sand (10 m tiles) mixed with grass (10 m tiles). A map of the whole world says where each one shows.
+    const sand = tex(512, 512, paintSand, WORLD_W / 10, WORLD_H / 10);
     const grass = tex(512, 512, paintGrass, WORLD_W / 10, WORLD_H / 10);
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, WORLD_H), new THREE.MeshStandardMaterial({ map: grass, bumpMap: grass, bumpScale: 0.6, roughness: 1 }));
+    const mask = makeGrassMask(1024, Math.round(1024 * WORLD_H / WORLD_W), clear, cz, roadW / 2, rnd);
+    const maskTex = new THREE.CanvasTexture(mask.canvas); maskTex.anisotropy = aniso;
+    const groundMat = new THREE.MeshStandardMaterial({ map: sand, bumpMap: sand, bumpScale: 0.6, roughness: 1 });
+    groundMat.onBeforeCompile = sh => {
+      sh.uniforms.tGrass = { value: grass }; sh.uniforms.tMask = { value: maskTex }; sh.uniforms.uRep = { value: new THREE.Vector2(WORLD_W / 10, WORLD_H / 10) };
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform sampler2D tGrass;\nuniform sampler2D tMask;\nuniform vec2 uRep;')
+        .replace('#include <map_fragment>', `
+          float grassAmt = texture2D(tMask, vMapUv / uRep).r;
+          diffuseColor *= mix(texture2D(map, vMapUv), texture2D(tGrass, vMapUv), grassAmt);`);
+    };
+    groundMat.customProgramCacheKey = () => 'sand-grass-ground';
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, WORLD_H), groundMat);
     ground.rotation.x = -Math.PI / 2; ground.position.set(WORLD_W / 2, -0.04, WORLD_H / 2); ground.receiveShadow = true; this.scene.add(ground);
-    const patchTex = tex(1024, 512, paintPatches, 1, 1); patchTex.wrapS = patchTex.wrapT = THREE.ClampToEdgeWrapping;
-    const patches = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, WORLD_H), new THREE.MeshBasicMaterial({ map: patchTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }));
-    patches.material.fog = true; patches.rotation.x = -Math.PI / 2; patches.position.set(WORLD_W / 2, -0.035, WORLD_H / 2); patches.renderOrder = 1; this.scene.add(patches);
 
     // Beyond the world edge: more ground so the horizon is not a cliff
     const far = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: 0x6b8348, roughness: 1 }));
@@ -684,10 +732,10 @@ class World {
     const tc = document.createElement('canvas'); tc.width = tc.height = 128; paintTuft(tc.getContext('2d'), 128, rnd);
     const tuftTex = new THREE.CanvasTexture(tc); tuftTex.colorSpace = THREE.SRGBColorSpace; tuftTex.anisotropy = aniso;
     const tuftMat = new THREE.MeshStandardMaterial({ map: tuftTex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1 });
-    const clear = BUILDINGS.map(b => { const [w, , d] = b.fallback || [20, 0, 20]; return { x0: b.x - w / 2 - 2, x1: b.x + w / 2 + 2, z0: b.z - d / 2 - 2, z1: b.z + d / 2 + 2 }; });
     const spots = [];
-    for (let tries = 0; spots.length < 1600 && tries < 8000; tries++) {
+    for (let tries = 0; spots.length < 2600 && tries < 30000; tries++) {
       const x = rnd() * WORLD_W, z = rnd() * WORLD_H;
+      const gm = mask.at(x, z); if (rnd() > gm * gm + 0.03) continue;           // thick on the grass, a few stray ones on the sand
       if (z > ROAD_Z0 - 2.4 && z < ROAD_Z1 + 2.4) continue;
       if (Math.abs(x - GATE_X) < 1) continue;
       if (clear.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
@@ -702,6 +750,48 @@ class World {
       });
       im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true; im.frustumCulled = false; this.scene.add(im);
     });
+
+    this.addGrassClumps(mask, clear, rnd).catch(e => console.warn('grass clumps not added', e));
+  }
+
+  // Your grass models (grass_04, realistics_grass_06, realistics_grass_10), planted only on the grassy parts of the ground.
+  // They are cut into 16 m squares so the phone only draws the squares near the player.
+  async addGrassClumps(mask, clear, rnd) {
+    const KINDS = [['grass_clump_a', 120, 0.9, 1.5], ['grass_clump_b', 20, 0.8, 1.3], ['grass_clump_c', 16, 0.8, 1.3]];   // prop, how many, smallest and biggest scale
+    const CELL = 16;
+    this.grassChunks = [];
+    for (const [name, count, s0, s1] of KINDS) {
+      let model;
+      try { model = await loadProp(name); } catch (e) { console.warn('grass prop missing: ' + name, e); continue; }
+      model.updateMatrixWorld(true);
+      const parts = [];
+      model.traverse(o => { if (o.isMesh) parts.push({ geo: o.geometry.clone().applyMatrix4(o.matrixWorld), mat: o.material }); });
+      const cells = new Map();
+      for (let tries = 0, got = 0; got < count && tries < count * 60; tries++) {
+        const x = rnd() * WORLD_W, z = rnd() * WORLD_H;
+        if (mask.at(x, z) < 0.8) continue;
+        if (z > ROAD_Z0 - 2.4 && z < ROAD_Z1 + 2.4) continue;
+        if (Math.abs(x - GATE_X) < 1.5) continue;
+        if (clear.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
+        const key = ((x / CELL) | 0) + ',' + ((z / CELL) | 0);
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push([x, z]); got++;
+      }
+      cells.forEach((list, key) => {
+        const [ci, cj] = key.split(',').map(Number), m = new THREE.Object3D(), col = new THREE.Color();
+        parts.forEach(({ geo, mat }) => {
+          const im = new THREE.InstancedMesh(geo, mat, list.length);
+          list.forEach(([x, z], i) => {
+            const sc = s0 + rnd() * (s1 - s0); m.position.set(x, -0.04, z); m.rotation.set(0, rnd() * 6.283, 0); m.scale.set(sc, sc * (0.85 + rnd() * 0.4), sc); m.updateMatrix();
+            im.setMatrixAt(i, m.matrix); const t = 0.8 + rnd() * 0.3; im.setColorAt(i, col.setRGB(t, t, t * 0.92));
+          });
+          im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true;
+          if (im.computeBoundingSphere) im.computeBoundingSphere();
+          this.scene.add(im);
+          this.grassChunks.push({ mesh: im, cx: (ci + 0.5) * CELL, cz: (cj + 0.5) * CELL });
+        });
+      });
+    }
   }
 
   buildBorder() {
@@ -1064,6 +1154,9 @@ class World {
     p.x = THREE.MathUtils.clamp(p.x, PLAYER_RADIUS, WORLD_W - PLAYER_RADIUS);
     p.z = THREE.MathUtils.clamp(p.z, PLAYER_RADIUS, WORLD_H - PLAYER_RADIUS);
     this.collide(p);
+    if (this.grassChunks && (this._gcTick = (this._gcTick || 0) + 1) % 20 === 0) {       // draw only the grass squares near the player
+      for (const c of this.grassChunks) c.mesh.visible = Math.hypot(c.cx - p.x, c.cz - p.z) < 52;
+    }
     this.collide(p);
 
     const speed = Math.hypot(vx, vz);

@@ -64,6 +64,11 @@ export const PROPS = {
   printer_floor:   { file: 'mfp_office_printer.glb', height: 1.2, tags: ['office', 'printer'] },        // big floor-standing copier on wheels
   printer_desk:    { file: 'printer_copy_machine_and_scanner_in_one.glb', height: 0.4, tags: ['office', 'printer'] },   // desktop printer / scanner
 
+  // ----- grass clumps for the ground (game.js scatters these on the grassy parts) -----
+  grass_clump_a:   { file: 'grass_04.glb', height: 0.8, cutout: true, tags: ['grass'] },              // small upright tuft
+  grass_clump_b:   { file: 'realistics_grass_06.glb', height: 0.55, cutout: true, tags: ['grass'] },    // wide low clump, about 1.5 m across
+  grass_clump_c:   { file: 'realistics_grass_10.glb', height: 0.9, cutout: true, tags: ['grass'] },     // tall clump, about 1.2 m across
+
   // ----- firewood -----
   wood_logs:      { file: 'wood-logs.glb', unit: 0.0143, tags: ['camp', 'wood'] },   // three logs stacked, about 1 m long
   wood_pile:      { file: 'wood_pile.glb', maxXZ: 1.8, tags: ['camp', 'wood'] },     // loose pile of long logs
