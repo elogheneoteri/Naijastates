@@ -32,7 +32,7 @@ const RAW_PLOTS = [
   // ----- north strip (faces the main road) -----
   ['low_line',       'Low-Class Housing: Line Houses', 83.5, 13, 25, 22],
   ['low_bedsit',     'Low-Class Housing: Bed-Sitters', 110, 13, 24, 22],
-  ['university',     'University',                    180,  13, 84, 22],
+  ['university',     'University',                    202, 188, 38, 37],   // swapped with the High School plot
   ['rural',          'Rural District',                275,  13, 74, 22],
   // ----- central zone -----
   ['rental',         'Rental Desk',                    83,  49, 26, 22],
@@ -48,7 +48,7 @@ const RAW_PLOTS = [
   // ----- south zone -----
   ['mid_housing',    'Mid-Class Housing',              96, 188, 52, 37],
   ['hospital',       'Hospital',                      160, 188, 40, 37],
-  ['high_school',    'High School',                   202, 188, 38, 37],
+  ['high_school',    'High School',                   180,  13, 84, 22],   // swapped with the University plot (north strip, faces the main road)
   ['market',         'Market',                        275, 188, 74, 37],
   ['transport',      'Transport District',            180, 231, 84, 14],
   ['broadcasting',   'Broadcasting Station',          275, 231, 60, 14],
@@ -210,3 +210,4 @@ export function buildCity(loadProp) {
 
   return { group };
 }
+
