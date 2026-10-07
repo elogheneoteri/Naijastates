@@ -51,6 +51,20 @@ export const PROPS = {
   door_a:          { file: 'psx_doors_pack.glb', node: 'Door#1_Texture_0', height: 2.2, tags: ['office', 'door'] },
   door_b:          { file: 'psx_doors_pack.glb', node: 'Door#2_Texture_0', height: 2.2, tags: ['office', 'door'] },
 
+  // ----- more office and toilet props (shrunk copies: textures reduced, geometry untouched) -----
+  // Sizes are real-world metres. Where I could not be sure which way a model faces, rotY is left at 0: if one looks backwards in game, set rotY: Math.PI.
+  toilet:          { file: 'toilet.glb', height: 0.78, tags: ['office', 'toilet'] },                    // cistern at the back, bowl faces +Z
+  sink_wall:       { file: 'simple_sink.glb', height: 0.52, tags: ['office', 'toilet'] },               // basin + tap + pipes. Place it with y = 0.4 so it hangs on the wall
+  bench_3seat:     { file: 'bench_with_three_seats.glb', maxXZ: 2.1, tags: ['office', 'furniture'] },   // waiting-area bench, backrest at the back, seats face +Z
+  bookshelf:       { file: 'bookshelf.glb', height: 2.0, tags: ['office', 'furniture'] },               // long unit (about 2.6 m wide), runs along z, front faces +X
+  bin_office:      { file: 'office_bin.glb', height: 0.4, tags: ['office'] },
+  fire_extinguisher: { file: 'fire_extinguisher.glb', height: 0.6, tags: ['office', 'safety'] },
+  plant_pot:       { file: 'potted_plant.glb', height: 1.0, tags: ['office', 'plant'] },
+  plant_monstera:  { file: 'monstera_deliciosa_potted_mid-century_plant.glb', height: 1.4, tags: ['office', 'plant'] },
+  printer_floor:   { file: 'mfp_office_printer.glb', height: 1.2, tags: ['office', 'printer'] },        // big floor-standing copier on wheels
+  printer_desk:    { file: 'printer_copy_machine_and_scanner_in_one.glb', height: 0.4, tags: ['office', 'printer'] },   // desktop printer / scanner
+  ceiling_lights:  { file: 'fluorescent_light_fixtures_-_4x_4096px2.glb', maxXZ: 1.25, tags: ['office', 'light'] },    // four 0.6 m panels in one file. Place it with y = ceiling height (it sits on the ground by default)
+
   // ----- firewood -----
   wood_logs:      { file: 'wood-logs.glb', unit: 0.0143, tags: ['camp', 'wood'] },   // three logs stacked, about 1 m long
   wood_pile:      { file: 'wood_pile.glb', maxXZ: 1.8, tags: ['camp', 'wood'] },     // loose pile of long logs
