@@ -160,10 +160,13 @@ export function buildCity(loadProp) {
     flat(new THREE.PlaneGeometry(x1 - x0, pave), paveMat, (x0 + x1) / 2, -0.01, sz + side * (streetW / 2 + pave / 2)))));
 
   // ----- empty building plots -----
+// Plots that already have a building: they keep their plain ground pad, but lose the yellow border, front strip and floating sign.
+const BUILT_PLOTS = ['high_school'];
   const padMat = new THREE.MeshStandardMaterial({ color: 0xb4ae9f, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const edgeMat = new THREE.MeshStandardMaterial({ color: 0xf2c200, roughness: 0.7, emissive: 0x5a4600, emissiveIntensity: 0.4 });
   PLOTS.forEach(p => {
     flat(new THREE.PlaneGeometry(p.w, p.d), padMat, p.x, 0.0, p.z);
+    if (BUILT_PLOTS.includes(p.code)) return;
     const e = 0.35, top = 0.012;
     [[p.w, e, p.x, p.z - p.d / 2 + e / 2], [p.w, e, p.x, p.z + p.d / 2 - e / 2], [e, p.d - 2 * e, p.x - p.w / 2 + e / 2, p.z], [e, p.d - 2 * e, p.x + p.w / 2 - e / 2, p.z]]
       .forEach(([w, d, x, z]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, top, d), edgeMat); m.position.set(x, top / 2 + 0.002, z); m.receiveShadow = true; group.add(m); });
@@ -210,4 +213,3 @@ export function buildCity(loadProp) {
 
   return { group };
 }
-

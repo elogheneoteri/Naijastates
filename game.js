@@ -11,7 +11,7 @@ import { buildRefugeeCamp, CAMP_BOXES } from './refugee_camp.js';
 import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.js';
 import { initNin, IVORY_FILE } from './nin.js';
 import { loadProp } from './props_library.js';
-import { buildCity, cityClearRects, JUNCTION_GAPS_X, CITY } from './city.js';
+import { buildCity, cityClearRects, JUNCTION_GAPS_X, CITY, plotAt } from './city.js';
 
 // >>> Your three values (same as before). <<<
 const SERVER_URL = 'https://naija-server.onrender.com';
@@ -36,6 +36,7 @@ const ROAD_Z0 = 27.0, ROAD_Z1 = 30.5;      // main road (runs west to east, thro
 // to face north, towards the road.
 // boxes = solid parts you cannot walk through: [minX, maxX, minZ, maxZ] relative to the centre,
 // measured BEFORE rotation (the code rotates them for you).
+const HS_PLOT = plotAt('high_school');       // the High School plot from city.js (centre and which way it faces)
 const BUILDINGS = [
   {
     key: 'immigration', name: 'Immigration Office', file: 'immigration_office.glb',
@@ -57,6 +58,20 @@ const BUILDINGS = [
     x: 21, z: 40, rotY: 180,
     boxes: CAMP_BOXES,                      // big tent, small tents and fence (defined in refugee_camp.js)
     fallback: [19, 4, 19]
+  },
+  {
+    key: 'high_school', name: 'High School', file: 'high_school.glb',
+    // Realistic 3-storey school (your high_school.glb). The model is already in metres (47 m wide, 34.5 m deep with the steps),
+    // so scale 0.62 shrinks it to fit the 84 x 22 m plot: about 29 m wide, 21 m deep and 11 m tall.
+    // Make it bigger or smaller with scale (do not go above 0.64 or the front steps stick out of the plot).
+    // Step 1: outside only. The walls and front steps are solid for now; the inside comes in a later step.
+    scale: 0.62,
+    x: HS_PLOT.x, z: HS_PLOT.z, rotY: HS_PLOT.rotY,
+    boxes: [
+      [-14.6, 14.6, -9.7, 8.2],            // the school building
+      [-1.9, 5.7, 8.1, 10.8]               // the front steps and ramp
+    ],
+    fallback: [29.2, 11.1, 21.4]
   }
 ];
 
