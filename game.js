@@ -13,6 +13,7 @@ import { buildHighSchoolExterior, HS_EXTERIOR_BOXES } from './high_school_exteri
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
 import { initNin, IVORY_FILE } from './nin.js';
 import { loadProp } from './props_library.js';
+import { HS_STAIRS, STAIR_SPEED_FACTOR, STAIR_ANIM_SPEED, addStairs, groundHeight, onStairs } from './stairs.js';   // Step 2: the school steps
 import { buildCity, cityClearRects, JUNCTION_GAPS_X, CITY, plotAt } from './city.js';
 
 // >>> Your three values (same as before). <<<
@@ -78,6 +79,7 @@ const BUILDINGS = [
       ...HS_EXTERIOR_BOXES                 // Step 2: trees, shed, tower, goals, lamps ... (high_school_exterior.js)
     ],
     extras: buildHighSchoolExterior,       // Step 2: the props around the school
+    stairs: HS_STAIRS,                     // Step 2: the front steps (stairs.js): the floor rises towards the door and the stairs animation plays
     fallback: [29.2, 11.1, 21.4]
   }
 ];
@@ -233,7 +235,7 @@ $('btnLogin').addEventListener('click', async () => {
 
 async function boot() {
   // small build tag in the corner, so you can see at once whether the newest game.js is the one running
-  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-06 stable-1';
+  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-08 stairs-1';
   tag.style.cssText = 'position:fixed;left:8px;bottom:4px;z-index:99;font:11px sans-serif;color:#7f8c8d;pointer-events:none';
   document.body.appendChild(tag); window.__buildTag = tag;
   authBox.style.display = 'flex'; showPanel('pLanding');
@@ -361,6 +363,25 @@ const fbxLoader = new FBXLoader();
 const TARGET_HEIGHT = 1.75;   // only used if a character comes out a strange size
 const hipsBone = root => { let h = null; root.traverse(o => { if (!h && o.isBone && /Hips$/.test(o.name)) h = o; }); return h; };
 
+// ---- the stairs animations: ONE pair of files shared by males and females (they are in animation/, not in male/ or female/) ----
+const STAIR_ANIMS = { stairsUp: 'animation/Walking Up The Stairs.fbx', stairsDown: 'animation/Descending Stairs.fbx' };
+let stairLoad = null;
+function loadStairClips() {
+  if (!stairLoad) stairLoad = Promise.all(Object.entries(STAIR_ANIMS).map(([name, file]) =>
+    fbxLoader.loadAsync(encodeURI(file)).then(fbx => {            // encodeURI: the file names have spaces in them
+      const clip = [...fbx.animations].sort((a, b) => b.duration - a.duration || b.tracks.length - a.tracks.length)[0];
+      if (!clip) throw new Error('no animation inside ' + file);
+      const h = hipsBone(fbx);
+      return { name, clip, hipsY: h ? h.position.y : 0, stairs: true };
+    }).catch(e => {                                                // a missing file does not stop the game: the normal walk is used on the steps
+      console.warn('Stairs animation missing or broken:', file, e);
+      showLoadError('Stairs animation not loaded: ' + file + ' -> ' + (e && e.message ? e.message : String(e)));
+      return null;
+    })
+  )).then(list => Object.fromEntries(list.filter(Boolean).map(a => [a.name, a])));
+  return stairLoad;
+}
+
 const mixamoSetLoads = {};
 const mixamoErrors = { male: [], female: [] };   // the real reason an animation file failed, shown in the red banner
 function loadMixamoSet(gender) {
@@ -420,7 +441,7 @@ async function repaintRips(tex) {
 async function loadMixamoCharacter(file) {
   const base = file.split('/').pop();
   const gender = base.startsWith('female') ? 'female' : 'male';
-  const [fbx, set] = await Promise.all([fbxLoader.loadAsync(file), loadMixamoSet(gender)]);
+  const [fbx, set, stairClips] = await Promise.all([fbxLoader.loadAsync(file), loadMixamoSet(gender), loadStairClips()]);
   if (!set.idle) throw new Error('the ' + gender + ' idle animation could not be loaded. ' + mixamoErrors[gender].join(' | '));
 
   const hips = hipsBone(fbx);
@@ -462,7 +483,7 @@ async function loadMixamoCharacter(file) {
   }));
 
   // Keep the turning of every bone, and the up-and-down bounce of the hips (scaled to this character's size).
-  const animations = Object.values(set).map(a => {
+  const animations = Object.values({ ...set, ...stairClips }).map(a => {
     const ratio = a.hipsY && charHipsY ? charHipsY / a.hipsY : 1;
     const tracks = [];
     for (const t of a.clip.tracks) {
@@ -470,7 +491,16 @@ async function loadMixamoCharacter(file) {
       const bone = t.name.slice(0, dot), prop = t.name.slice(dot + 1);
       if (prop === 'quaternion') tracks.push(t);
       else if (prop === 'position' && /Hips$/.test(bone)) {
-        const v = Array.from(t.values, x => x * ratio);
+        let v = Array.from(t.values, x => x * ratio);
+        if (a.stairs) {
+          // A stairs clip may carry the climb itself in the hips (the hips drift forward / upward during the clip). The game already moves
+          // and lifts the character, so take that drift out: the hips only keep their small up-and-down bounce and the clip loops cleanly.
+          const n = t.times.length, T = (t.times[n - 1] - t.times[0]) || 1;
+          for (let k = 0; k < n; k++) {
+            const f = (t.times[k] - t.times[0]) / T;
+            for (let c = 0; c < 3; c++) v[k * 3 + c] = (t.values[k * 3 + c] - (t.values[(n - 1) * 3 + c] - t.values[c]) * f) * ratio;
+          }
+        }
         tracks.push(new THREE.VectorKeyframeTrack(t.name, Array.from(t.times), v));
       }
     }
@@ -610,16 +640,31 @@ $('btnPlay').addEventListener('click', () => {
 function animateAvatar(av, speed, dt) {
   const u = av.userData;
   if (!u.mixer) return;
-  const want = speed < 0.3 ? 'idle' : speed < 2.5 ? 'walk' : 'run';
+  let want = speed < 0.3 ? 'idle' : speed < 2.5 ? 'walk' : 'run';
+  // Step 2: on the steps (u.stairDir is set every frame by updateElevation: 1 = going up, -1 = coming down) play the stairs animation.
+  // Characters without stairs clips (the old .glb ones) just keep walking.
+  if (u.stairDir && speed >= 0.3) { const sa = u.stairDir > 0 ? 'stairsUp' : 'stairsDown'; if (u.actions[sa]) want = sa; }
   if (want !== u.state) {
     const next = u.actions[want], prev = u.actions[u.state];
     next.reset().play();
-    next.crossFadeFrom(prev, 0.25, false);
+    if (prev) next.crossFadeFrom(prev, 0.25, false);
     u.state = want;
   }
   if (want === 'walk') u.actions.walk.timeScale = THREE.MathUtils.clamp(speed / 1.6, 0.5, 1.6);
   if (want === 'run') u.actions.run.timeScale = THREE.MathUtils.clamp(speed / 3.6, 0.8, 1.6);
+  if (want === 'stairsUp' || want === 'stairsDown') u.actions[want].timeScale = THREE.MathUtils.clamp(speed / STAIR_ANIM_SPEED, 0.7, 1.6);
   u.mixer.update(dt);
+}
+
+// Step 2: lifts a character to the floor height under it (grass 0, steps rising, school floor) and works out whether it is
+// climbing or descending. Used for you and for every other player (their height is worked out from x and z, nothing extra is sent).
+function updateElevation(av, x, z, dt) {
+  const u = av.userData, y = groundHeight(x, z);
+  const vy = u.lastY === undefined ? 0 : (y - u.lastY) / Math.max(dt, 0.001);
+  u.lastY = y;
+  av.position.y = y;
+  const th = u.stairDir ? 0.05 : 0.2;                  // a little hysteresis, so the animation does not flicker at the ends
+  u.stairDir = vy > th ? 1 : vy < -th ? -1 : 0;
 }
 
 function turnTowards(obj, angle, dt) {
@@ -891,7 +936,9 @@ class World {
       b.room = b.interior();
       b.inside = false;
       root.add(b.room.group, b.room.marker);
+      if (b.stairs) b.room.group.position.y = b.stairs.rise;     // Step 2: the school floor sits on top of the steps (the marker outside stays on the pavement)
     }
+    if (b.stairs) addStairs(b.stairs, b.x, b.z, b.rotY);          // Step 2: the steps (stairs.js)
 
     if (b.extras) {                      // props around the building (kept visible when the player is inside)
       const ex = b.extras();
@@ -1202,10 +1249,11 @@ class World {
     const { yaw } = this.cam;
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw);       // forward on the ground
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);        // right
-    const vx = (fx * iy + rx * ix) * SPEED;
-    const vz = (fz * iy + rz * ix) * SPEED;
-
     const p = this.player.position;
+    const sp = onStairs(p.x, p.z) ? SPEED * STAIR_SPEED_FACTOR : SPEED;       // Step 2: a bit slower on the steps
+    const vx = (fx * iy + rx * ix) * sp;
+    const vz = (fz * iy + rz * ix) * sp;
+
     p.x += vx * dt; p.z += vz * dt;
     p.x = THREE.MathUtils.clamp(p.x, PLAYER_RADIUS, WORLD_W - PLAYER_RADIUS);
     p.z = THREE.MathUtils.clamp(p.z, PLAYER_RADIUS, WORLD_H - PLAYER_RADIUS);
@@ -1217,6 +1265,7 @@ class World {
 
     const speed = Math.hypot(vx, vz);
     if (speed > 0.2) turnTowards(this.player, Math.atan2(vx, vz), dt);
+    updateElevation(this.player, p.x, p.z, dt);                                // Step 2: height + going up / down
     animateAvatar(this.player, speed, dt);
     for (const f of this.animators) f();
 
@@ -1238,14 +1287,15 @@ class World {
       o.av.position.x += dx * a; o.av.position.z += dz * a;
       const sp = Math.hypot(dx, dz) / Math.max(dt, 0.001) * a;
       if (Math.hypot(dx, dz) > 0.02) turnTowards(o.av, Math.atan2(dx, dz), dt);
+      updateElevation(o.av, o.av.position.x, o.av.position.z, dt);     // Step 2
       animateAvatar(o.av, Math.min(sp, SPEED), dt);
     });
 
     // camera follows from behind and above
     const c = this.cam;
-    const target = new THREE.Vector3(p.x, 1.5, p.z);
+    const target = new THREE.Vector3(p.x, 1.5 + p.y, p.z);
     const cp = Math.cos(c.pitch);
-    const want = new THREE.Vector3(p.x + Math.sin(c.yaw) * cp * c.dist, 1.5 + Math.sin(c.pitch) * c.dist, p.z + Math.cos(c.yaw) * cp * c.dist);
+    const want = new THREE.Vector3(p.x + Math.sin(c.yaw) * cp * c.dist, 1.5 + p.y + Math.sin(c.pitch) * c.dist, p.z + Math.cos(c.yaw) * cp * c.dist);
     if (!this.look) { this.look = target.clone(); this.camera.position.copy(want); }
     const s = 1 - Math.exp(-10 * dt);
     this.camera.position.lerp(want, s);
@@ -1268,7 +1318,7 @@ class World {
     if (this.nin) { try { this.nin.update(dt); } catch (e) { console.error('NIN quest stopped:', e); this.nin = null; } }
 
     // keep the sun's shadow box around the player
-    this.sun.target.position.set(p.x, 0, p.z);
+    this.sun.target.position.set(p.x, p.y, p.z);
     this.sun.position.set(p.x + 30, 50, p.z + 20);
 
     this.renderer.render(this.scene, this.camera);
@@ -1278,3 +1328,4 @@ class World {
 
 // start only after everything above has been defined
 boot();
+
