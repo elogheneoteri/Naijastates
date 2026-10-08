@@ -405,6 +405,9 @@ export function initNin(opts) {
     const slots = $('ninSlots'); slots.innerHTML = '';
     const items = [];                                                     // what the player carries (more items come later)
     if (st.status === 'issued') items.push({ icon: '\u{1FAAA}', label: 'NIN', open: () => { close(bag); showCard('Your <b>NIN</b> card'); } });
+    (world.bagItems || []).forEach(make => {                              // other parts of the game (school.js: the uniform) add their items here
+      try { const it = make(); if (it) items.push({ icon: it.icon, label: it.label, open: () => { close(bag); it.open(); } }); } catch (e) { console.error('Bag item failed:', e); }
+    });
     for (let i = 0; i < BAG_SLOTS; i++) {
       const it = items[i], s = document.createElement('div');
       s.className = 'nin-slot' + (it ? ' has' : '');
@@ -497,3 +500,5 @@ export function initNin(opts) {
 }
 
 export { IVORY_FILE };
+
+
