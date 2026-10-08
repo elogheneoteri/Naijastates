@@ -5,7 +5,9 @@
 //   2. The outfit source (any other character in characters.json: free, premium or clothing) is loaded once and kept (game.js caches it).
 //   3. The outfit's clothing parts are copied and re-attached to the WEARER's bones by bone name.
 //   4. The wearer's own clothing parts are hidden. Face, hair and skin stay.
-//   5. Taking the outfit off removes the copies and shows the hidden parts again.
+//   5. The wearer's own body and legs are masked wherever the outfit is drawn on the screen (a stencil mask), so skin cannot poke
+//      through even when the clothes were cut for another body. Arms, hands and head are never masked.
+//   6. Taking the outfit off removes the copies and shows the hidden parts again.
 //
 // If anything is missing or goes wrong, the character is left exactly as it was and the reason is written in the browser console
 // (look for lines starting with [clothing]).
@@ -22,6 +24,7 @@
 //   ?outfitdebug=1   writes the size and place of every part to the console and adds a "Test: skin on/off" button
 //                    (hides the wearer's skin, so you can see if the outfit parts are really there)
 //   ?inflate=0       turns off the small growth of the outfit (see INFLATE_MM). ?inflate=8 grows it by 8 mm.
+//   ?mask=0          turns off the skin mask, to compare with and without it
 
 import * as THREE from 'three';
 
@@ -44,13 +47,19 @@ const OUTFIT_LABELS = {
 
 // The clothes are cut for another body, so a little of the wearer's skin can poke through. Each outfit part is grown by this
 // much (millimetres) along its surface to cover it. 0 = off.
-const INFLATE_MM = 4;
+const INFLATE_MM = 0;                               // the skin mask below does this job now, so growing is off by default (?inflate=4 turns it back on)
 
 const TEST_BUTTONS = true;                                // the buttons under the minimap. Set false when you are happy.
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.get('outfitdebug') === '1';
 const inflateMM = params.has('inflate') ? parseFloat(params.get('inflate')) || 0 : INFLATE_MM;
+
+// Skin mask: outfit parts are drawn first and mark their pixels in the stencil buffer. The wearer's body and legs are then not drawn
+// on those pixels. Jewellery, logos and laces do not mark pixels (hiding skin under them would leave a hole).
+const MASK = params.get('mask') !== '0';
+const SKIP_MASK = /necklace|earring|logo|lace|eaglet/i;
+const SKIN_MASKED = /^(std_skin_)?(body|legs?)\d*$/i;
 
 // outfits: one for every character in CLOTHES. The outfit id is the character id without male_ / female_
 const idOf = c => c.replace(/^(fe)?male_/, '');
@@ -91,6 +100,23 @@ export function initClothing(opts) {
     return grown.get(key);
   }
 
+  // a copy of a material that takes part in the skin mask ('outfit' marks pixels, 'skin' is not drawn on marked pixels)
+  const stenciled = new Map();
+  function withStencil(mat, kind) {
+    if (Array.isArray(mat)) return mat.map(m => withStencil(m, kind));
+    const key = mat.uuid + ':' + kind;
+    if (!stenciled.has(key)) {
+      const m = mat.clone();
+      m.onBeforeCompile = mat.onBeforeCompile; m.customProgramCacheKey = mat.customProgramCacheKey;
+      m.stencilWrite = true; m.stencilRef = 1; m.stencilFuncMask = 0xff; m.stencilWriteMask = 0xff;
+      m.stencilFail = THREE.KeepStencilOp; m.stencilZFail = THREE.KeepStencilOp;
+      if (kind === 'outfit') { m.stencilFunc = THREE.AlwaysStencilFunc; m.stencilZPass = THREE.ReplaceStencilOp; }
+      else { m.stencilFunc = THREE.NotEqualStencilFunc; m.stencilZPass = THREE.KeepStencilOp; }
+      stenciled.set(key, m);
+    }
+    return stenciled.get(key);
+  }
+
   // ----- take an outfit off a model (own clothes come back) -----
   function strip(model) {
     if (!model) return;
@@ -98,6 +124,7 @@ export function initClothing(opts) {
     if (!model.userData.outfitParts) return;
     model.userData.outfitParts.added.forEach(m => { if (m.parent) m.parent.remove(m); if (m.skeleton) m.skeleton.dispose(); });
     model.userData.outfitParts.hidden.forEach(m => { m.visible = true; });
+    (model.userData.outfitParts.skinSwaps || []).forEach(s => { s.mesh.material = s.material; s.mesh.renderOrder = s.order; });
     model.userData.outfitParts = null;
   }
 
@@ -150,7 +177,9 @@ export function initClothing(opts) {
       const bones = sm.skeleton.bones.map(b => { const nb = baseBones[b.name]; if (!nb) missing.add(b.name); return nb; });
       if (bones.some(b => !b)) return;
       const copy = sm.clone();
-      copy.material = grow(sm.material, amount);
+      const masks = MASK && !SKIP_MASK.test(name);
+      copy.material = masks ? withStencil(grow(sm.material, amount), 'outfit') : grow(sm.material, amount);
+      if (masks) copy.renderOrder = -1;                                               // drawn before the skin, so the mask is ready
       copy.castShadow = true; copy.receiveShadow = true; copy.frustumCulled = false;
       copy.userData = { outfitPart: name, pending: { bones, inverses: sm.skeleton.boneInverses.map(m => m.clone()), bind: sm.bindMatrix.clone() } };
       copies.push(copy);
@@ -165,8 +194,11 @@ export function initClothing(opts) {
       parent.add(copy); copy.updateMatrixWorld(true);
       copy.bind(new THREE.Skeleton(p.bones, p.inverses), p.bind);                     // the part now follows the wearer's bones
     });
-    model.userData.outfitParts = { added: copies, hidden };
-    log(outfit.label + ' put on ' + characterId + ': ' + copies.length + ' parts added (' + copies.map(c => c.userData.outfitPart).join(', ') + '), ' + hidden.length + ' own parts hidden, grown ' + (amount ? inflateMM + ' mm' : 'not at all') + '.');
+    const skinSwaps = [];
+    if (MASK) model.traverse(o => { if (o.isSkinnedMesh && !o.userData.outfitPart && !hidden.includes(o) && SKIN_MASKED.test(plain(o.material))) skinSwaps.push({ mesh: o, material: o.material, order: o.renderOrder }); });
+    skinSwaps.forEach(s => { s.mesh.material = withStencil(s.material, 'skin'); s.mesh.renderOrder = 1; });
+    model.userData.outfitParts = { added: copies, hidden, skinSwaps };
+    log(outfit.label + ' put on ' + characterId + ': ' + copies.length + ' parts added (' + copies.map(c => c.userData.outfitPart).join(', ') + '), ' + hidden.length + ' own parts hidden, grown ' + (amount ? inflateMM + ' mm' : 'not at all') + ', skin masked on ' + skinSwaps.length + ' parts (' + skinSwaps.map(s => plain(s.material)).join(', ') + ').');
     if (DEBUG) {
       const box = o => { const b = new THREE.Box3().setFromObject(o), s = b.getSize(new THREE.Vector3()); return 'y ' + b.min.y.toFixed(2) + ' to ' + b.max.y.toFixed(2) + ', width ' + s.x.toFixed(2) + ', depth ' + s.z.toFixed(2); };
       hidden.forEach(m => log('  hidden own part ' + plain(m.material) + ': ' + box(m)));
