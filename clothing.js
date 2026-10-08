@@ -7,7 +7,10 @@
 //   4. The wearer's own clothing parts are hidden. Face, hair and skin stay.
 //   5. The wearer's own body and legs are masked wherever the outfit is drawn on the screen (a stencil mask), so skin cannot poke
 //      through even when the clothes were cut for another body. Arms, hands and head are never masked.
-//   6. Taking the outfit off removes the copies and shows the hidden parts again.
+//   6. FITTING: before the copies are shown, every outfit point that is inside the wearer's skin (or touching it) is pushed straight out
+//      to just above the skin, and the push is smoothed. So an outfit cut for another body is reshaped to the wearer's own body.
+//      The result is kept for next time. It takes a moment the first time an outfit goes on a character.
+//   7. Taking the outfit off removes the copies and shows the hidden parts again.
 //
 // If anything is missing or goes wrong, the character is left exactly as it was and the reason is written in the browser console
 // (look for lines starting with [clothing]).
@@ -25,6 +28,8 @@
 //                    (hides the wearer's skin, so you can see if the outfit parts are really there)
 //   ?inflate=0       turns off the small growth of the outfit (see INFLATE_MM). ?inflate=8 grows it by 8 mm.
 //   ?mask=0          turns off the skin mask, to compare with and without it
+//   ?fit=0           turns off the fitting (the outfit keeps the shape it was made with)
+//   ?clear=3         the gap kept between skin and outfit, in millimetres (default 3)
 
 import * as THREE from 'three';
 
@@ -59,6 +64,10 @@ const inflateMM = params.has('inflate') ? parseFloat(params.get('inflate')) || 0
 // on those pixels. Jewellery, logos and laces do not mark pixels (hiding skin under them would leave a hole).
 const MASK = params.get('mask') !== '0';
 const SKIP_MASK = /necklace|earring|logo|lace|eaglet/i;
+const FIT = params.get('fit') !== '0';
+const FIT_CLEAR_M = (params.has('clear') ? parseFloat(params.get('clear')) || 0 : 3) / 1000;   // metres on a 1.38 m tall body, scaled for other sizes
+const FIT_REACH_M = 0.05, FIT_MAX_M = 0.05;                   // how far from the skin a point is looked at, and the most it can be moved
+const COLLIDERS = /^(std_skin_)?(body|arms?|legs?)\d*$/i;      // the wearer's skin parts that outfits must stay outside of (not the head)
 const SKIN_MASKED = /^(std_skin_)?(body|legs?)\d*$/i;
 
 // outfits: one for every character in CLOTHES. The outfit id is the character id without male_ / female_
@@ -70,6 +79,116 @@ const genderOf = c => String(c).split('_')[0];
 const plain = m => { const x = Array.isArray(m) ? m[0] : m; return ((x && x.name) || '').replace(/^m\d+_/i, '').replace(/mat$/i, ''); };
 const log = (...a) => console.log('[clothing]', ...a);
 const warn = (...a) => console.warn('[clothing]', ...a);
+
+// ---- fit core: plain maths on number arrays (no three.js) ----
+// closest point on triangle abc to point p (Ericson, Real-Time Collision Detection 5.1.5); writes it to out[0..2]
+function closestOnTri(px, py, pz, ax, ay, az, bx, by, bz, cx, cy, cz, out) {
+  const abx = bx - ax, aby = by - ay, abz = bz - az, acx = cx - ax, acy = cy - ay, acz = cz - az;
+  const apx = px - ax, apy = py - ay, apz = pz - az;
+  const d1 = abx * apx + aby * apy + abz * apz, d2 = acx * apx + acy * apy + acz * apz;
+  if (d1 <= 0 && d2 <= 0) { out[0] = ax; out[1] = ay; out[2] = az; return; }
+  const bpx = px - bx, bpy = py - by, bpz = pz - bz;
+  const d3 = abx * bpx + aby * bpy + abz * bpz, d4 = acx * bpx + acy * bpy + acz * bpz;
+  if (d3 >= 0 && d4 <= d3) { out[0] = bx; out[1] = by; out[2] = bz; return; }
+  const vc = d1 * d4 - d3 * d2;
+  if (vc <= 0 && d1 >= 0 && d3 <= 0) { const v = d1 / (d1 - d3); out[0] = ax + abx * v; out[1] = ay + aby * v; out[2] = az + abz * v; return; }
+  const cpx = px - cx, cpy = py - cy, cpz = pz - cz;
+  const d5 = abx * cpx + aby * cpy + abz * cpz, d6 = acx * cpx + acy * cpy + acz * cpz;
+  if (d6 >= 0 && d5 <= d6) { out[0] = cx; out[1] = cy; out[2] = cz; return; }
+  const vb = d5 * d2 - d1 * d6;
+  if (vb <= 0 && d2 >= 0 && d6 <= 0) { const w = d2 / (d2 - d6); out[0] = ax + acx * w; out[1] = ay + acy * w; out[2] = az + acz * w; return; }
+  const va = d3 * d6 - d5 * d4;
+  if (va <= 0 && (d4 - d3) >= 0 && (d5 - d6) >= 0) { const w = (d4 - d3) / ((d4 - d3) + (d5 - d6)); out[0] = bx + (cx - bx) * w; out[1] = by + (cy - by) * w; out[2] = bz + (cz - bz) * w; return; }
+  const den = 1 / (va + vb + vc), v = vb * den, w = vc * den;
+  out[0] = ax + abx * v + acx * w; out[1] = ay + aby * v + acy * w; out[2] = az + abz * v + acz * w;
+}
+
+const cellKey = (ix, iy, iz) => ((ix + 2048) * 4096 + (iy + 2048)) * 4096 + (iz + 2048);
+
+// tv: skin triangles, 9 numbers each (outward-facing). pts: points, 3 numbers each.
+// A point inside the skin (or closer than `clear`) is moved straight out so it sits `clear` above the surface.
+// Returns { disp (3 numbers per point), pushed (count), maxPush }
+function pushOut(tv, pts, clear, reach, maxPush) {
+  const nt = tv.length / 9, cell = reach / 2, grid = new Map();
+  const nx = new Float32Array(nt), ny = new Float32Array(nt), nz = new Float32Array(nt);
+  for (let t = 0; t < nt; t++) {
+    const o = t * 9;
+    const ux = tv[o + 3] - tv[o], uy = tv[o + 4] - tv[o + 1], uz = tv[o + 5] - tv[o + 2];
+    const vx = tv[o + 6] - tv[o], vy = tv[o + 7] - tv[o + 1], vz = tv[o + 8] - tv[o + 2];
+    let x = uy * vz - uz * vy, y = uz * vx - ux * vz, z = ux * vy - uy * vx;
+    const l = Math.hypot(x, y, z); if (l < 1e-14) continue;                       // a flat triangle is left out
+    nx[t] = x / l; ny[t] = y / l; nz[t] = z / l;
+    let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+    for (let k = 0; k < 3; k++) {
+      const X = tv[o + k * 3], Y = tv[o + k * 3 + 1], Z = tv[o + k * 3 + 2];
+      if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y; if (Z < z0) z0 = Z; if (Z > z1) z1 = Z;
+    }
+    const ax = Math.floor((x0 - reach) / cell), bx = Math.floor((x1 + reach) / cell);
+    const ay = Math.floor((y0 - reach) / cell), by = Math.floor((y1 + reach) / cell);
+    const az = Math.floor((z0 - reach) / cell), bz = Math.floor((z1 + reach) / cell);
+    for (let i = ax; i <= bx; i++) for (let j = ay; j <= by; j++) for (let k = az; k <= bz; k++) {
+      const key = cellKey(i, j, k); let a = grid.get(key); if (!a) grid.set(key, a = []); a.push(t);
+    }
+  }
+  const np = pts.length / 3, disp = new Float32Array(pts.length), c = [0, 0, 0];
+  let pushed = 0, maxP = 0;
+  for (let i = 0; i < np; i++) {
+    const px = pts[i * 3], py = pts[i * 3 + 1], pz = pts[i * 3 + 2];
+    const list = grid.get(cellKey(Math.floor(px / cell), Math.floor(py / cell), Math.floor(pz / cell)));
+    if (!list) continue;
+    let best = Infinity, bt = -1, qx = 0, qy = 0, qz = 0;
+    for (let n = 0; n < list.length; n++) {
+      const t = list[n], o = t * 9;
+      if (nx[t] === 0 && ny[t] === 0 && nz[t] === 0) continue;
+      closestOnTri(px, py, pz, tv[o], tv[o + 1], tv[o + 2], tv[o + 3], tv[o + 4], tv[o + 5], tv[o + 6], tv[o + 7], tv[o + 8], c);
+      const dx = px - c[0], dy = py - c[1], dz = pz - c[2], d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 < best) { best = d2; bt = t; qx = c[0]; qy = c[1]; qz = c[2]; }
+    }
+    if (bt < 0) continue;
+    const dist = Math.sqrt(best); if (dist > reach) continue;
+    const sd = (px - qx) * nx[bt] + (py - qy) * ny[bt] + (pz - qz) * nz[bt];     // signed distance: negative = inside the skin
+    let amt, dx, dy, dz;
+    if (sd < 0) {
+      if (dist > maxPush) continue;                                              // too deep to trust the nearest surface
+      amt = Math.min(clear - sd, maxPush); dx = nx[bt]; dy = ny[bt]; dz = nz[bt];
+    } else if (dist < clear) {
+      amt = clear - dist;
+      if (dist > 1e-9) { dx = (px - qx) / dist; dy = (py - qy) / dist; dz = (pz - qz) / dist; } else { dx = nx[bt]; dy = ny[bt]; dz = nz[bt]; }
+    } else continue;
+    disp[i * 3] = dx * amt; disp[i * 3 + 1] = dy * amt; disp[i * 3 + 2] = dz * amt;
+    pushed++; if (amt > maxP) maxP = amt;
+  }
+  return { disp, pushed, maxPush: maxP };
+}
+
+// evens out the push between neighbouring points so the cloth does not get spiky (points closer than `radius` are averaged)
+function smoothPush(pts, disp, radius, passes) {
+  const np = pts.length / 3, grid = new Map();
+  for (let i = 0; i < np; i++) {
+    const key = cellKey(Math.floor(pts[i * 3] / radius), Math.floor(pts[i * 3 + 1] / radius), Math.floor(pts[i * 3 + 2] / radius));
+    let a = grid.get(key); if (!a) grid.set(key, a = []); a.push(i);
+  }
+  let cur = disp;
+  for (let p = 0; p < passes; p++) {
+    const next = new Float32Array(cur.length), r2 = radius * radius;
+    for (let i = 0; i < np; i++) {
+      const px = pts[i * 3], py = pts[i * 3 + 1], pz = pts[i * 3 + 2];
+      const ix = Math.floor(px / radius), iy = Math.floor(py / radius), iz = Math.floor(pz / radius);
+      let sx = 0, sy = 0, sz = 0, n = 0;
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++) {
+        const list = grid.get(cellKey(ix + a, iy + b, iz + c)); if (!list) continue;
+        for (let k = 0; k < list.length; k++) {
+          const j = list[k], dx = pts[j * 3] - px, dy = pts[j * 3 + 1] - py, dz = pts[j * 3 + 2] - pz;
+          if (dx * dx + dy * dy + dz * dz <= r2) { sx += cur[j * 3]; sy += cur[j * 3 + 1]; sz += cur[j * 3 + 2]; n++; }
+        }
+      }
+      next[i * 3] = cur[i * 3] * 0.5 + (sx / n) * 0.5; next[i * 3 + 1] = cur[i * 3 + 1] * 0.5 + (sy / n) * 0.5; next[i * 3 + 2] = cur[i * 3 + 2] * 0.5 + (sz / n) * 0.5;
+    }
+    cur = next;
+  }
+  return cur;
+}
+// ---- end of fit core ----
 
 export function initClothing(opts) {
   const { world, applyCharacter, loadSource } = opts;
@@ -100,6 +219,79 @@ export function initClothing(opts) {
     return grown.get(key);
   }
 
+  // ----- fitting -----
+  // where every vertex of a skinned mesh is right now, in world space
+  function skinnedWorld(mesh) {
+    const g = mesh.geometry, pos = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
+    const bones = mesh.skeleton.bones, inv = mesh.skeleton.boneInverses;
+    const bm = bones.map((b, i) => new THREE.Matrix4().multiplyMatrices(b.matrixWorld, inv[i]));
+    const out = new Float32Array(pos.count * 3), v = new THREE.Vector3(), t = new THREE.Vector3(), acc = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(mesh.bindMatrix); acc.set(0, 0, 0);
+      const w = [sw.getX(i), sw.getY(i), sw.getZ(i), sw.getW(i)], s = [si.getX(i), si.getY(i), si.getZ(i), si.getW(i)];
+      for (let k = 0; k < 4; k++) if (w[k]) acc.addScaledVector(t.copy(v).applyMatrix4(bm[s[k]]), w[k]);
+      acc.applyMatrix4(mesh.bindMatrixInverse).applyMatrix4(mesh.matrixWorld);
+      out[i * 3] = acc.x; out[i * 3 + 1] = acc.y; out[i * 3 + 2] = acc.z;
+    }
+    return out;
+  }
+
+  const fitCache = new Map();          // 'wearer|outfit|part' -> the fitted positions (so the work is done once)
+
+  // reshape the outfit copies so they sit outside the wearer's skin. Returns a short text for the log.
+  function fitCopies(model, copies, characterId, outfitId) {
+    const colliders = [];
+    model.traverse(o => { if (o.isSkinnedMesh && !o.userData.outfitPart && COLLIDERS.test(plain(o.material))) colliders.push(o); });
+    if (!colliders.length) return 'fit skipped: no skin parts found';
+    if (copies.every(c => fitCache.has(characterId + '|' + outfitId + '|' + c.userData.outfitPart))) {
+      copies.forEach(c => { const a = c.geometry.attributes.position; a.array.set(fitCache.get(characterId + '|' + outfitId + '|' + c.userData.outfitPart)); a.needsUpdate = true; c.geometry.computeBoundingSphere(); });
+      return 'fit reused';
+    }
+    // the wearer's skin as triangles, at its current pose
+    const tri = []; let y0 = Infinity, y1 = -Infinity;
+    colliders.forEach(m => {
+      m.updateMatrixWorld(true);
+      const P = skinnedWorld(m), g = m.geometry, ix = g.index, n = ix ? ix.count : g.attributes.position.count, flip = m.matrixWorld.determinant() < 0;
+      for (let i = 0; i + 2 < n; i += 3) {
+        const a = ix ? ix.getX(i) : i, b = ix ? ix.getX(i + (flip ? 2 : 1)) : i + (flip ? 2 : 1), c = ix ? ix.getX(i + (flip ? 1 : 2)) : i + (flip ? 1 : 2);
+        tri.push(P[a * 3], P[a * 3 + 1], P[a * 3 + 2], P[b * 3], P[b * 3 + 1], P[b * 3 + 2], P[c * 3], P[c * 3 + 1], P[c * 3 + 2]);
+      }
+      for (let i = 1; i < P.length; i += 3) { if (P[i] < y0) y0 = P[i]; if (P[i] > y1) y1 = P[i]; }
+    });
+    const tv = Float32Array.from(tri);
+    const U = Math.max(0.2, (y1 - y0) / 1.38);                  // 1 = a body the size of the ones we measured (metres)
+    const clear = FIT_CLEAR_M * U, reach = FIT_REACH_M * U, maxPush = FIT_MAX_M * U;
+    let totalPushed = 0, totalPoints = 0, worst = 0;
+    const m3 = new THREE.Matrix3(), full = new THREE.Matrix4(), mv = new THREE.Matrix4(), d = new THREE.Vector3();
+    copies.forEach(c => {
+      c.updateMatrixWorld(true);
+      const P = skinnedWorld(c), np = P.length / 3;
+      const res = pushOut(tv, P, clear, reach, maxPush);
+      const disp = np <= 20000 ? smoothPush(P, res.disp, 0.02 * U, 1) : res.disp;
+      totalPushed += res.pushed; totalPoints += np; worst = Math.max(worst, res.maxPush / U);
+      // turn the push (world space) into a change of the mesh's own vertex positions (undoing the skinning for each vertex)
+      const g = c.geometry, pos = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
+      const bones = c.skeleton.bones, inv = c.skeleton.boneInverses;
+      const bm = bones.map((b, i) => new THREE.Matrix4().multiplyMatrices(b.matrixWorld, inv[i]).elements);
+      const c1 = new THREE.Matrix4().multiplyMatrices(c.matrixWorld, c.bindMatrixInverse);
+      for (let i = 0; i < np; i++) {
+        const dx = disp[i * 3], dy = disp[i * 3 + 1], dz = disp[i * 3 + 2];
+        if (!dx && !dy && !dz) continue;
+        const w = [sw.getX(i), sw.getY(i), sw.getZ(i), sw.getW(i)], s = [si.getX(i), si.getY(i), si.getZ(i), si.getW(i)];
+        mv.elements.fill(0);
+        for (let k = 0; k < 4; k++) if (w[k]) { const e = bm[s[k]]; for (let q = 0; q < 16; q++) mv.elements[q] += w[k] * e[q]; }
+        full.multiplyMatrices(c1, mv).multiply(c.bindMatrix);
+        m3.setFromMatrix4(full);
+        if (Math.abs(m3.determinant()) < 1e-12) continue;
+        m3.invert(); d.set(dx, dy, dz).applyMatrix3(m3);
+        pos.setXYZ(i, pos.getX(i) + d.x, pos.getY(i) + d.y, pos.getZ(i) + d.z);
+      }
+      pos.needsUpdate = true; g.computeBoundingSphere(); g.computeBoundingBox();
+      fitCache.set(characterId + '|' + outfitId + '|' + c.userData.outfitPart, new Float32Array(pos.array));
+    });
+    return 'fitted: ' + totalPushed + ' of ' + totalPoints + ' points moved out of the skin, the most by ' + (worst * 1000).toFixed(0) + ' mm';
+  }
+
   // a copy of a material that takes part in the skin mask ('outfit' marks pixels, 'skin' is not drawn on marked pixels)
   const stenciled = new Map();
   function withStencil(mat, kind) {
@@ -122,7 +314,7 @@ export function initClothing(opts) {
     if (!model) return;
     const d = model.userData.debugSkin; if (d) { d.parts.forEach(m => { m.visible = true; }); model.userData.debugSkin = null; }
     if (!model.userData.outfitParts) return;
-    model.userData.outfitParts.added.forEach(m => { if (m.parent) m.parent.remove(m); if (m.skeleton) m.skeleton.dispose(); });
+    model.userData.outfitParts.added.forEach(m => { if (m.parent) m.parent.remove(m); if (m.skeleton) m.skeleton.dispose(); if (m.userData.ownGeometry) m.geometry.dispose(); });
     model.userData.outfitParts.hidden.forEach(m => { m.visible = true; });
     (model.userData.outfitParts.skinSwaps || []).forEach(s => { s.mesh.material = s.material; s.mesh.renderOrder = s.order; });
     model.userData.outfitParts = null;
@@ -177,11 +369,12 @@ export function initClothing(opts) {
       const bones = sm.skeleton.bones.map(b => { const nb = baseBones[b.name]; if (!nb) missing.add(b.name); return nb; });
       if (bones.some(b => !b)) return;
       const copy = sm.clone();
+      if (FIT) copy.geometry = sm.geometry.clone();                                    // the fitting changes the copy's own shape, never the shared original
       const masks = MASK && !SKIP_MASK.test(name);
       copy.material = masks ? withStencil(grow(sm.material, amount), 'outfit') : grow(sm.material, amount);
       if (masks) copy.renderOrder = -1;                                               // drawn before the skin, so the mask is ready
       copy.castShadow = true; copy.receiveShadow = true; copy.frustumCulled = false;
-      copy.userData = { outfitPart: name, pending: { bones, inverses: sm.skeleton.boneInverses.map(m => m.clone()), bind: sm.bindMatrix.clone() } };
+      copy.userData = { outfitPart: name, ownGeometry: FIT, pending: { bones, inverses: sm.skeleton.boneInverses.map(m => m.clone()), bind: sm.bindMatrix.clone() } };
       copies.push(copy);
     });
     const lost = outfit.take.filter(n => !found.has(n));
@@ -194,11 +387,13 @@ export function initClothing(opts) {
       parent.add(copy); copy.updateMatrixWorld(true);
       copy.bind(new THREE.Skeleton(p.bones, p.inverses), p.bind);                     // the part now follows the wearer's bones
     });
+    let fitInfo = 'fit off';
+    if (FIT) { try { fitInfo = fitCopies(model, copies, characterId, outfitId); } catch (e) { fitInfo = 'fit failed'; warn('fitting failed, the outfit keeps the shape it was made with:', e); } }
     const skinSwaps = [];
     if (MASK) model.traverse(o => { if (o.isSkinnedMesh && !o.userData.outfitPart && !hidden.includes(o) && SKIN_MASKED.test(plain(o.material))) skinSwaps.push({ mesh: o, material: o.material, order: o.renderOrder }); });
     skinSwaps.forEach(s => { s.mesh.material = withStencil(s.material, 'skin'); s.mesh.renderOrder = 1; });
-    model.userData.outfitParts = { added: copies, hidden, skinSwaps };
-    log(outfit.label + ' put on ' + characterId + ': ' + copies.length + ' parts added (' + copies.map(c => c.userData.outfitPart).join(', ') + '), ' + hidden.length + ' own parts hidden, grown ' + (amount ? inflateMM + ' mm' : 'not at all') + ', skin masked on ' + skinSwaps.length + ' parts (' + skinSwaps.map(s => plain(s.material)).join(', ') + ').');
+    model.userData.outfitParts = { added: copies, hidden, skinSwaps, fit: fitInfo };
+    log(outfit.label + ' put on ' + characterId + ': ' + copies.length + ' parts added (' + copies.map(c => c.userData.outfitPart).join(', ') + '), ' + hidden.length + ' own parts hidden, grown ' + (amount ? inflateMM + ' mm' : 'not at all') + ', ' + fitInfo + ', skin masked on ' + skinSwaps.length + ' parts (' + skinSwaps.map(s => plain(s.material)).join(', ') + ').');
     if (DEBUG) {
       const box = o => { const b = new THREE.Box3().setFromObject(o), s = b.getSize(new THREE.Vector3()); return 'y ' + b.min.y.toFixed(2) + ' to ' + b.max.y.toFixed(2) + ', width ' + s.x.toFixed(2) + ', depth ' + s.z.toFixed(2); };
       hidden.forEach(m => log('  hidden own part ' + plain(m.material) + ': ' + box(m)));
@@ -222,7 +417,11 @@ export function initClothing(opts) {
       if (dressed && dressed.model === model) { strip(model); dressed = null; }
       if (wanted) {
         const ok = await dress(model, u.characterId, wanted);
-        if (ok) { dressed = { model, outfit: wanted }; world.say3d(OUTFITS[wanted].label + ' is on.'); }
+        if (ok) {
+          dressed = { model, outfit: wanted };
+          const f = (model.userData.outfitParts && model.userData.outfitParts.fit) || '';          // shown on screen, so you can see it without the console
+          world.say3d(OUTFITS[wanted].label + ' is on' + (/^fit(ted| reused)/.test(f) ? ' (fitted)' : f === 'fit failed' ? ' (fit FAILED)' : '') + '.');
+        }
         else { world.say3d('Could not put that outfit on this character (see the browser console).'); wanted = null; dressed = { model, outfit: null }; }
       } else { dressed = { model, outfit: null }; world.say3d('Own clothes.'); }
     } catch (e) { console.error('[clothing] failed:', e); wanted = null; } finally { busy = false; }
