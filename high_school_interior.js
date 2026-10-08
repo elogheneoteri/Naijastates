@@ -1,4 +1,4 @@
-// high_school_interior.js  (STEP 3: the ground floor of the DELTA HIGH SCHOOL, built like the immigration office)
+// high_school_interior.js  (STEP 3b: the ground floor of the DELTA HIGH SCHOOL, with your classroom, desk and tile models)
 //
 // Local space: the school's centre is (0,0). The front door is on the +Z (south) wall, facing the road. The rooms fill the school's
 // footprint (x -14.6..14.6, z -9.7..8.2, measured from the model), so the player never teleports: game.js hides the outside model
@@ -10,28 +10,31 @@
 // FLOOR PLAN (north is -Z, the front door is at the bottom):
 //
 //   +--------+--------+--------+--------+
-//   | JSS 1A | JSS 1B | JSS 2A | JSS 2B |     4 classrooms: board on the north wall, 9 two-seater desks, teacher's table
+//   | JSS 1A | JSS 1B | JSS 2A | JSS 2B |     4 classrooms: board + teacher table on the north wall, 18 single desks
 //   +--[ ]---+--[ ]---+--[ ]---+--[ ]---+
 //   |            CORRIDOR (3 m)         |
 //   +------+---------------------+------+
-//   |BOYS  |  HALL / RECEPTION   |GIRLS |     toilets open onto the corridor
+//   |BOYS  |  HALL / RECEPTION   |GIRLS |     toilets open onto the corridor (reception counter faces the benches)
 //   |TOILET|  desk, benches,     |TOILET|
 //   +------+  trophy cabinet     +------+
 //   |STORE |        [front door] |PRINC.|     cleaners' store (west), principal's office (east), both open onto the hall
 //   +------+---------------------+------+
 //
-// Props used from your upload: reception_desk.glb, toilet_stalls_4.glb, pbr_material_floor_tiles.glb (floor), gta_marker_blue.glb.
+// Files in the props/ folder used here (new ones are marked *):
+//   classroom_gameready_optimised.glb *  the board, clock, teacher's table + chair, globe and tools of every classroom, and the wooden classroom floor
+//   school_desk_optimised.glb *          the student desk + chair (18 in every classroom, one model repeated)
+//   cafeteria_tile_optimised.glb *       the floor of the waiting hall (the clean plank part of your scan, repeated without seams)
+//   reception_desk.glb, toilet_stalls_4.glb, pbr_material_floor_tiles.glb (floor of the rest), gta_marker_blue.glb.
 // From props_library.js: office_chair, personal_computer, standing_fan, water_dispenser, filing_cabinet, bench_3seat, toilet, sink_wall,
 // fire_extinguisher, plant_pot, plant_monstera, bin_office.
 // New (shrunk by me): globe_optimised.glb, water_drum_optimised.glb, bucket_optimised.glb, bookshelf_optimised.glb.
-// Built in code: walls, desks, boards, teacher tables, trophy cabinet, notice boards, plaques, principal's desk, flag stand, door signs.
+// Built in code: plain white walls, trophy cabinet, notice boards, plaques, principal's desk, flag stand, door signs.
 //
 // If you move the front door (the doorway in the south wall): change DOOR_X below. It is centred on the steps now (x = 1.9).
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as BGU from 'three/addons/utils/BufferGeometryUtils.js';
 import { loadProp, PROPS_DIR } from './props_library.js';
 
 // ---------- size and layout (metres, school centre = 0,0) ----------
@@ -41,6 +44,7 @@ export const HALF_W = 14.6, HALF_D = 8.95, CZ = -0.75;      // half sizes and th
 const WALL_H = 3.1, LOW_H = 1.1, DOOR_H = 2.2, GAP = 1.3;
 const T_OUT = 0.24, T_IN = 0.2;
 const DOOR_X = 1.9, DOOR_HALF = 1.3;                        // front doorway: centre and half width
+const WALL_WHITE = 0xf0f0ee;                                // the plain white wall from walls_window_door.glb (a flat light grey, 221 of 255; a touch brighter so it reads as white under the game lights). Use 0xdddddd for the exact value.
 
 const N_IN = Z0 + T_OUT, S_IN = Z1 - T_OUT, W_IN = X0 + T_OUT, E_IN = X1 - T_OUT;   // inner faces of the outer walls
 
@@ -78,13 +82,17 @@ const IN_WALLS = [
   { rooms: ['prin'], alongX: false, fixed: X_TE, from: Z_STORE, to: Z1, gaps: [DOOR_SIDE_Z] },
 ];
 
-// Classroom: students sit on the benches facing NORTH (the board is on the north wall). 3 columns x 3 rows of two-seater desks.
-const DESK_COLS = [-2.1, 0, 2.1];
-const DESK_ROWS = [-7.3, -6.3, -5.3];
-const DESK_W = 1.2;
-const TEACHER_Z = -8.5;
+// Classroom (your classroom_gameready file, baked at real size): the board and the teacher's table are on the north wall, the students face north.
+// 6 columns x 3 rows of your single school desks (a wide aisle in the middle, in line with the doorway). Numbers are measured from the optimised files.
+const CLASS_FILE = 'classroom_gameready_optimised.glb', DESK_FILE = 'school_desk_optimised.glb', TILE_FILE = 'cafeteria_tile_optimised.glb';
+const DESK_COLS = [-2.95, -1.95, -0.95, 0.95, 1.95, 2.95];  // x from the classroom centre
+const DESK_ROWS = [-6.95, -5.8, -4.65];                     // z of the middle of each desk + chair
+const DESK_HW = 0.4, DESK_HD = 0.5;                         // half width / half depth of one desk + chair
+const TABLE_X = [-3.36, -1.07], TABLE_DEPTH = 1.95;         // the teacher's table: x from the classroom centre, depth out from the north wall
+const WAIT_TILE_W = 1.67, WAIT_TILE_D = 1.45;               // size in metres of one repeat of the waiting hall floor picture
+const CLASS_FLOOR_PER = 3.0;                                // size in metres of one repeat of the classroom wood floor picture
 // Hall
-const RECEPTION = { x: -4.5, z: 3.0 }, REC_W = 2.6;          // counter faces south (toward the door); staff chair behind it
+const RECEPTION = { x: -4.5, z: 3.0 }, REC_W = 2.6;          // counter faces EAST (toward the waiting benches), 2.6 m long along z; the staff chair is behind it (west)
 const BENCHES = [{ x: 9.6, z: 1.2 }, { x: 9.6, z: 3.4 }];    // waiting benches along the east side, facing west
 const TROPHY = { x: -8.0, z: S_IN - 0.25 };                  // trophy cabinet against the south wall
 // Toilets: your 4-stall block, against the south wall of each toilet room, opening north. Numbers measured from toilet_stalls_4.glb.
@@ -96,9 +104,13 @@ const Z_TS = Z_STORE - T_IN / 2;                             // inner face of th
 const STALL_BLOCKS = [{ room: 'tb', cx: W_IN + STALL_W / 2 }, { room: 'tg', cx: E_IN - STALL_W / 2 }];
 const STALL_CZ = Z_TS - STALL_D / 2;
 const WC = STALL_BLOCKS.flatMap(b => STALL_WC.map(o => ({ x: b.cx - o, z: Z_TS - 0.33 })));
-const SINKS = [{ x: X_TW - T_IN / 2 - 0.27, z: 1.0, rot: -Math.PI / 2 }, { x: X_TE + T_IN / 2 + 0.27, z: 1.0, rot: Math.PI / 2 }];
+// Wash basins: hung on the wall that divides each toilet from the hall (boys on the west side, girls on the east side). hangSink() below turns each one so its back is on the wall.
+// If a basin still looks wrong, set SINK_BACK to the side of the model file where the tap and pipes are: 'x+', 'x-', 'z+' or 'z-' (null = work it out from the shape).
+const SINK_BACK = null;
+const SINK_Z = 1.0;
+const SINK_WALL_BOYS = X_TW - T_IN / 2, SINK_WALL_GIRLS = X_TE + T_IN / 2;     // the wall faces the basins touch
 // Principal's office (SE corner)
-const PRIN_DESK = { x: 13.3, z: 6.3 };
+const PRIN_DESK = { x: 12.55, z: 6.3 };                     // moved 0.75 m west: the principal's chair was half inside the east wall
 const PRIN_SHELF = { x: 12.5, z: S_IN - 0.29 };
 
 // ---------- collision boxes: [minX, maxX, minZ, maxZ] ----------
@@ -121,15 +133,15 @@ export const HS_INTERIOR_BOXES = [
     w.alongX ? [a - 0.1, b + 0.1, w.fixed - 0.15, w.fixed + 0.15] : [w.fixed - 0.15, w.fixed + 0.15, a - 0.1, b + 0.1])),
   // classrooms: desks, teacher's table, fan
   ...CLASS_C.flatMap(cx => [
-    ...DESK_COLS.flatMap(o => DESK_ROWS.map(z => [cx + o - DESK_W / 2, cx + o + DESK_W / 2, z - 0.22, z + 0.57])),
-    [cx - 0.65, cx + 0.65, TEACHER_Z - 0.3, TEACHER_Z + 0.3], R(cx + 3.1, -9.0, 0.3),
+    ...DESK_COLS.flatMap(o => DESK_ROWS.map(z => [cx + o - DESK_HW, cx + o + DESK_HW, z - DESK_HD, z + DESK_HD])),
+    [cx + TABLE_X[0], cx + TABLE_X[1], N_IN, N_IN + TABLE_DEPTH], R(cx + 3.1, -9.0, 0.3),
   ]),
   // hall
-  [RECEPTION.x - REC_W / 2, RECEPTION.x + REC_W / 2, RECEPTION.z - 0.65, RECEPTION.z + 0.65],
+  [RECEPTION.x - 0.65, RECEPTION.x + 0.65, RECEPTION.z - REC_W / 2, RECEPTION.z + REC_W / 2],
   ...BENCHES.map(b => [b.x - 0.35, b.x + 0.35, b.z - 1.05, b.z + 1.05]),
   [TROPHY.x - 0.8, TROPHY.x + 0.8, TROPHY.z - 0.25, TROPHY.z + 0.25],
   R(-1.2, 7.4, 0.3), R(5.2, 7.4, 0.3), R(-9.8, 7.4, 0.3), R(9.8, 7.4, 0.3),
-  [10.0, 10.5, 3.6, 4.2],                                                       // water dispenser
+  [-10.5, -10.1, 3.2, 3.6],                                                     // water dispenser (west wall of the hall)
   // toilets: stalls, basins, drum and bucket
   ...WC.map(w => [w.x - 0.3, w.x + 0.3, Z_TS - 0.7, Z_TS]),
   ...STALL_BLOCKS.flatMap(b => STALL_PLANES.map(o => [b.cx - o - 0.07, b.cx - o + 0.07, Z_TS - STALL_D, Z_TS])),
@@ -194,18 +206,41 @@ const fitText = (g, text, maxW, start, weight = 'bold') => {
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 const std = (color, rough = 0.9, metal = 0) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
 
-// one two-seater Nigerian school desk (writing top and an attached bench), merged into a single geometry
-function deskGeometry() {
-  const parts = [];
-  const add = (w, h, d, x, y, z) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); parts.push(g); };
-  add(1.2, 0.04, 0.45, 0, 0.74, 0);                                   // writing top
-  add(1.2, 0.03, 0.26, 0, 0.45, 0.46);                                // bench seat
-  add(1.2, 0.2, 0.03, 0, 0.55, -0.2);                                 // front panel
-  [-0.55, 0.55].forEach(x => {
-    add(0.04, 0.72, 0.04, x, 0.36, -0.18); add(0.04, 0.72, 0.04, x, 0.36, 0.14); add(0.04, 0.44, 0.04, x, 0.22, 0.56);
-    add(0.04, 0.04, 0.78, x, 0.3, 0.2);                               // runner joining desk and bench
+const tiledXY = (map, w, d, tw, td) => {
+  const t = map.clone(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(w / tw, d / td); t.anisotropy = 8; t.needsUpdate = true; return t;
+};
+
+// Hangs a wash basin on a wall so its BACK (tap and pipes) touches the wall and its front looks into the room.
+// wallSide = +1 when the wall is on the +X side of the basin, -1 when it is on the -X side. The model's own front/back is worked out from its shape
+// (a wall basin is shallower than it is wide, and the tap and pipes sit at the back), unless SINK_BACK says otherwise.
+async function hangSink(parent, wallFaceX, z, wallSide) {
+  const p = await loadProp('sink_wall');
+  p.updateMatrixWorld(true);
+  const pts = [], v = new THREE.Vector3();
+  p.traverse(o => {
+    if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+    const a = o.geometry.attributes.position;
+    for (let i = 0; i < a.count; i++) { v.fromBufferAttribute(a, i).applyMatrix4(o.matrixWorld); pts.push([v.x, v.y, v.z]); }
   });
-  return (BGU.mergeGeometries || BGU.mergeBufferGeometries)(parts);
+  if (!pts.length) throw new Error('sink_wall has no geometry');
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  pts.forEach(q => q.forEach((c, k) => { if (c < lo[k]) lo[k] = c; if (c > hi[k]) hi[k] = c; }));
+  const sx = hi[0] - lo[0], sz = hi[2] - lo[2], h = hi[1] - lo[1], bx = (lo[0] + hi[0]) / 2, bz = (lo[2] + hi[2]) / 2;
+  const mean = sel => { const m = [0, 0, 0]; sel.forEach(q => { m[0] += q[0]; m[2] += q[2]; m[1]++; }); return m[1] ? [m[0] / m[1] - bx, m[2] / m[1] - bz] : [0, 0]; };
+  const top = mean(pts.filter(q => q[1] > hi[1] - 0.2 * h)), bottom = mean(pts.filter(q => q[1] < lo[1] + 0.45 * h));
+  const cue = [top[0] + bottom[0], top[1] + bottom[1]];                       // the tap (top) and the pipes (bottom) lean towards the back
+  let back;                                                                   // direction of the model's back, in the model's own axes
+  if (SINK_BACK) back = { 'x+': [1, 0], 'x-': [-1, 0], 'z+': [0, 1], 'z-': [0, -1] }[SINK_BACK];
+  else {
+    const axis = sx < sz * 0.9 ? 0 : sz < sx * 0.9 ? 1 : (Math.abs(cue[0]) > Math.abs(cue[1]) ? 0 : 1);     // the shallow side is the front-to-back side
+    const sign = Math.abs(cue[axis]) > 0.004 ? Math.sign(cue[axis]) : -1;
+    back = axis === 0 ? [sign, 0] : [0, sign];
+  }
+  const depth = back[0] !== 0 ? sx : sz;
+  p.rotation.y = Math.atan2(wallSide, 0) - Math.atan2(back[0], back[1]);       // turn the back to face the wall
+  p.position.set(wallFaceX - wallSide * (depth / 2 + 0.01), 0.4, z);
+  parent.add(p);
+  return p;
 }
 
 // ---------- the building ----------
@@ -214,11 +249,12 @@ export function buildHighSchoolInterior() {
   const group = new THREE.Group();          // everything inside (shown only while the player is inside)
   const marker = new THREE.Group();         // the door marker outside (shown only while the player is outside)
   const M = {
-    paint: std(0xf0ecdf), dado: std(0x2e7d4f, 0.8), skirt: std(0x2b2f33, 0.7), rail: std(0xe6e9ec, 0.6),
-    tile: std(0xc7cdd2, 0.55), concrete: std(0xa7a49b, 1), wood: std(0x8b5a2b, 0.85), darkwood: std(0x5a3a1c, 0.8),
+    paint: std(WALL_WHITE, 0.9), skirt: std(0xd2d0ca, 0.7),
+    tile: std(0xc7cdd2, 0.55), classFloor: std(0xb98a52, 0.7), waitFloor: std(0xcdc6b8, 0.5), wood: std(0x8b5a2b, 0.85), darkwood: std(0x5a3a1c, 0.8),
     gold: std(0xd6a62a, 0.35, 0.6), glass: new THREE.MeshStandardMaterial({ color: 0xcfe6ee, roughness: 0.1, transparent: true, opacity: 0.18, depthWrite: false }),
     steel: std(0x6a7077, 0.5, 0.5), white: std(0xf1efe8, 0.8),
   };
+  M.waitFloor.polygonOffset = true; M.waitFloor.polygonOffsetFactor = -1; M.waitFloor.polygonOffsetUnits = -1;   // wins over the tile floor underneath
   const warn = what => e => console.warn('high school interior: could not load ' + what, e);
   const lib = (parent, name, x, y, z, rotY = 0) =>
     loadProp(name).then(p => { p.position.set(x, y, z); p.rotation.y = rotY; parent.add(p); return p; }).catch(warn(name));
@@ -237,11 +273,22 @@ export function buildHighSchoolInterior() {
     m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2); m.receiveShadow = true; group.add(m); return m;
   };
   const hallFloor = plane(X0, X1, Z0, Z1, 0.01, M.tile);                         // hall, corridor, toilets, store, office
-  const classFloors = CLASS_X.slice(0, 4).map((x, i) => plane(x, CLASS_X[i + 1], Z0, Z_CLASS, 0.02, M.concrete));
+  const classFloors = CLASS_X.slice(0, 4).map((x, i) => plane(x, CLASS_X[i + 1], Z0, Z_CLASS, 0.02, M.classFloor));
+  const waitFloor = plane(X_TW + T_IN / 2, X_TE - T_IN / 2, Z_TOI, S_IN, 0.016, M.waitFloor);                    // the waiting hall / reception
   borrowMap('pbr_material_floor_tiles.glb').then(map => {
     hallFloor.material = new THREE.MeshStandardMaterial({ map: tiled(map, X1 - X0, Z1 - Z0, 2.0), roughness: 0.55, metalness: 0.05 });
   }).catch(warn('floor tiles (keeping the plain floor)'));
-  void classFloors;
+  borrowMap(TILE_FILE).then(map => {                                                                             // your cafeteria tile: clean planks, seamless
+    M.waitFloor.map = tiledXY(map, waitFloor.geometry.parameters.width, waitFloor.geometry.parameters.height, WAIT_TILE_W, WAIT_TILE_D);
+    M.waitFloor.color.set(0xffffff); M.waitFloor.needsUpdate = true;
+  }).catch(warn('waiting floor picture (keeping a plain floor)'));
+  loadGLB(CLASS_FILE).then(gltf => {                                                                             // the wooden floor of your classroom
+    let map = null; gltf.scene.traverse(o => { if (o.isMesh && o.name === 'FloorTile' && o.material.map) map = o.material.map; });
+    if (!map) throw new Error('no FloorTile in ' + CLASS_FILE);
+    classFloors.forEach((f, i) => {
+      f.material = new THREE.MeshStandardMaterial({ map: tiledXY(map, CLASS_X[i + 1] - CLASS_X[i], Z_CLASS - Z0, CLASS_FLOOR_PER, CLASS_FLOOR_PER), roughness: 0.7 });
+    });
+  }).catch(warn('classroom floor (keeping a plain floor)'));
 
   // ----- walls: lower band always visible, upper part only while the camera is in that room (as in the immigration office) -----
   const addWall = (lowG, upG, alongX, fixed, from, to, gaps, thick) => {
@@ -250,10 +297,9 @@ export function buildHighSchoolInterior() {
       box(g, mat, alongX ? len : thick + extra, h, alongX ? thick + extra : len, alongX ? c : fixed, y0 + h / 2, alongX ? fixed : c);
     };
     spans(from, to, gaps).forEach(([a, b]) => {
-      put(M.dado, a, b, 0, LOW_H, lowG);                          // Nigerian green lower band
+      put(M.paint, a, b, 0, LOW_H, lowG);                         // plain white wall, lower part (always visible)
       put(M.skirt, a, b, 0, 0.1, lowG, 0.03);
-      put(M.rail, a, b, LOW_H - 0.02, LOW_H + 0.03, lowG, 0.05);
-      put(M.paint, a, b, LOW_H + 0.03, WALL_H, upG);
+      put(M.paint, a, b, LOW_H, WALL_H, upG);                     // plain white wall, upper part
     });
     gaps.forEach(g => put(M.paint, g - GAP / 2, g + GAP / 2, DOOR_H, WALL_H, upG));
   };
@@ -276,30 +322,30 @@ export function buildHighSchoolInterior() {
   // ----- exit marker (inside the front door) -----
   lib(group, 'gta_marker_blue', DOOR_X, 0.02, Z1 - 1.7);
 
-  // ----- classrooms -----
-  const deskGeo = deskGeometry();
+  // ----- classrooms: your classroom_gameready file (board, clock, teacher's table + chair, globe, tools) and your school desks -----
   const deskPlaces = CLASS_C.flatMap(cx => DESK_COLS.flatMap(o => DESK_ROWS.map(z => [cx + o, z])));
-  const desks = new THREE.InstancedMesh(deskGeo, M.wood, deskPlaces.length);
-  const dm = new THREE.Object3D();
-  deskPlaces.forEach(([x, z], i) => { dm.position.set(x, 0, z); dm.updateMatrix(); desks.setMatrixAt(i, dm.matrix); });
-  desks.frustumCulled = false; desks.receiveShadow = true; group.add(desks);
+  loadGLB(DESK_FILE).then(gltf => {                                                                           // one desk model, repeated in every classroom
+    const dm = new THREE.Object3D();
+    gltf.scene.traverse(o => {
+      if (!o.isMesh) return;
+      const im = new THREE.InstancedMesh(o.geometry, o.material, deskPlaces.length);
+      deskPlaces.forEach(([x, z], i) => { dm.position.set(x, 0, z); dm.updateMatrix(); im.setMatrixAt(i, dm.matrix); });   // every desk faces north, towards the board
+      im.frustumCulled = false; im.receiveShadow = true; group.add(im);
+    });
+  }).catch(warn(DESK_FILE));
 
   CLASS_C.forEach((cx, i) => {
-    // chalkboard on the north wall (it belongs to the north wall group, so it hides with it)
-    const boardTex = canvasTex(1024, 384, (g, w, h) => {
-      g.fillStyle = '#25392f'; g.fillRect(0, 0, w, h);
-      g.fillStyle = 'rgba(255,255,255,0.07)'; for (let k = 0; k < 40; k++) g.fillRect(Math.random() * w, Math.random() * h, 90, 5);
-      g.fillStyle = '#f4f1e6'; g.textAlign = 'left'; g.textBaseline = 'middle';
-      g.font = 'bold 76px "Comic Sans MS", Arial, sans-serif'; g.fillText(CLASS_NAMES[i], 50, 80);
-      g.font = '46px "Comic Sans MS", Arial, sans-serif';
-      g.fillText('Date: ______________', 50, 170); g.fillText('Subject: Mathematics', 50, 235); g.fillText('Topic: Algebra', 50, 300);
-    });
-    box(side.N, M.darkwood, 3.4, 1.4, 0.05, cx, 1.55, N_IN + 0.03);
-    const board = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.2), new THREE.MeshStandardMaterial({ map: boardTex, roughness: 0.9 }));
-    board.position.set(cx, 1.55, N_IN + 0.065); side.N.add(board);
-    box(group, M.darkwood, 1.3, 0.04, 0.6, cx, 0.76, TEACHER_Z);                         // teacher's table
-    [[-0.6, -0.25], [0.6, -0.25], [-0.6, 0.25], [0.6, 0.25]].forEach(([dx, dz]) => box(group, M.darkwood, 0.05, 0.74, 0.05, cx + dx, 0.37, TEACHER_Z + dz));
-    lib(group, 'office_chair', cx, 0, TEACHER_Z - 0.55, 0);                              // teacher's chair, facing the class
+    // the board and clock hang on the north wall, so they belong to the north wall group (they hide with it); the table, chair and globe stand on the floor
+    const gWall = new THREE.Group(), gFloor = new THREE.Group();
+    gWall.position.set(cx, 0, N_IN); gFloor.position.set(cx, 0, N_IN); side.N.add(gWall); group.add(gFloor);
+    loadGLB(CLASS_FILE).then(gltf => {
+      const copy = SkeletonUtils.clone(gltf.scene);
+      copy.children.slice().forEach(o => {
+        if (o.name === 'FloorTile') return;
+        o.traverse(m => { if (m.isMesh) { m.castShadow = false; m.receiveShadow = true; } });
+        (/^(Blackboard|Clock|Arrow2?)$/.test(o.name) ? gWall : gFloor).add(o);
+      });
+    }).catch(warn(CLASS_FILE));
     lib(group, 'standing_fan', cx + 3.1, 0, -9.0, 0.5);
     // name plate beside each doorway, on the corridor side (low, so it is always visible)
     const signTex = canvasTex(256, 128, (g, w, h) => {
@@ -311,10 +357,10 @@ export function buildHighSchoolInterior() {
   });
 
   // ----- hall / reception -----
-  mine(group, 'reception_desk.glb', { axis: 'x', size: REC_W }, RECEPTION.x, 0, RECEPTION.z);          // front faces south (toward the door)
-  lib(group, 'office_chair', RECEPTION.x, 0, RECEPTION.z - 1.3, 0);
+  mine(group, 'reception_desk.glb', { axis: 'x', size: REC_W, rotY: Math.PI / 2 }, RECEPTION.x, 0, RECEPTION.z);   // turned so the front faces EAST, towards the waiting benches
+  lib(group, 'office_chair', RECEPTION.x - 1.3, 0, RECEPTION.z, Math.PI / 2);                          // receptionist's chair behind the counter (west), faces the counter
   BENCHES.forEach(b => lib(group, 'bench_3seat', b.x, 0, b.z, -Math.PI / 2));                          // benches face west
-  lib(group, 'water_dispenser', 10.25, 0, 3.9, -Math.PI / 2);
+  lib(group, 'water_dispenser', -10.3, 0, 3.4, Math.PI / 2);                                          // on the west wall of the hall, facing east (it used to stand behind the benches)
   lib(group, 'plant_monstera', -1.2, 0, 7.4); lib(group, 'plant_pot', 5.2, 0, 7.4);
   lib(group, 'plant_pot', -9.8, 0, 7.4); lib(group, 'plant_pot', 9.8, 0, 7.4);
   lib(side.S, 'fire_extinguisher', 5.0, 1.2, S_IN - 0.12, Math.PI);
@@ -369,7 +415,8 @@ export function buildHighSchoolInterior() {
     mine(stallUp[b.room], STALL_FILE, { axis: 'x', size: STALL_W, rotY: Math.PI, hide: /StallLow/ }, b.cx, 0, STALL_CZ);
   });
   WC.forEach(w => lib(group, 'toilet', w.x, 0, w.z, Math.PI));
-  SINKS.forEach(k => lib(group, 'sink_wall', k.x, 0.4, k.z, k.rot));
+  hangSink(group, SINK_WALL_BOYS, SINK_Z, +1).catch(warn('sink_wall (boys)'));                         // boys: basin west of the wall, back on the wall
+  hangSink(group, SINK_WALL_GIRLS, SINK_Z, -1).catch(warn('sink_wall (girls)'));                       // girls: basin east of the wall, back on the wall
   [-1, 1].forEach(s => {
     mine(group, 'water_drum_optimised.glb', { axis: 'y', size: 0.9 }, s * 14.05, 0, 0.35);
     mine(group, 'bucket_optimised.glb', { axis: 'y', size: 0.3 }, s * 13.55, 0, 0.3);
@@ -383,9 +430,9 @@ export function buildHighSchoolInterior() {
   // ----- principal's office (SE): desk, chairs, computer, globe, bookshelf, filing cabinet, flag -----
   box(group, M.darkwood, 0.7, 0.05, 1.5, PRIN_DESK.x, 0.76, PRIN_DESK.z);
   box(group, M.darkwood, 0.62, 0.7, 1.4, PRIN_DESK.x, 0.35, PRIN_DESK.z);
-  lib(group, 'office_chair', PRIN_DESK.x + 0.95, 0, PRIN_DESK.z, -Math.PI / 2);                 // principal's chair (east), faces west
-  lib(group, 'office_chair', 12.3, 0, PRIN_DESK.z - 0.4, Math.PI / 2);                          // visitor chairs (west), face east
-  lib(group, 'office_chair', 12.3, 0, PRIN_DESK.z + 0.4, Math.PI / 2);
+  lib(group, 'office_chair', PRIN_DESK.x + 0.9, 0, PRIN_DESK.z, -Math.PI / 2);                  // principal's chair (east), faces west; its back is 0.65 m from the wall now
+  lib(group, 'office_chair', PRIN_DESK.x - 0.9, 0, PRIN_DESK.z - 0.4, Math.PI / 2);             // visitor chairs (west), face east
+  lib(group, 'office_chair', PRIN_DESK.x - 0.9, 0, PRIN_DESK.z + 0.4, Math.PI / 2);
   lib(group, 'personal_computer', PRIN_DESK.x, 0.785, PRIN_DESK.z + 0.2, Math.PI / 2);
   mine(group, 'globe_optimised.glb', { axis: 'y', size: 0.45 }, PRIN_DESK.x, 0.785, PRIN_DESK.z - 0.45);
   mine(group, 'bookshelf_optimised.glb', { axis: 'y', size: 2.2, rotY: Math.PI / 2 }, PRIN_SHELF.x, 0, PRIN_SHELF.z);   // books face north
@@ -417,3 +464,5 @@ export function buildHighSchoolInterior() {
 
   return { group, marker, halfW: HALF_W, halfD: HALF_D, cz: CZ, setInside, setCamera };
 }
+
+
