@@ -11,7 +11,7 @@
 // FLOOR PLAN (north is -Z, the front door is at the bottom):
 //
 //   +--------+--------+--------+--------+
-//   | JSS 1A | JSS 1B | JSS 2A | JSS 2B |     4 classrooms: board + teacher table on the north wall, 12 single desks
+//   | JSS 1A | JSS 1B | JSS 2A | JSS 2B |     4 classrooms: board + teacher table on the north wall, 4 single desks
 //   +--[ ]---+--[ ]---+--[ ]---+--[ ]---+
 //   |            CORRIDOR (3 m)         |
 //   +------+---------------------+------+
@@ -23,7 +23,7 @@
 //
 // Files in the props/ folder used here (new ones are marked *):
 //   classroom_gameready_optimised.glb *  the board, clock, teacher's table + chair, globe and tools of every classroom, and the wooden classroom floor
-//   school_desk_optimised.glb *          the student desk + chair (12 in every classroom, one model repeated)
+//   school_desk_optimised.glb *          the student desk + chair (4 in every classroom, one model repeated)
 //   cafeteria_tile_optimised.glb *       the floor of EVERY hall, corridor, cafeteria, washroom and office (the clean plank part of your scan, repeated without seams)
 //   reception_desk.glb, toilet_stalls_4.glb, gta_marker_blue.glb.
 // New props (props_library.js): bunk_bed, locker, locker_bank, cafeteria_table, fridge, kitchen_station, steel_shelving, shower_cubicle.
@@ -105,10 +105,10 @@ const IN_WALLS = makeInWalls(STAIR_DOOR_Z), IN_WALLS_UP = makeInWalls(STAIR_TOP_
 
 
 // Classroom (your classroom_gameready file, baked at real size): the board and the teacher's table are on the north wall, the students face north.
-// 4 columns x 3 rows of your single school desks (12 per room, a wide aisle in the middle, in line with the doorway). Numbers are measured from the optimised files.
+// 2 columns x 2 rows of your single school desks (4 per classroom, a wide aisle in the middle, in line with the doorway). Numbers are measured from the optimised files.
 const CLASS_FILE = 'classroom_gameready_optimised.glb', DESK_FILE = 'school_desk_optimised.glb', TILE_FILE = 'cafeteria_tile_optimised.glb';
-const DESK_COLS = [-2.7, -0.9, 0.9, 2.7];                   // x from the classroom centre: 4 desks per row, 1 m of walking space between the columns
-const DESK_ROWS = [-6.9, -5.65, -4.4];                     // z of the middle of each desk + chair
+const DESK_COLS = [-1.5, 1.5];                              // x from the classroom centre: 2 columns x 2 rows = 4 desks in each classroom, with wide walking space all round
+const DESK_ROWS = [-6.4, -4.8];                     // z of the middle of each desk + chair
 const DESK_HW = 0.4, DESK_HD = 0.5;                         // half width / half depth of one desk + chair
 const TABLE_X = [-3.36, -1.07], TABLE_DEPTH = 1.95;         // the teacher's table: x from the classroom centre, depth out from the north wall
 const WAIT_TILE_W = 1.67, WAIT_TILE_D = 1.45;               // size in metres of one repeat of the waiting hall floor picture
@@ -129,7 +129,7 @@ const WC = STALL_BLOCKS.flatMap(b => STALL_WC.map(o => ({ x: b.cx - o, z: Z_TS -
 // Wash basins: hung on the wall that divides each toilet from the hall (boys on the west side, girls on the east side). hangSink() below turns each one so its back is on the wall.
 // If a basin still looks wrong, set SINK_BACK to the side of the model file where the tap and pipes are: 'x+', 'x-', 'z+' or 'z-' (null = work it out from the shape).
 const SINK_BACK = null;
-const SINK_TURN = 1;                                        // extra quarter turn for the basins: 1 or -1 (turns the other way), 0 = none
+const SINK_FLIP = true;                                     // turn each basin half way round (180 degrees), like the trophy cabinet. false = the old direction
 const SINK_Z = 1.0;
 const SINK_WALL_BOYS = X_TW - T_IN / 2, SINK_WALL_GIRLS = X_TE + T_IN / 2;     // the wall faces the basins touch
 // Upstairs: 9 folding cafeteria tables (cafeteria_table.glb: table with the two benches attached, 3.67 m x 1.3 m, long side along x)
@@ -137,12 +137,12 @@ const CAF_COLS = [-5.5, 0, 5.5], CAF_ROWS = [1.4, 4.0, 6.6], CAF_HW = 1.85, CAF_
 const CAF_TABLES = CAF_COLS.flatMap(x => CAF_ROWS.map(z => ({ x, z })));
 // Hostel rooms: 4 bunk beds (8 beds) and 6 lockers per room.
 // Upstairs hostel rooms. Positions are measured from each room's centre (x) and the north wall (z).
-const BUNK_X = [-2.65, -1.5, 1.5, 2.65], BUNK_HW = 0.57, BUNK_LEN = 2.0;       // 4 bunk beds side by side along the north wall (1.13 m x 2.0 m each), heads to the wall (8 beds per room)
+const BUNK_X = [-2.7, -0.9, 0.9, 2.7], BUNK_HW = 0.57, BUNK_LEN = 2.0;       // 4 bunk beds along the north wall (1.13 m x 2.0 m each, 0.67 m of space between every bed so characters can walk up to each one), heads to the wall (8 beds per room)
 const LOCKER_Z = [-6.6, -5.8, -5.0], LOCKER_X = 3.24;                          // 3 lockers against the east wall and 3 against the west wall (0.61 m deep, touching the wall)
 // Locker banks (3 doors each) along the north wall of the downstairs corridor, between the classroom doorways and the name plates
 const LBANK_X = [-13.0, -5.8, 1.5, 8.8], LBANK_Z = Z_CLASS + T_IN / 2 + 0.25;
 // Kitchen (upstairs, SE room): fridge on the east wall, shelving on the north wall, cooker + sink unit on the south wall, all facing into the room
-const FRIDGE = { x: E_IN - 0.385, z: 5.15 }, SHELF = { x: 12.5, z: Z_STORE + T_IN / 2 + 0.3 }, STATION = { x: 12.6, z: S_IN - 0.4 };
+const FRIDGE = { x: E_IN - 0.385, z: 5.15 }, SHELF = { x: 11.6, z: Z_STORE + T_IN / 2 + 0.3 }, STATION = { x: 12.6, z: S_IN - 0.4 };
 // Washroom showers (upstairs): one cubicle in the north-west corner of the boys washroom and the mirrored one in the girls washroom
 const SHOWERS = [{ x: -13.5, z: Z_TOI + T_IN / 2 + 0.475 }, { x: 13.5, z: Z_TOI + T_IN / 2 + 0.475 }];
 // Principal's office (SE corner)
@@ -304,7 +304,7 @@ async function hangSink(parent, wallFaceX, z, wallSide) {
     const sign = Math.abs(cue[axis]) > 0.004 ? Math.sign(cue[axis]) : -1;
     back = axis === 0 ? [sign, 0] : [0, sign];
   }
-  if (SINK_TURN) back = SINK_TURN > 0 ? [back[1], -back[0]] : [-back[1], back[0]];     // extra quarter turn (the basin was facing the wrong way)
+  if (SINK_FLIP) back = [-back[0], -back[1]];                                 // half turn: the basin was facing the wrong way
   const depth = back[0] !== 0 ? sx : sz;
   p.rotation.y = Math.atan2(wallSide, 0) - Math.atan2(back[0], back[1]);       // turn the back to face the wall
   p.position.set(wallFaceX - wallSide * (depth / 2 + 0.01), 0.4, z);
