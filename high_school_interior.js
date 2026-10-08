@@ -11,7 +11,7 @@
 // FLOOR PLAN (north is -Z, the front door is at the bottom):
 //
 //   +--------+--------+--------+--------+
-//   | JSS 1A | JSS 1B | JSS 2A | JSS 2B |     4 classrooms: board + teacher table on the north wall, 18 single desks
+//   | JSS 1A | JSS 1B | JSS 2A | JSS 2B |     4 classrooms: board + teacher table on the north wall, 12 single desks
 //   +--[ ]---+--[ ]---+--[ ]---+--[ ]---+
 //   |            CORRIDOR (3 m)         |
 //   +------+---------------------+------+
@@ -23,9 +23,10 @@
 //
 // Files in the props/ folder used here (new ones are marked *):
 //   classroom_gameready_optimised.glb *  the board, clock, teacher's table + chair, globe and tools of every classroom, and the wooden classroom floor
-//   school_desk_optimised.glb *          the student desk + chair (18 in every classroom, one model repeated)
-//   cafeteria_tile_optimised.glb *       the floor of the waiting hall (the clean plank part of your scan, repeated without seams)
-//   reception_desk.glb, toilet_stalls_4.glb, pbr_material_floor_tiles.glb (floor of the rest), gta_marker_blue.glb.
+//   school_desk_optimised.glb *          the student desk + chair (12 in every classroom, one model repeated)
+//   cafeteria_tile_optimised.glb *       the floor of EVERY hall, corridor, cafeteria, washroom and office (the clean plank part of your scan, repeated without seams)
+//   reception_desk.glb, toilet_stalls_4.glb, gta_marker_blue.glb.
+// New props (props_library.js): bunk_bed, locker, locker_bank, cafeteria_table, fridge, kitchen_station, steel_shelving, shower_cubicle.
 // From props_library.js: office_chair, personal_computer, standing_fan, water_dispenser, filing_cabinet, bench_3seat, toilet, sink_wall,
 // fire_extinguisher, plant_pot, plant_monstera, bin_office.
 // New (shrunk by me): globe_optimised.glb, water_drum_optimised.glb, bucket_optimised.glb, bookshelf_optimised.glb.
@@ -33,15 +34,15 @@
 //
 // UPSTAIRS (same footprint, up the stairs in the west block):
 //   +--------+--------+--------+--------+
-//   |BOYS    |BOYS    |GIRLS   |GIRLS   |     4 hostel rooms (bunk beds + lockers: they appear once the props exist, see HOSTEL props below)
+//   |BOYS    |BOYS    |GIRLS   |GIRLS   |     4 hostel rooms (4 bunk beds, heads to the north wall, + 6 lockers along the side walls)
 //   |HOSTEL A|HOSTEL B|HOSTEL A|HOSTEL B|
 //   +--[ ]---+--[ ]---+--[ ]---+--[ ]---+
 //   |            CORRIDOR (3 m)         |
 //   +------+---------------------+------+
 //   |BOYS  |      CAFETERIA      |GIRLS |     washrooms open onto the corridor
-//   |WASH. |  9 tables, 36 chairs|WASH. |
+//   |WASH. |  9 folding tables   |WASH. |     (showers in the washrooms)
 //   +------+                     +------+
-//   |STAIRS|                     |KITCHEN|
+//   |STAIRS|                     |KITCHEN|     (fridge, cooker + sink, shelving)
 //   +------+---------------------+------+
 //
 // If you move the front door (the doorway in the south wall): change DOOR_X below. It is centred on the steps now (x = 1.9).
@@ -104,10 +105,10 @@ const IN_WALLS = makeInWalls(STAIR_DOOR_Z), IN_WALLS_UP = makeInWalls(STAIR_TOP_
 
 
 // Classroom (your classroom_gameready file, baked at real size): the board and the teacher's table are on the north wall, the students face north.
-// 6 columns x 3 rows of your single school desks (a wide aisle in the middle, in line with the doorway). Numbers are measured from the optimised files.
+// 4 columns x 3 rows of your single school desks (12 per room, a wide aisle in the middle, in line with the doorway). Numbers are measured from the optimised files.
 const CLASS_FILE = 'classroom_gameready_optimised.glb', DESK_FILE = 'school_desk_optimised.glb', TILE_FILE = 'cafeteria_tile_optimised.glb';
-const DESK_COLS = [-2.95, -1.95, -0.95, 0.95, 1.95, 2.95];  // x from the classroom centre
-const DESK_ROWS = [-6.95, -5.8, -4.65];                     // z of the middle of each desk + chair
+const DESK_COLS = [-2.7, -0.9, 0.9, 2.7];                   // x from the classroom centre: 4 desks per row, 1 m of walking space between the columns
+const DESK_ROWS = [-6.9, -5.65, -4.4];                     // z of the middle of each desk + chair
 const DESK_HW = 0.4, DESK_HD = 0.5;                         // half width / half depth of one desk + chair
 const TABLE_X = [-3.36, -1.07], TABLE_DEPTH = 1.95;         // the teacher's table: x from the classroom centre, depth out from the north wall
 const WAIT_TILE_W = 1.67, WAIT_TILE_D = 1.45;               // size in metres of one repeat of the waiting hall floor picture
@@ -128,15 +129,22 @@ const WC = STALL_BLOCKS.flatMap(b => STALL_WC.map(o => ({ x: b.cx - o, z: Z_TS -
 // Wash basins: hung on the wall that divides each toilet from the hall (boys on the west side, girls on the east side). hangSink() below turns each one so its back is on the wall.
 // If a basin still looks wrong, set SINK_BACK to the side of the model file where the tap and pipes are: 'x+', 'x-', 'z+' or 'z-' (null = work it out from the shape).
 const SINK_BACK = null;
+const SINK_TURN = 1;                                        // extra quarter turn for the basins: 1 or -1 (turns the other way), 0 = none
 const SINK_Z = 1.0;
 const SINK_WALL_BOYS = X_TW - T_IN / 2, SINK_WALL_GIRLS = X_TE + T_IN / 2;     // the wall faces the basins touch
-// Upstairs: cafeteria tables (your office_table, two tables pushed together, 1.6 m x 0.8 m) with 4 plastic chairs each
-const CAF_COLS = [-5.5, 0, 5.5], CAF_ROWS = [1.4, 4.0, 6.6];
+// Upstairs: 9 folding cafeteria tables (cafeteria_table.glb: table with the two benches attached, 3.67 m x 1.3 m, long side along x)
+const CAF_COLS = [-5.5, 0, 5.5], CAF_ROWS = [1.4, 4.0, 6.6], CAF_HW = 1.85, CAF_HD = 0.65;
 const CAF_TABLES = CAF_COLS.flatMap(x => CAF_ROWS.map(z => ({ x, z })));
-// Upstairs hostel rooms (the props below are NOT in your props folder yet: they appear in the game as soon as you add them to props_library.js;
-// until then the rooms stay empty and nothing blocks the way). Positions are measured from each room's centre (x) and the north wall (z).
-const BUNK_X = [-2.6, -1.5, 1.5, 2.6], BUNK_HW = 0.5, BUNK_LEN = 2.0;          // 4 bunk beds side by side along the north wall, heads to the wall (8 beds per room)
-const LOCKER_Z = [-6.6, -5.8, -5.0], LOCKER_X = 3.3;                           // 3 lockers against the east wall and 3 against the west wall (x = +/- 3.3)
+// Hostel rooms: 4 bunk beds (8 beds) and 6 lockers per room.
+// Upstairs hostel rooms. Positions are measured from each room's centre (x) and the north wall (z).
+const BUNK_X = [-2.65, -1.5, 1.5, 2.65], BUNK_HW = 0.57, BUNK_LEN = 2.0;       // 4 bunk beds side by side along the north wall (1.13 m x 2.0 m each), heads to the wall (8 beds per room)
+const LOCKER_Z = [-6.6, -5.8, -5.0], LOCKER_X = 3.24;                          // 3 lockers against the east wall and 3 against the west wall (0.61 m deep, touching the wall)
+// Locker banks (3 doors each) along the north wall of the downstairs corridor, between the classroom doorways and the name plates
+const LBANK_X = [-13.0, -5.8, 1.5, 8.8], LBANK_Z = Z_CLASS + T_IN / 2 + 0.25;
+// Kitchen (upstairs, SE room): fridge on the east wall, shelving on the north wall, cooker + sink unit on the south wall, all facing into the room
+const FRIDGE = { x: E_IN - 0.385, z: 5.15 }, SHELF = { x: 12.5, z: Z_STORE + T_IN / 2 + 0.3 }, STATION = { x: 12.6, z: S_IN - 0.4 };
+// Washroom showers (upstairs): one cubicle in the north-west corner of the boys washroom and the mirrored one in the girls washroom
+const SHOWERS = [{ x: -13.5, z: Z_TOI + T_IN / 2 + 0.475 }, { x: 13.5, z: Z_TOI + T_IN / 2 + 0.475 }];
 // Principal's office (SE corner)
 const PRIN_DESK = { x: 12.55, z: 6.3 };                     // moved 0.75 m west: the principal's chair was half inside the east wall
 const PRIN_SHELF = { x: 12.5, z: S_IN - 0.29 };
@@ -175,7 +183,8 @@ const GROUND_BOXES = [
   [RECEPTION.x - 0.65, RECEPTION.x + 0.65, RECEPTION.z - REC_W / 2, RECEPTION.z + REC_W / 2],
   ...BENCHES.map(b => [b.x - 0.35, b.x + 0.35, b.z - 1.05, b.z + 1.05]),
   [TROPHY.x - 0.8, TROPHY.x + 0.8, TROPHY.z - 0.25, TROPHY.z + 0.25],
-  R(-1.2, 7.4, 0.3), R(5.2, 7.4, 0.3), R(-9.8, 7.4, 0.3), R(9.8, 7.4, 0.3),
+  R(-1.2, 7.4, 0.3), R(5.2, 7.4, 0.3), R(9.8, 7.4, 0.3),                      // plants (the pot in front of the stairs doorway is gone)
+  ...LBANK_X.map(x => [x - 0.96, x + 0.96, LBANK_Z - 0.23, LBANK_Z + 0.23]),   // locker banks in the corridor
   [-10.5, -10.1, 3.2, 3.6],                                                     // water dispenser (west wall of the hall)
   // toilets: stalls, basins, drum and bucket
   ...WC.map(w => [w.x - 0.3, w.x + 0.3, Z_TS - 0.7, Z_TS]),
@@ -198,15 +207,18 @@ const UPPER_BOXES = [
     R(cx + 3.0, -4.3, 0.3),                                                                               // standing fan
   ]),
   // cafeteria
-  ...CAF_TABLES.map(t => [t.x - 0.8, t.x + 0.8, t.z - 0.4, t.z + 0.4]),
+  ...CAF_TABLES.map(t => [t.x - CAF_HW, t.x + CAF_HW, t.z - CAF_HD, t.z + CAF_HD]),
   [-10.5, -10.1, 1.8, 2.2], [10.1, 10.5, 1.8, 2.2],                                                      // water dispensers
   R(-9.8, 7.4, 0.3), R(9.8, 7.4, 0.3),                                                                   // plants
   // washrooms (same stalls, toilets and basins as downstairs)
   ...WC.map(w => [w.x - 0.3, w.x + 0.3, Z_TS - 0.7, Z_TS]),
   ...STALL_BLOCKS.flatMap(b => STALL_PLANES.map(o => [b.cx - o - 0.07, b.cx - o + 0.07, Z_TS - STALL_D, Z_TS])),
   [X_TW - T_IN / 2 - 0.5, X_TW - T_IN / 2, 0.7, 1.3], [X_TE + T_IN / 2, X_TE + T_IN / 2 + 0.5, 0.7, 1.3],
-  // kitchen
-  R(13.8, 7.2, 0.3), R(12.7, 7.3, 0.2),
+  // showers
+  ...SHOWERS.map(s => [s.x - 0.77, s.x + 0.77, s.z - 0.46, s.z + 0.46]),
+  // kitchen: fridge, shelving, cooker + sink unit, water drum, bucket
+  [FRIDGE.x - 0.4, FRIDGE.x + 0.4, FRIDGE.z - 0.5, FRIDGE.z + 0.5], [SHELF.x - 0.8, SHELF.x + 0.8, SHELF.z - 0.28, SHELF.z + 0.28],
+  [STATION.x - 0.87, STATION.x + 0.87, STATION.z - 0.38, STATION.z + 0.38], R(14.1, 7.45, 0.3), R(11.1, 7.65, 0.2),
 ];
 
 export const HS_INTERIOR_BOXES = [...BOTH_BOXES, ...GROUND_BOXES.map(b => [...b, 0]), ...UPPER_BOXES.map(b => [...b, 1])];
@@ -292,6 +304,7 @@ async function hangSink(parent, wallFaceX, z, wallSide) {
     const sign = Math.abs(cue[axis]) > 0.004 ? Math.sign(cue[axis]) : -1;
     back = axis === 0 ? [sign, 0] : [0, sign];
   }
+  if (SINK_TURN) back = SINK_TURN > 0 ? [back[1], -back[0]] : [-back[1], back[0]];     // extra quarter turn (the basin was facing the wrong way)
   const depth = back[0] !== 0 ? sx : sz;
   p.rotation.y = Math.atan2(wallSide, 0) - Math.atan2(back[0], back[1]);       // turn the back to face the wall
   p.position.set(wallFaceX - wallSide * (depth / 2 + 0.01), 0.4, z);
@@ -309,11 +322,10 @@ export function buildHighSchoolInterior() {
   const marker = new THREE.Group();         // the door marker outside (shown only while the player is outside)
   const M = {
     paint: std(WALL_WHITE, 0.9), skirt: std(0xd2d0ca, 0.7),
-    tile: std(0xc7cdd2, 0.55), classFloor: std(0xb98a52, 0.7), waitFloor: std(0xcdc6b8, 0.5), wood: std(0x8b5a2b, 0.85), darkwood: std(0x5a3a1c, 0.8),
+    tile: std(0xcdc6b8, 0.5), classFloor: std(0xb98a52, 0.7), wood: std(0x8b5a2b, 0.85), darkwood: std(0x5a3a1c, 0.8),
     gold: std(0xd6a62a, 0.35, 0.6), glass: new THREE.MeshStandardMaterial({ color: 0xcfe6ee, roughness: 0.1, transparent: true, opacity: 0.18, depthWrite: false }),
     steel: std(0x6a7077, 0.5, 0.5), white: std(0xf1efe8, 0.8),
   };
-  M.waitFloor.polygonOffset = true; M.waitFloor.polygonOffsetFactor = -1; M.waitFloor.polygonOffsetUnits = -1;   // wins over the tile floor underneath
   const warn = what => e => console.warn('high school interior: could not load ' + what, e);
   const lib = (parent, name, x, y, z, rotY = 0) =>
     loadProp(name).then(p => { p.position.set(x, y, z); p.rotation.y = rotY; parent.add(p); return p; }).catch(warn(name));
@@ -331,21 +343,17 @@ export function buildHighSchoolInterior() {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), mat);
     m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2); m.receiveShadow = true; parent.add(m); return m;
   };
-  const hallFloor = plane(X0, X1, Z0, Z1, 0.01, M.tile);                         // hall, corridor, toilets, store, office
+  const hallFloor = plane(X0, X1, Z0, Z1, 0.01, M.tile);                         // hall, reception, corridor, toilets, store, office: ONE floor, the waiting-hall tiles everywhere
   const classFloors = CLASS_X.slice(0, 4).map((x, i) => plane(x, CLASS_X[i + 1], Z0, Z_CLASS, 0.02, M.classFloor));
-  const waitFloor = plane(X_TW + T_IN / 2, X_TE - T_IN / 2, Z_TOI, S_IN, 0.016, M.waitFloor);                    // the waiting hall / reception
-  // upstairs floors: tiles everywhere except the stairwell (west block, south part), wooden floors in the 4 hostel rooms
+  // upstairs floors: the same tiles everywhere except the stairwell (west block, south part), wooden floors in the 4 hostel rooms
   const upTileFloors = [plane(X_TW, X1, Z0, Z1, 0.01, M.tile, up), plane(X0, X_TW, Z0, Z_STORE, 0.01, M.tile, up)];
   const dormFloors = CLASS_X.slice(0, 4).map((x, i) => plane(x, CLASS_X[i + 1], Z0, Z_CLASS, 0.02, M.classFloor, up));
-  borrowMap('pbr_material_floor_tiles.glb').then(map => {
+  borrowMap(TILE_FILE).then(map => {                                                                             // your waiting-hall tile: clean planks, seamless
     [hallFloor, ...upTileFloors].forEach(f => {
-      f.material = new THREE.MeshStandardMaterial({ map: tiled(map, f.geometry.parameters.width, f.geometry.parameters.height, 2.0), roughness: 0.55, metalness: 0.05 });
+      const w = f.geometry.parameters.width, d = f.geometry.parameters.height;
+      f.material = new THREE.MeshStandardMaterial({ map: tiledXY(map, w, d, WAIT_TILE_W, WAIT_TILE_D), roughness: 0.5, metalness: 0.05 });
     });
   }).catch(warn('floor tiles (keeping the plain floor)'));
-  borrowMap(TILE_FILE).then(map => {                                                                             // your cafeteria tile: clean planks, seamless
-    M.waitFloor.map = tiledXY(map, waitFloor.geometry.parameters.width, waitFloor.geometry.parameters.height, WAIT_TILE_W, WAIT_TILE_D);
-    M.waitFloor.color.set(0xffffff); M.waitFloor.needsUpdate = true;
-  }).catch(warn('waiting floor picture (keeping a plain floor)'));
   loadGLB(CLASS_FILE).then(gltf => {                                                                             // the wooden floor of your classroom
     let map = null; gltf.scene.traverse(o => { if (o.isMesh && o.name === 'FloorTile' && o.material.map) map = o.material.map; });
     if (!map) throw new Error('no FloorTile in ' + CLASS_FILE);
@@ -438,14 +446,15 @@ export function buildHighSchoolInterior() {
   BENCHES.forEach(b => lib(group, 'bench_3seat', b.x, 0, b.z, -Math.PI / 2));                          // benches face west
   lib(group, 'water_dispenser', -10.3, 0, 3.4, Math.PI / 2);                                          // on the west wall of the hall, facing east (it used to stand behind the benches)
   lib(group, 'plant_monstera', -1.2, 0, 7.4); lib(group, 'plant_pot', 5.2, 0, 7.4);
-  lib(group, 'plant_pot', -9.8, 0, 7.4); lib(group, 'plant_pot', 9.8, 0, 7.4);
+  lib(group, 'plant_pot', 9.8, 0, 7.4);                                                              // (the pot at x = -9.8 stood in front of the stairs doorway: removed)
   lib(side.S, 'fire_extinguisher', 5.0, 1.2, S_IN - 0.12, Math.PI);
   lib(side.E, 'fire_extinguisher', E_IN - 0.12, 1.2, -2.2, -Math.PI / 2);
   lib(side.W, 'standing_fan', W_IN + 0.4, 0, -2.2, Math.PI / 2);
+  LBANK_X.forEach(x => lib(group, 'locker_bank', x, 0, LBANK_Z, 0));                                  // locker banks on the corridor's north wall, doors facing the corridor
 
   // trophy cabinet against the south wall
   {
-    const g = new THREE.Group(); g.position.set(TROPHY.x, 0, TROPHY.z); group.add(g);
+    const g = new THREE.Group(); g.position.set(TROPHY.x, 0, TROPHY.z); g.rotation.y = Math.PI; group.add(g);   // turned round: the glass front looks north, into the hall (it was facing the wall)
     box(g, M.darkwood, 1.6, 1.9, 0.04, 0, 0.95, -0.23);                                 // back
     [-0.78, 0.78].forEach(x => box(g, M.darkwood, 0.04, 1.9, 0.5, x, 0.95, 0));
     box(g, M.darkwood, 1.6, 0.05, 0.5, 0, 1.9, 0); box(g, M.darkwood, 1.6, 0.6, 0.5, 0, 0.3, 0);   // top, lower cupboard
@@ -540,11 +549,8 @@ export function buildHighSchoolInterior() {
     plate(W1.lowG, DORM_NAMES[i], cx + 1.15, 0.82, Z_CLASS + T_IN / 2 + 0.012, 0, 0.9, i < 2 ? '#1f4e79' : '#8a2b5c');
   });
 
-  // Cafeteria: 9 tables of two office tables each, 4 plastic chairs at each
-  CAF_TABLES.forEach(t => {
-    lib(up, 'office_table', t.x, 0, t.z, 0);
-    [-0.4, 0.4].forEach(dx => { lib(up, 'plastic_chair', t.x + dx, 0, t.z - 0.65, 0); lib(up, 'plastic_chair', t.x + dx, 0, t.z + 0.65, Math.PI); });
-  });
+  // Cafeteria: 9 folding tables (benches attached), long side along x
+  CAF_TABLES.forEach(t => lib(up, 'cafeteria_table', t.x, 0, t.z, 0));
   lib(up, 'water_dispenser', -10.3, 0, 2.0, Math.PI / 2); lib(up, 'water_dispenser', 10.3, 0, 2.0, -Math.PI / 2);
   lib(up, 'plant_pot', -9.8, 0, 7.4); lib(up, 'plant_pot', 9.8, 0, 7.4);
   lib(up, 'bin_office', -8.5, 0, 7.6); lib(up, 'bin_office', 8.5, 0, 7.6);
@@ -564,9 +570,15 @@ export function buildHighSchoolInterior() {
   plate(W1.lowG, 'BOYS WASHROOM', -11.3, 0.85, Z_TOI - T_IN / 2 - 0.012, Math.PI, 0.9, '#1f4e79');
   plate(W1.lowG, 'GIRLS WASHROOM', 11.3, 0.85, Z_TOI - T_IN / 2 - 0.012, Math.PI, 0.9, '#8a2b5c');
 
-  // Kitchen (SE): water drum and bucket for now; the cooker, fridge and serving counter are props you still have to add
-  mine(up, 'water_drum_optimised.glb', { axis: 'y', size: 0.9 }, 13.8, 0, 7.2);
-  mine(up, 'bucket_optimised.glb', { axis: 'y', size: 0.3 }, 12.7, 0, 7.3);
+  // Showers (one cubicle in each washroom, back to the north wall). If a cubicle opens the wrong way, change the 0 to Math.PI.
+  SHOWERS.forEach(s => lib(up, 'shower_cubicle', s.x, 0, s.z, 0));
+
+  // Kitchen (SE): fridge, shelving, cooker + sink unit, water drum and bucket
+  lib(up, 'fridge', FRIDGE.x, 0, FRIDGE.z, -Math.PI / 2);              // on the east wall, door faces west into the room
+  lib(up, 'steel_shelving', SHELF.x, 0, SHELF.z, 0);                  // on the north wall, shelves face south
+  lib(up, 'kitchen_station', STATION.x, 0, STATION.z, Math.PI);       // against the south wall, faces north
+  mine(up, 'water_drum_optimised.glb', { axis: 'y', size: 0.9 }, 14.1, 0, 7.45);
+  mine(up, 'bucket_optimised.glb', { axis: 'y', size: 0.3 }, 11.1, 0, 7.65);
   plate(W1.lowG, 'KITCHEN', X_TE - T_IN / 2 - 0.012, 0.85, DOOR_SIDE_Z - 1.15, -Math.PI / 2, 0.7, '#7a4a1a');
 
   // ----- hooks used by game.js -----
@@ -587,5 +599,3 @@ export function buildHighSchoolInterior() {
 
   return { group: root, marker, halfW: HALF_W, halfD: HALF_D, cz: CZ, setInside, setCamera, setLevel };
 }
-
-

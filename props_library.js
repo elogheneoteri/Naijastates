@@ -64,6 +64,18 @@ export const PROPS = {
   printer_floor:   { file: 'mfp_office_printer.glb', height: 1.2, tags: ['office', 'printer'] },        // big floor-standing copier on wheels
   printer_desk:    { file: 'printer_copy_machine_and_scanner_in_one.glb', height: 0.4, tags: ['office', 'printer'] },   // desktop printer / scanner
 
+  // ----- school props (shrunk and sized in metres, front faces +Z, feet on the floor: unit 1.0 = keep the size as it is) -----
+  bunk_bed:        { file: 'bunk_bed.glb', unit: 1.0, tags: ['school', 'hostel', 'furniture'] },        // 1.13 m x 2.0 m x 1.6 m, pillow end at -Z (put that end against the wall)
+  locker:          { file: 'locker.glb', unit: 1.0, tags: ['school', 'hostel', 'furniture'] },          // single hostel locker with a coat hanger, 0.7 m wide x 0.6 m deep x 1.78 m
+  locker_bank:     { file: 'locker_bank.glb', unit: 1.0, tags: ['school', 'furniture'] },              // three blue doors in one block, 1.92 m wide x 0.46 m deep x 1.8 m
+  cafeteria_table: { file: 'cafeteria_table.glb', unit: 1.0, tags: ['school', 'furniture'] },          // folding table with both benches, 3.67 m long (along x) x 1.3 m
+  study_desk:      { file: 'study_desk.glb', unit: 1.0, tags: ['school', 'hostel', 'furniture'] },     // desk, shelf unit, chair and backpack, 1.25 m x 0.87 m x 1.13 m
+  fridge:          { file: 'fridge.glb', unit: 1.0, tags: ['school', 'kitchen'] },                      // 0.98 m x 0.77 m x 1.94 m
+  kitchen_station: { file: 'kitchen_station.glb', unit: 1.0, tags: ['school', 'kitchen'] },            // steel cooker + sink table with hanging pots, 1.73 m x 0.75 m x 2.24 m
+  kitchen_counters:{ file: 'kitchen_counters.glb', unit: 1.0, tags: ['school', 'kitchen'] },           // one big two-run counter, 6.73 m x 2.76 m (too big for the school kitchen: not placed yet)
+  steel_shelving:  { file: 'steel_shelving.glb', unit: 1.0, tags: ['school', 'kitchen'] },             // 1.58 m x 0.55 m x 1.8 m
+  shower_cubicle:  { file: 'shower_cubicle.glb', unit: 1.0, tags: ['school', 'toilet'] },              // 1.53 m x 0.91 m x 2.46 m
+
   // ----- grass clumps for the ground (game.js scatters these on the grassy parts) -----
   grass_clump_a:   { file: 'grass_04.glb', height: 0.8, cutout: true, tags: ['grass'] },              // small upright tuft
   grass_clump_b:   { file: 'realistics_grass_06.glb', height: 0.55, cutout: true, tags: ['grass'] },    // wide low clump, about 1.5 m across
