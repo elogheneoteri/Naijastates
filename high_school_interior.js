@@ -1,11 +1,12 @@
-// high_school_interior.js  (STEP 3b: the ground floor of the DELTA HIGH SCHOOL, with your classroom, desk and tile models)
+// high_school_interior.js  (STEP 4: the DELTA HIGH SCHOOL, two floors: classrooms etc. downstairs, hostel rooms + cafeteria upstairs)
 //
 // Local space: the school's centre is (0,0). The front door is on the +Z (south) wall, facing the road. The rooms fill the school's
 // footprint (x -14.6..14.6, z -9.7..8.2, measured from the model), so the player never teleports: game.js hides the outside model
 // and shows this interior while the player is inside.
 //
-//   buildHighSchoolInterior() -> { group, marker, halfW, halfD, cz, setInside(bool), setCamera(relX, relZ) }
-//   HS_INTERIOR_BOXES         -> solid parts (walls with doorways, desks, counter ...) for game.js collisions
+//   buildHighSchoolInterior() -> { group, marker, halfW, halfD, cz, setInside(bool), setCamera(relX, relZ), setLevel(0 | 1) }
+//   HS_INTERIOR_BOXES         -> solid parts for game.js collisions: [minX, maxX, minZ, maxZ, level]. level 0 = only downstairs, 1 = only upstairs,
+//                                missing = both (outer walls, the stair divider).
 //
 // FLOOR PLAN (north is -Z, the front door is at the bottom):
 //
@@ -17,7 +18,7 @@
 //   |BOYS  |  HALL / RECEPTION   |GIRLS |     toilets open onto the corridor (reception counter faces the benches)
 //   |TOILET|  desk, benches,     |TOILET|
 //   +------+  trophy cabinet     +------+
-//   |STORE |        [front door] |PRINC.|     cleaners' store (west), principal's office (east), both open onto the hall
+//   |STAIRS|        [front door] |PRINC.|     the STAIRS (west, where the store was), principal's office (east), both open onto the hall
 //   +------+---------------------+------+
 //
 // Files in the props/ folder used here (new ones are marked *):
@@ -30,12 +31,26 @@
 // New (shrunk by me): globe_optimised.glb, water_drum_optimised.glb, bucket_optimised.glb, bookshelf_optimised.glb.
 // Built in code: plain white walls, trophy cabinet, notice boards, plaques, principal's desk, flag stand, door signs.
 //
+// UPSTAIRS (same footprint, up the stairs in the west block):
+//   +--------+--------+--------+--------+
+//   |BOYS    |BOYS    |GIRLS   |GIRLS   |     4 hostel rooms (bunk beds + lockers: they appear once the props exist, see HOSTEL props below)
+//   |HOSTEL A|HOSTEL B|HOSTEL A|HOSTEL B|
+//   +--[ ]---+--[ ]---+--[ ]---+--[ ]---+
+//   |            CORRIDOR (3 m)         |
+//   +------+---------------------+------+
+//   |BOYS  |      CAFETERIA      |GIRLS |     washrooms open onto the corridor
+//   |WASH. |  9 tables, 36 chairs|WASH. |
+//   +------+                     +------+
+//   |STAIRS|                     |KITCHEN|
+//   +------+---------------------+------+
+//
 // If you move the front door (the doorway in the south wall): change DOOR_X below. It is centred on the steps now (x = 1.9).
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { loadProp, PROPS_DIR } from './props_library.js';
+import { PROPS, loadProp, PROPS_DIR } from './props_library.js';
+import { FLOOR_H, IN_STAIR } from './stairs.js';          // the stairs numbers are shared with stairs.js (it lifts the characters)
 
 // ---------- size and layout (metres, school centre = 0,0) ----------
 
@@ -54,9 +69,13 @@ const Z_STORE = 4.5;                                        // wall between the 
 const X_TW = -10.6, X_TE = 10.6;                            // inner walls of the west and east blocks
 const CLASS_X = [X0, -7.3, 0, 7.3, X1];
 const CLASS_C = [-10.95, -3.65, 3.65, 10.95];               // classroom centres (the doorway of each is here)
-const CLASS_NAMES = ['JSS 1A', 'JSS 1B', 'JSS 2A', 'JSS 2B'];
+const CLASS_NAMES = ['MATHEMATICS', 'ENGLISH', 'SCIENCE', 'GENERAL STUDIES'];
+const DORM_NAMES = ['BOYS HOSTEL A', 'BOYS HOSTEL B', 'GIRLS HOSTEL A', 'GIRLS HOSTEL B'];
 const DOOR_TOI = 12.6;                                      // toilet doorways at x = -12.6 and +12.6
-const DOOR_SIDE_Z = 6.35;                                   // doorways of the store and the principal's office (on the hall side)
+const DOOR_SIDE_Z = 6.35;                                   // doorway of the principal's office (on the hall side)
+const STAIR_DOOR_Z = 7.1;                                   // doorway of the stairs downstairs: in line with the first flight (south lane)
+const STAIR_TOP_DOOR_Z = 5.5;                               // doorway of the stairs upstairs: in line with the top of the second flight (north lane)
+const has = name => !!PROPS[name];                          // is this prop registered in props_library.js yet?
 
 const ROOMS = {
   c1: { x0: CLASS_X[0], x1: CLASS_X[1], z0: Z0, z1: Z_CLASS }, c2: { x0: CLASS_X[1], x1: CLASS_X[2], z0: Z0, z1: Z_CLASS },
@@ -65,7 +84,7 @@ const ROOMS = {
   store: { x0: X0, x1: X_TW, z0: Z_STORE, z1: Z1 }, prin: { x0: X_TE, x1: X1, z0: Z_STORE, z1: Z1 },
 };
 
-const IN_WALLS = [
+const makeInWalls = storeDoorZ => [
   ...[0, 1, 2, 3].map(i => ({ rooms: ['c' + (i + 1)], alongX: true, fixed: Z_CLASS, from: CLASS_X[i], to: CLASS_X[i + 1], gaps: [CLASS_C[i]] })),
   { rooms: ['c1', 'c2'], alongX: false, fixed: CLASS_X[1], from: Z0, to: Z_CLASS, gaps: [] },
   { rooms: ['c2', 'c3'], alongX: false, fixed: CLASS_X[2], from: Z0, to: Z_CLASS, gaps: [] },
@@ -74,13 +93,15 @@ const IN_WALLS = [
   { rooms: ['tb'], alongX: true, fixed: Z_TOI, from: X0, to: X_TW, gaps: [-DOOR_TOI] },
   { rooms: ['tb'], alongX: false, fixed: X_TW, from: Z_TOI, to: Z_STORE, gaps: [] },
   { rooms: ['tb', 'store'], alongX: true, fixed: Z_STORE, from: X0, to: X_TW, gaps: [] },
-  { rooms: ['store'], alongX: false, fixed: X_TW, from: Z_STORE, to: Z1, gaps: [DOOR_SIDE_Z] },
+  { rooms: ['store'], alongX: false, fixed: X_TW, from: Z_STORE, to: Z1, gaps: [storeDoorZ] },
   // girls toilet (east) and principal's office
   { rooms: ['tg'], alongX: true, fixed: Z_TOI, from: X_TE, to: X1, gaps: [DOOR_TOI] },
   { rooms: ['tg'], alongX: false, fixed: X_TE, from: Z_TOI, to: Z_STORE, gaps: [] },
   { rooms: ['tg', 'prin'], alongX: true, fixed: Z_STORE, from: X_TE, to: X1, gaps: [] },
   { rooms: ['prin'], alongX: false, fixed: X_TE, from: Z_STORE, to: Z1, gaps: [DOOR_SIDE_Z] },
 ];
+const IN_WALLS = makeInWalls(STAIR_DOOR_Z), IN_WALLS_UP = makeInWalls(STAIR_TOP_DOOR_Z);   // downstairs and upstairs wall plans (only the stairs doorway differs)
+
 
 // Classroom (your classroom_gameready file, baked at real size): the board and the teacher's table are on the north wall, the students face north.
 // 6 columns x 3 rows of your single school desks (a wide aisle in the middle, in line with the doorway). Numbers are measured from the optimised files.
@@ -109,6 +130,13 @@ const WC = STALL_BLOCKS.flatMap(b => STALL_WC.map(o => ({ x: b.cx - o, z: Z_TS -
 const SINK_BACK = null;
 const SINK_Z = 1.0;
 const SINK_WALL_BOYS = X_TW - T_IN / 2, SINK_WALL_GIRLS = X_TE + T_IN / 2;     // the wall faces the basins touch
+// Upstairs: cafeteria tables (your office_table, two tables pushed together, 1.6 m x 0.8 m) with 4 plastic chairs each
+const CAF_COLS = [-5.5, 0, 5.5], CAF_ROWS = [1.4, 4.0, 6.6];
+const CAF_TABLES = CAF_COLS.flatMap(x => CAF_ROWS.map(z => ({ x, z })));
+// Upstairs hostel rooms (the props below are NOT in your props folder yet: they appear in the game as soon as you add them to props_library.js;
+// until then the rooms stay empty and nothing blocks the way). Positions are measured from each room's centre (x) and the north wall (z).
+const BUNK_X = [-2.6, -1.5, 1.5, 2.6], BUNK_HW = 0.5, BUNK_LEN = 2.0;          // 4 bunk beds side by side along the north wall, heads to the wall (8 beds per room)
+const LOCKER_Z = [-6.6, -5.8, -5.0], LOCKER_X = 3.3;                           // 3 lockers against the east wall and 3 against the west wall (x = +/- 3.3)
 // Principal's office (SE corner)
 const PRIN_DESK = { x: 12.55, z: 6.3 };                     // moved 0.75 m west: the principal's chair was half inside the east wall
 const PRIN_SHELF = { x: 12.5, z: S_IN - 0.29 };
@@ -123,14 +151,21 @@ const spans = (from, to, gaps) => {
 };
 const R = (x, z, hw, hd = hw) => [x - hw, x + hw, z - hd, z + hd];
 
-export const HS_INTERIOR_BOXES = [
-  // outer walls (the south wall has the front doorway)
+const wallBoxes = list => list.flatMap(w => spans(w.from, w.to, w.gaps).map(([a, b]) =>
+  w.alongX ? [a - 0.1, b + 0.1, w.fixed - 0.15, w.fixed + 0.15] : [w.fixed - 0.15, w.fixed + 0.15, a - 0.1, b + 0.1]));
+
+// both floors: the outer walls (the south wall has the front doorway downstairs; upstairs nobody is near it) and the wall between the two flights of stairs
+const BOTH_BOXES = [
   [X0 - 0.2, X1 + 0.2, Z0 - 0.2, N_IN],
   [X0 - 0.2, DOOR_X - DOOR_HALF, S_IN, Z1 + 0.2], [DOOR_X + DOOR_HALF, X1 + 0.2, S_IN, Z1 + 0.2],
   [X0 - 0.2, W_IN, Z0, Z1], [E_IN, X1 + 0.2, Z0, Z1],
+  [IN_STAIR.sx + IN_STAIR.dividerFrom, IN_STAIR.sx + IN_STAIR.dividerTo, IN_STAIR.sz - IN_STAIR.dividerHalf, IN_STAIR.sz + IN_STAIR.dividerHalf],
+];
+
+// downstairs only
+const GROUND_BOXES = [
   // interior walls (doorways left open)
-  ...IN_WALLS.flatMap(w => spans(w.from, w.to, w.gaps).map(([a, b]) =>
-    w.alongX ? [a - 0.1, b + 0.1, w.fixed - 0.15, w.fixed + 0.15] : [w.fixed - 0.15, w.fixed + 0.15, a - 0.1, b + 0.1])),
+  ...wallBoxes(IN_WALLS),
   // classrooms: desks, teacher's table, fan
   ...CLASS_C.flatMap(cx => [
     ...DESK_COLS.flatMap(o => DESK_ROWS.map(z => [cx + o - DESK_HW, cx + o + DESK_HW, z - DESK_HD, z + DESK_HD])),
@@ -147,13 +182,34 @@ export const HS_INTERIOR_BOXES = [
   ...STALL_BLOCKS.flatMap(b => STALL_PLANES.map(o => [b.cx - o - 0.07, b.cx - o + 0.07, Z_TS - STALL_D, Z_TS])),
   [X_TW - T_IN / 2 - 0.5, X_TW - T_IN / 2, 0.7, 1.3], [X_TE + T_IN / 2, X_TE + T_IN / 2 + 0.5, 0.7, 1.3],
   R(-14.05, 0.35, 0.3), R(14.05, 0.35, 0.3),
-  // store: drums and buckets
-  R(-13.8, 7.2, 0.3), R(-12.7, 7.3, 0.2), R(-13.4, 5.3, 0.2),
   // principal's office
   [PRIN_DESK.x - 0.35, PRIN_DESK.x + 0.35, PRIN_DESK.z - 0.75, PRIN_DESK.z + 0.75],
   [PRIN_SHELF.x - 1.55, PRIN_SHELF.x + 1.55, PRIN_SHELF.z - 0.29, PRIN_SHELF.z + 0.29],
   [10.85, 11.55, 4.6, 5.3], R(14.05, 4.85, 0.25),
 ];
+
+// upstairs only
+const UPPER_BOXES = [
+  ...wallBoxes(IN_WALLS_UP),
+  // hostel rooms (only when the bunk bed / locker props exist)
+  ...CLASS_C.flatMap(cx => [
+    ...(has('bunk_bed') ? BUNK_X.map(o => [cx + o - BUNK_HW, cx + o + BUNK_HW, N_IN, N_IN + BUNK_LEN]) : []),
+    ...(has('locker') ? LOCKER_Z.flatMap(z => [[cx + LOCKER_X - 0.3, cx + LOCKER_X + 0.3, z - 0.3, z + 0.3], [cx - LOCKER_X - 0.3, cx - LOCKER_X + 0.3, z - 0.3, z + 0.3]]) : []),
+    R(cx + 3.0, -4.3, 0.3),                                                                               // standing fan
+  ]),
+  // cafeteria
+  ...CAF_TABLES.map(t => [t.x - 0.8, t.x + 0.8, t.z - 0.4, t.z + 0.4]),
+  [-10.5, -10.1, 1.8, 2.2], [10.1, 10.5, 1.8, 2.2],                                                      // water dispensers
+  R(-9.8, 7.4, 0.3), R(9.8, 7.4, 0.3),                                                                   // plants
+  // washrooms (same stalls, toilets and basins as downstairs)
+  ...WC.map(w => [w.x - 0.3, w.x + 0.3, Z_TS - 0.7, Z_TS]),
+  ...STALL_BLOCKS.flatMap(b => STALL_PLANES.map(o => [b.cx - o - 0.07, b.cx - o + 0.07, Z_TS - STALL_D, Z_TS])),
+  [X_TW - T_IN / 2 - 0.5, X_TW - T_IN / 2, 0.7, 1.3], [X_TE + T_IN / 2, X_TE + T_IN / 2 + 0.5, 0.7, 1.3],
+  // kitchen
+  R(13.8, 7.2, 0.3), R(12.7, 7.3, 0.2),
+];
+
+export const HS_INTERIOR_BOXES = [...BOTH_BOXES, ...GROUND_BOXES.map(b => [...b, 0]), ...UPPER_BOXES.map(b => [...b, 1])];
 
 // ---------- helpers ----------
 
@@ -246,7 +302,10 @@ async function hangSink(parent, wallFaceX, z, wallSide) {
 // ---------- the building ----------
 
 export function buildHighSchoolInterior() {
-  const group = new THREE.Group();          // everything inside (shown only while the player is inside)
+  const root = new THREE.Group();           // everything inside, both floors (shown only while the player is inside); game.js lifts it onto the steps
+  const group = new THREE.Group();          // downstairs
+  const up = new THREE.Group();             // upstairs (FLOOR_H higher), shown while the player is upstairs
+  root.add(group, up); up.position.y = FLOOR_H; up.visible = false;
   const marker = new THREE.Group();         // the door marker outside (shown only while the player is outside)
   const M = {
     paint: std(WALL_WHITE, 0.9), skirt: std(0xd2d0ca, 0.7),
@@ -268,15 +327,20 @@ export function buildHighSchoolInterior() {
   };
 
   // ----- floors -----
-  const plane = (x0, x1, z0, z1, y, mat) => {
+  const plane = (x0, x1, z0, z1, y, mat, parent = group) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), mat);
-    m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2); m.receiveShadow = true; group.add(m); return m;
+    m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2); m.receiveShadow = true; parent.add(m); return m;
   };
   const hallFloor = plane(X0, X1, Z0, Z1, 0.01, M.tile);                         // hall, corridor, toilets, store, office
   const classFloors = CLASS_X.slice(0, 4).map((x, i) => plane(x, CLASS_X[i + 1], Z0, Z_CLASS, 0.02, M.classFloor));
   const waitFloor = plane(X_TW + T_IN / 2, X_TE - T_IN / 2, Z_TOI, S_IN, 0.016, M.waitFloor);                    // the waiting hall / reception
+  // upstairs floors: tiles everywhere except the stairwell (west block, south part), wooden floors in the 4 hostel rooms
+  const upTileFloors = [plane(X_TW, X1, Z0, Z1, 0.01, M.tile, up), plane(X0, X_TW, Z0, Z_STORE, 0.01, M.tile, up)];
+  const dormFloors = CLASS_X.slice(0, 4).map((x, i) => plane(x, CLASS_X[i + 1], Z0, Z_CLASS, 0.02, M.classFloor, up));
   borrowMap('pbr_material_floor_tiles.glb').then(map => {
-    hallFloor.material = new THREE.MeshStandardMaterial({ map: tiled(map, X1 - X0, Z1 - Z0, 2.0), roughness: 0.55, metalness: 0.05 });
+    [hallFloor, ...upTileFloors].forEach(f => {
+      f.material = new THREE.MeshStandardMaterial({ map: tiled(map, f.geometry.parameters.width, f.geometry.parameters.height, 2.0), roughness: 0.55, metalness: 0.05 });
+    });
   }).catch(warn('floor tiles (keeping the plain floor)'));
   borrowMap(TILE_FILE).then(map => {                                                                             // your cafeteria tile: clean planks, seamless
     M.waitFloor.map = tiledXY(map, waitFloor.geometry.parameters.width, waitFloor.geometry.parameters.height, WAIT_TILE_W, WAIT_TILE_D);
@@ -285,8 +349,8 @@ export function buildHighSchoolInterior() {
   loadGLB(CLASS_FILE).then(gltf => {                                                                             // the wooden floor of your classroom
     let map = null; gltf.scene.traverse(o => { if (o.isMesh && o.name === 'FloorTile' && o.material.map) map = o.material.map; });
     if (!map) throw new Error('no FloorTile in ' + CLASS_FILE);
-    classFloors.forEach((f, i) => {
-      f.material = new THREE.MeshStandardMaterial({ map: tiledXY(map, CLASS_X[i + 1] - CLASS_X[i], Z_CLASS - Z0, CLASS_FLOOR_PER, CLASS_FLOOR_PER), roughness: 0.7 });
+    [...classFloors, ...dormFloors].forEach((f, i) => {
+      f.material = new THREE.MeshStandardMaterial({ map: tiledXY(map, CLASS_X[(i % 4) + 1] - CLASS_X[i % 4], Z_CLASS - Z0, CLASS_FLOOR_PER, CLASS_FLOOR_PER), roughness: 0.7 });
     });
   }).catch(warn('classroom floor (keeping a plain floor)'));
 
@@ -303,21 +367,39 @@ export function buildHighSchoolInterior() {
     });
     gaps.forEach(g => put(M.paint, g - GAP / 2, g + GAP / 2, DOOR_H, WALL_H, upG));
   };
-  const side = { N: new THREE.Group(), S: new THREE.Group(), W: new THREE.Group(), E: new THREE.Group() };
-  Object.values(side).forEach(g => group.add(g));
-  addWall(side.N, side.N, true, Z0 + T_OUT / 2, X0, X1, [], T_OUT);
-  addWall(side.S, side.S, true, Z1 - T_OUT / 2, X0, DOOR_X - DOOR_HALF, [], T_OUT);
-  addWall(side.S, side.S, true, Z1 - T_OUT / 2, DOOR_X + DOOR_HALF, X1, [], T_OUT);
-  addWall(side.W, side.W, false, X0 + T_OUT / 2, Z0, Z1, [], T_OUT);
-  addWall(side.E, side.E, false, X1 - T_OUT / 2, Z0, Z1, [], T_OUT);
-  box(side.S, M.paint, DOOR_HALF * 2, WALL_H - DOOR_H, T_OUT, DOOR_X, DOOR_H + (WALL_H - DOOR_H) / 2, Z1 - T_OUT / 2);   // beam over the front door
+  // one set of walls for a floor: the outer walls hide when the camera is outside them, the inner walls' upper parts hide unless the camera is in that room
+  const buildWalls = (parent, inWalls, frontDoor) => {
+    const side = { N: new THREE.Group(), S: new THREE.Group(), W: new THREE.Group(), E: new THREE.Group() };
+    Object.values(side).forEach(g => parent.add(g));
+    addWall(side.N, side.N, true, Z0 + T_OUT / 2, X0, X1, [], T_OUT);
+    if (frontDoor) {
+      addWall(side.S, side.S, true, Z1 - T_OUT / 2, X0, DOOR_X - DOOR_HALF, [], T_OUT);
+      addWall(side.S, side.S, true, Z1 - T_OUT / 2, DOOR_X + DOOR_HALF, X1, [], T_OUT);
+      box(side.S, M.paint, DOOR_HALF * 2, WALL_H - DOOR_H, T_OUT, DOOR_X, DOOR_H + (WALL_H - DOOR_H) / 2, Z1 - T_OUT / 2);   // beam over the front door
+    } else addWall(side.S, side.S, true, Z1 - T_OUT / 2, X0, X1, [], T_OUT);
+    addWall(side.W, side.W, false, X0 + T_OUT / 2, Z0, Z1, [], T_OUT);
+    addWall(side.E, side.E, false, X1 - T_OUT / 2, Z0, Z1, [], T_OUT);
+    const lowG = new THREE.Group(); parent.add(lowG);
+    const uppers = [];
+    inWalls.forEach(w => {
+      const u = new THREE.Group(); parent.add(u); uppers.push({ up: u, rooms: w.rooms });
+      addWall(lowG, u, w.alongX, w.fixed, w.from, w.to, w.gaps, T_IN);
+    });
+    return { side, lowG, uppers };
+  };
+  const W0 = buildWalls(group, IN_WALLS, true);          // downstairs
+  const W1 = buildWalls(up, IN_WALLS_UP, false);         // upstairs
+  const { side, lowG, uppers } = W0;
 
-  const lowG = new THREE.Group(); group.add(lowG);
-  const uppers = [];
-  IN_WALLS.forEach(w => {
-    const up = new THREE.Group(); group.add(up); uppers.push({ up, rooms: w.rooms });
-    addWall(lowG, up, w.alongX, w.fixed, w.from, w.to, w.gaps, T_IN);
-  });
+  // small name plate on a wall (canvas picture)
+  const plate = (parent, text, x, y, z, rotY, w = 0.9, bg = '#2e7d4f') => {
+    const tex = canvasTex(512, 128, (g, cw, ch) => {
+      g.fillStyle = bg; g.fillRect(0, 0, cw, ch); g.strokeStyle = '#fff'; g.lineWidth = 6; g.strokeRect(6, 6, cw - 12, ch - 12);
+      g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; fitText(g, text, cw - 50, 68); g.fillText(text, cw / 2, ch / 2 + 4);
+    });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, w / 4), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7 }));
+    m.position.set(x, y, z); m.rotation.y = rotY; parent.add(m); return m;
+  };
 
   // ----- exit marker (inside the front door) -----
   lib(group, 'gta_marker_blue', DOOR_X, 0.02, Z1 - 1.7);
@@ -347,13 +429,7 @@ export function buildHighSchoolInterior() {
       });
     }).catch(warn(CLASS_FILE));
     lib(group, 'standing_fan', cx + 3.1, 0, -9.0, 0.5);
-    // name plate beside each doorway, on the corridor side (low, so it is always visible)
-    const signTex = canvasTex(256, 128, (g, w, h) => {
-      g.fillStyle = '#2e7d4f'; g.fillRect(0, 0, w, h); g.strokeStyle = '#fff'; g.lineWidth = 6; g.strokeRect(6, 6, w - 12, h - 12);
-      g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 64px Arial, sans-serif'; g.fillText(CLASS_NAMES[i], w / 2, h / 2 + 4);
-    });
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.25), new THREE.MeshStandardMaterial({ map: signTex, roughness: 0.7 }));
-    sign.position.set(cx + 1.15, 0.82, Z_CLASS + T_IN / 2 + 0.012); lowG.add(sign);
+    plate(lowG, CLASS_NAMES[i], cx + 1.15, 0.82, Z_CLASS + T_IN / 2 + 0.012, 0, 0.9);       // name plate beside each doorway, on the corridor side (low, so it is always visible)
   });
 
   // ----- hall / reception -----
@@ -422,10 +498,15 @@ export function buildHighSchoolInterior() {
     mine(group, 'bucket_optimised.glb', { axis: 'y', size: 0.3 }, s * 13.55, 0, 0.3);
   });
 
-  // ----- cleaners' store (SW): drums and buckets -----
-  mine(group, 'water_drum_optimised.glb', { axis: 'y', size: 0.9 }, -13.8, 0, 7.2);
-  mine(group, 'bucket_optimised.glb', { axis: 'y', size: 0.3 }, -12.7, 0, 7.3);
-  mine(group, 'bucket_optimised.glb', { axis: 'y', size: 0.3 }, -13.4, 0, 5.3);
+  // ----- the stairs (SW, where the cleaners' store was): your stairs.glb, turned so you walk in from the hall door and climb west, turn at the landing and come back east to the upper floor -----
+  loadGLB('stairs_optimised.glb').then(gltf => {
+    const st = SkeletonUtils.clone(gltf.scene);
+    st.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
+    const holder = new THREE.Group();
+    holder.position.set(IN_STAIR.sx, 0, IN_STAIR.sz); holder.rotation.y = Math.PI / 2; holder.scale.setScalar(IN_STAIR.k);
+    holder.add(st); group.add(holder);
+  }).catch(warn('stairs_optimised.glb'));
+  plate(lowG, 'STAIRS', X_TW + T_IN / 2 + 0.012, 0.85, 5.4, Math.PI / 2, 0.7, '#1f4e79');   // sign on the hall side of the stairs wall
 
   // ----- principal's office (SE): desk, chairs, computer, globe, bookshelf, filing cabinet, flag -----
   box(group, M.darkwood, 0.7, 0.05, 1.5, PRIN_DESK.x, 0.76, PRIN_DESK.z);
@@ -449,20 +530,62 @@ export function buildHighSchoolInterior() {
   // ----- door marker (outside): in front of the steps, so players can see where to walk in -----
   loadProp('gta_marker_blue').then(p => { p.position.set(DOOR_X, 0.02, Z1 + 3.5); marker.add(p); }).catch(warn('entrance marker'));
 
+  // ======================= UPSTAIRS: hostel rooms, cafeteria, washrooms, kitchen =======================
+  // The floor plan is the same as downstairs; everything here uses props_library props, nothing is built from boxes.
+  // Hostel rooms: bunk beds and lockers (props you still have to add, see the has(...) checks), a standing fan in each room.
+  CLASS_C.forEach((cx, i) => {
+    if (has('bunk_bed')) BUNK_X.forEach(o => lib(up, 'bunk_bed', cx + o, 0, N_IN + BUNK_LEN / 2, 0));      // heads against the north wall
+    if (has('locker')) LOCKER_Z.forEach(z => { lib(up, 'locker', cx + LOCKER_X, 0, z, -Math.PI / 2); lib(up, 'locker', cx - LOCKER_X, 0, z, Math.PI / 2); });
+    lib(up, 'standing_fan', cx + 3.0, 0, -4.3, Math.PI);
+    plate(W1.lowG, DORM_NAMES[i], cx + 1.15, 0.82, Z_CLASS + T_IN / 2 + 0.012, 0, 0.9, i < 2 ? '#1f4e79' : '#8a2b5c');
+  });
+
+  // Cafeteria: 9 tables of two office tables each, 4 plastic chairs at each
+  CAF_TABLES.forEach(t => {
+    lib(up, 'office_table', t.x, 0, t.z, 0);
+    [-0.4, 0.4].forEach(dx => { lib(up, 'plastic_chair', t.x + dx, 0, t.z - 0.65, 0); lib(up, 'plastic_chair', t.x + dx, 0, t.z + 0.65, Math.PI); });
+  });
+  lib(up, 'water_dispenser', -10.3, 0, 2.0, Math.PI / 2); lib(up, 'water_dispenser', 10.3, 0, 2.0, -Math.PI / 2);
+  lib(up, 'plant_pot', -9.8, 0, 7.4); lib(up, 'plant_pot', 9.8, 0, 7.4);
+  lib(up, 'bin_office', -8.5, 0, 7.6); lib(up, 'bin_office', 8.5, 0, 7.6);
+  lib(W1.side.S, 'fire_extinguisher', 5.0, 1.2, S_IN - 0.12, Math.PI); lib(W1.side.S, 'fire_extinguisher', -5.0, 1.2, S_IN - 0.12, Math.PI);
+  plate(W1.lowG, 'STAIRS', X_TW + T_IN / 2 + 0.012, 0.85, STAIR_TOP_DOOR_Z + 1.05, Math.PI / 2, 0.7, '#1f4e79');
+
+  // Washrooms (boys west, girls east): the same stalls, toilets and basins as downstairs
+  const stallUpU = { tb: new THREE.Group(), tg: new THREE.Group() };
+  Object.entries(stallUpU).forEach(([room, g]) => { up.add(g); W1.uppers.push({ up: g, rooms: [room] }); });
+  STALL_BLOCKS.forEach(b => {
+    mine(up, STALL_FILE, { axis: 'x', size: STALL_W, rotY: Math.PI, hide: /StallHigh/ }, b.cx, 0, STALL_CZ);
+    mine(stallUpU[b.room], STALL_FILE, { axis: 'x', size: STALL_W, rotY: Math.PI, hide: /StallLow/ }, b.cx, 0, STALL_CZ);
+  });
+  WC.forEach(w => lib(up, 'toilet', w.x, 0, w.z, Math.PI));
+  hangSink(up, SINK_WALL_BOYS, SINK_Z, +1).catch(warn('sink_wall (upstairs boys)'));
+  hangSink(up, SINK_WALL_GIRLS, SINK_Z, -1).catch(warn('sink_wall (upstairs girls)'));
+  plate(W1.lowG, 'BOYS WASHROOM', -11.3, 0.85, Z_TOI - T_IN / 2 - 0.012, Math.PI, 0.9, '#1f4e79');
+  plate(W1.lowG, 'GIRLS WASHROOM', 11.3, 0.85, Z_TOI - T_IN / 2 - 0.012, Math.PI, 0.9, '#8a2b5c');
+
+  // Kitchen (SE): water drum and bucket for now; the cooker, fridge and serving counter are props you still have to add
+  mine(up, 'water_drum_optimised.glb', { axis: 'y', size: 0.9 }, 13.8, 0, 7.2);
+  mine(up, 'bucket_optimised.glb', { axis: 'y', size: 0.3 }, 12.7, 0, 7.3);
+  plate(W1.lowG, 'KITCHEN', X_TE - T_IN / 2 - 0.012, 0.85, DOOR_SIDE_Z - 1.15, -Math.PI / 2, 0.7, '#7a4a1a');
+
   // ----- hooks used by game.js -----
-  const setInside = inside => { group.visible = inside; marker.visible = !inside; };
+  const setInside = inside => { root.visible = inside; marker.visible = !inside; };
+  const setLevel = level => { up.visible = level === 1; };      // downstairs always stays (you see it through the stairwell); upstairs only when you are up there
   const inRoom = (r, x, z) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1;
   const setCamera = (relX, relZ) => {
-    side.N.visible = !(relZ < Z0);
-    side.S.visible = !(relZ > Z1);
-    side.W.visible = !(relX < X0);
-    side.E.visible = !(relX > X1);
-    uppers.forEach(u => { u.up.visible = u.rooms.some(n => inRoom(ROOMS[n], relX, relZ)); });
+    [W0, W1].forEach(w => {
+      w.side.N.visible = !(relZ < Z0);
+      w.side.S.visible = !(relZ > Z1);
+      w.side.W.visible = !(relX < X0);
+      w.side.E.visible = !(relX > X1);
+      w.uppers.forEach(u => { u.up.visible = u.rooms.some(n => inRoom(ROOMS[n], relX, relZ)); });
+    });
   };
   setInside(false);
   setCamera(0, 0);
 
-  return { group, marker, halfW: HALF_W, halfD: HALF_D, cz: CZ, setInside, setCamera };
+  return { group: root, marker, halfW: HALF_W, halfD: HALF_D, cz: CZ, setInside, setCamera, setLevel };
 }
 
 

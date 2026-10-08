@@ -235,7 +235,7 @@ $('btnLogin').addEventListener('click', async () => {
 
 async function boot() {
   // small build tag in the corner, so you can see at once whether the newest game.js is the one running
-  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-08 stairs-1';
+  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-08 stairs-2';
   tag.style.cssText = 'position:fixed;left:8px;bottom:4px;z-index:99;font:11px sans-serif;color:#7f8c8d;pointer-events:none';
   document.body.appendChild(tag); window.__buildTag = tag;
   authBox.style.display = 'flex'; showPanel('pLanding');
@@ -659,7 +659,7 @@ function animateAvatar(av, speed, dt) {
 // Step 2: lifts a character to the floor height under it (grass 0, steps rising, school floor) and works out whether it is
 // climbing or descending. Used for you and for every other player (their height is worked out from x and z, nothing extra is sent).
 function updateElevation(av, x, z, dt) {
-  const u = av.userData, y = groundHeight(x, z);
+  const u = av.userData, y = groundHeight(x, z, u);   // Step 4: u.level (0 downstairs, 1 upstairs) is kept up to date by groundHeight
   const vy = u.lastY === undefined ? 0 : (y - u.lastY) / Math.max(dt, 0.001);
   u.lastY = y;
   av.position.y = y;
@@ -923,10 +923,10 @@ class World {
 
     // Collision boxes: rotate the relative boxes by rotY (multiples of 90 only)
     const r = ((Math.round(b.rotY / 90) % 4) + 4) % 4;
-    b.boxes.forEach(([x0, x1, z0, z1]) => {
+    b.boxes.forEach(([x0, x1, z0, z1, lv]) => {      // lv (optional): 0 = only solid downstairs, 1 = only solid upstairs, missing = both floors
       let a = [x0, x1, z0, z1];
       for (let i = 0; i < r; i++) a = [a[2], a[3], -a[1], -a[0]];   // 90 degrees turn
-      this.boxes.push({ x0: b.x + a[0], x1: b.x + a[1], z0: b.z + a[2], z1: b.z + a[3] });
+      this.boxes.push({ x0: b.x + a[0], x1: b.x + a[1], z0: b.z + a[2], z1: b.z + a[3], lv });
     });
 
     // Name zone for the top-left text
@@ -1216,7 +1216,9 @@ class World {
   // ----- walking and collisions -----
   collide(pos) {
     const all = this.gateClosed ? this.boxes.concat([this.gateBox]) : this.boxes;
+    const level = (this.player && this.player.userData.level) || 0;          // Step 4: which floor of the school you are on
     for (const b of all) {
+      if (b.lv !== undefined && b.lv !== level) continue;                    // a wall or desk of the other floor
       const cx = THREE.MathUtils.clamp(pos.x, b.x0, b.x1);
       const cz = THREE.MathUtils.clamp(pos.z, b.z0, b.z1);
       let dx = pos.x - cx, dz = pos.z - cz;
@@ -1311,7 +1313,10 @@ class World {
         b.room.setInside(inside);
         if (b.exterior) b.exterior.visible = !inside;
       }
-      if (inside) b.room.setCamera(this.camera.position.x - b.x, this.camera.position.z - b.z);
+      if (inside) {
+        b.room.setCamera(this.camera.position.x - b.x, this.camera.position.z - b.z);
+        if (b.room.setLevel) b.room.setLevel((this.player.userData.level) || 0);      // Step 4: show the upstairs floor while you are up there
+      }
     });
 
     // Ivory, "Talk to Ivory", the countdown and the quest text (after the interior check above, which sets b.inside)
@@ -1328,4 +1333,3 @@ class World {
 
 // start only after everything above has been defined
 boot();
-
