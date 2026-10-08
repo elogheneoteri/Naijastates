@@ -212,7 +212,7 @@ function startGame() {
   new World($('game'));
 }
 // A player with no saved choice on this device picks a character first.
-function afterLogin() { if (localStorage.getItem('characterId')) startGame(); else openChoose(); }
+function afterLogin() { if (CHARACTER_FILES[localStorage.getItem('characterId')]) startGame(); else openChoose(); }   // a saved character that is no longer in characters.json sends the player to the choose screen
 
 $('btnCreate').addEventListener('click', () => showPanel('pSignup'));
 $('btnBack').addEventListener('click', () => showPanel('pLanding'));
@@ -236,7 +236,7 @@ $('btnLogin').addEventListener('click', async () => {
 
 async function boot() {
   // small build tag in the corner, so you can see at once whether the newest game.js is the one running
-  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-08 stairs-2';
+  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-08 clothes-1';
   tag.style.cssText = 'position:fixed;left:8px;bottom:4px;z-index:99;font:11px sans-serif;color:#7f8c8d;pointer-events:none';
   document.body.appendChild(tag); window.__buildTag = tag;
   authBox.style.display = 'flex'; showPanel('pLanding');
@@ -277,28 +277,24 @@ function showLoadError(msg) {
 
 // ---------- The 3D character (player_female_01.glb: has a skeleton and idle / walk / run animations) ----------
 
-// characters.json says which file belongs to which character id (free / premium / npc).
+// characters.json says which file belongs to which character id:
+//   free     = playable, shown on the choose-your-character screen (all Mixamo .fbx)
+//   premium  = shop characters (empty for now)
+//   clothing = not playable, only used as an outfit source (clothing.js)
+//   npc      = staff and officers (not playable)
+// Every file ending in .fbx is loaded as a Mixamo character and animated with the shared animation files below.
 const CHARACTER_FILES = {};
 const CHARACTER_NAMES = {};   // the "name" of each character in characters.json
+const FREE_IDS = [];          // the playable free characters, in the order of characters.json
 try {
   const manifest = await (await fetch('characters.json')).json();
-  for (const tier of ['free', 'premium', 'npc']) for (const c of manifest[tier] || []) { CHARACTER_FILES[c.id] = c.file; CHARACTER_NAMES[c.id] = c.name; }
-} catch (e) { /* no characters.json: the old single character is used */ }
+  for (const tier of ['free', 'premium', 'clothing', 'npc']) for (const c of manifest[tier] || []) {
+    CHARACTER_FILES[c.id] = c.file; CHARACTER_NAMES[c.id] = c.name;
+    if (tier === 'free') FREE_IDS.push(c.id);
+  }
+} catch (e) { console.error('characters.json could not be read:', e); }
 
-const DEFAULT_CHARACTER = 'male_civilian';
-
-// ---------- Mixamo characters (rigged in Mixamo, downloaded "With Skin") ----------
-// A character listed here is loaded straight from its Mixamo .fbx and animated with the shared animation files below.
-// Any character NOT listed here keeps using its older .glb from characters.json.
-// When the next character is rigged and uploaded, add ONE line, for example:
-//   male_wong: 'characters/free/male_wong.fbx',
-const MIXAMO_CHARACTERS = {
-  male_civilian: 'characters/free/male_civilian_for_mixamo.fbx',
-  female_sammie: 'characters/free/female_sammie_for_mixamo.fbx',
-  female_elizabeth: 'characters/premium/female_elizabeth_for_mixamo.fbx',
-  female_emma: 'characters/premium/female_emma_for_mixamo.fbx',
-};
-Object.assign(CHARACTER_FILES, MIXAMO_CHARACTERS);
+const DEFAULT_CHARACTER = 'female_emma';
 if (!CHARACTER_FILES.female_ivory) CHARACTER_FILES.female_ivory = IVORY_FILE;   // Ivory, the NPC at the Immigration Office (nin.js)
 
 // One animation set per gender (Mixamo: "FBX Binary", In Place, 30 fps). Every Mixamo character shares the same skeleton,
@@ -309,7 +305,7 @@ const MIXAMO_ANIMS = {
 };
 
 // The character the player picked (the choose-your-character screen will set this later).
-function myCharacterId() { return localStorage.getItem('characterId') || DEFAULT_CHARACTER; }
+function myCharacterId() { const id = localStorage.getItem('characterId'); return CHARACTER_FILES[id] ? id : DEFAULT_CHARACTER; }
 
 // ---------- Mixamo animations (FBX) retargeted onto our own skeleton ----------
 // Put the Mixamo files (download "FBX Binary", "Without Skin", 30 fps) in the animation/ folder.
@@ -401,18 +397,54 @@ function loadMixamoSet(gender) {
   return mixamoSetLoads[gender];
 }
 
-// share of a texture that is see-through (looks at a small copy of the picture)
+// share of a texture that is see-through (looks at a small copy of the picture). A .jpg is never see-through; a .png may be.
 async function emptyFraction(tex) {
   try {
     const img = tex.image; if (!img) return 0;
     if (img.decode) await img.decode().catch(() => {});
-    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const c = document.createElement('canvas'); c.width = c.height = 128;
     const x = c.getContext('2d', { willReadFrequently: true });
-    x.drawImage(img, 0, 0, 64, 64);
-    const d = x.getImageData(0, 0, 64, 64).data; let n = 0;
+    x.drawImage(img, 0, 0, 128, 128);
+    const d = x.getImageData(0, 0, 128, 128).data; let n = 0;
     for (let i = 3; i < d.length; i += 4) if (d[i] < 128) n++;
-    return n / (64 * 64);
+    return n / (128 * 128);
   } catch (e) { return 0; }
+}
+
+// Hair, lashes and brows are thin strands on a mostly empty picture (Elizabeth's hair picture is 94% empty). The graphics card shrinks
+// the picture for far-away characters, and the strands fade below the cut-out limit, so the hair vanishes. This builds the shrunken
+// copies by hand and boosts their see-through channel, so the same share of the picture stays solid at every size (the hair stays).
+async function keepCutoutCoverage(tex, cutoff) {
+  try {
+    if (tex.userData.coverageKept) return;
+    const img = tex.image; if (!img) return;
+    if (img.decode) await img.decode().catch(() => {});
+    const w = img.width || img.naturalWidth, h = img.height || img.naturalHeight;
+    if (!w || !h || (w & (w - 1)) || (h & (h - 1))) return;               // power-of-two pictures only
+    const make = (cw, ch) => { const c = document.createElement('canvas'); c.width = cw; c.height = ch; return c; };
+    const lim = cutoff * 255;
+    const share = d => { let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] >= lim) n++; return n / (d.length / 4); };
+    const c0 = make(w, h); const x0 = c0.getContext('2d', { willReadFrequently: true }); x0.drawImage(img, 0, 0);
+    const base = share(x0.getImageData(0, 0, w, h).data);
+    if (base < 0.001) return;
+    const raw = [c0], out = [c0];                                         // raw = plain shrunken copies, out = copies with boosted see-through channel
+    let pw = w, ph = h;
+    while (pw > 1 || ph > 1) {
+      const nw = Math.max(1, pw >> 1), nh = Math.max(1, ph >> 1);
+      const r = make(nw, nh), rx = r.getContext('2d', { willReadFrequently: true });
+      rx.imageSmoothingEnabled = true; rx.imageSmoothingQuality = 'high'; rx.drawImage(raw[raw.length - 1], 0, 0, nw, nh);
+      raw.push(r);
+      const o = make(nw, nh), ox = o.getContext('2d', { willReadFrequently: true });
+      const im = rx.getImageData(0, 0, nw, nh), d = im.data;
+      let lo = 1, hi = 32;                                                // find the boost that keeps the same share of the picture solid
+      for (let k = 0; k < 12; k++) { const m = (lo + hi) / 2; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] * m >= lim) n++; if (n / (nw * nh) < base) lo = m; else hi = m; }
+      for (let i = 3; i < d.length; i += 4) d[i] = Math.min(255, d[i] * hi);
+      ox.putImageData(im, 0, 0); out.push(o);
+      pw = nw; ph = nh;
+    }
+    tex.mipmaps = out; tex.generateMipmaps = false; tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.userData.coverageKept = true; tex.needsUpdate = true;
+  } catch (e) { console.warn('Hair coverage fix skipped:', e); }
 }
 
 // Some jeans have the "rips" painted into the picture as skin-coloured patches. Paint those patches in the denim colour.
@@ -459,10 +491,8 @@ async function loadMixamoCharacter(file) {
   fbx.updateMatrixWorld(true);
   fbx.position.y -= new THREE.Box3().setFromObject(fbx).min.y;   // feet on the ground
 
-  // Materials: decide for each one whether its texture's "empty" parts are real or just export junk.
-  //  - hair / eyelashes: cut out by the texture (soft strands kept)
-  //  - a little empty space (rips in jeans): cut out, so the rip shows the body underneath
-  //  - mostly empty (a jacket whose see-through channel is junk): ignore it, draw it solid
+  // Materials: a texture that has a real see-through channel (a .png: hair, lashes, brows, tear lines, scalp) is cut out by it.
+  // Everything else (the .jpg skin, tops, trousers, shoes) is drawn solid, whatever its see-through channel says.
   const mats = new Set();
   fbx.traverse(o => { if (o.isMesh) [].concat(o.material).forEach(m => mats.add(m)); });
   // Mixamo names look like "m4_Legsmat": drop the "m4_" at the start and the "mat" at the end
@@ -475,13 +505,18 @@ async function loadMixamoCharacter(file) {
   const forcedCutout = new URLSearchParams(location.search).get('cutout') === '1';
   await Promise.all([...mats].map(async m => {
     if (m.isMeshPhongMaterial) { m.shininess = 8; m.specular.setScalar(0.08); }
-    const isHair = /hair|lash|brow|beard/i.test(m.name || '');
-    if (m.map && !/hair|lash|brow|beard/i.test(m.name || '')) await repaintRips(m.map);
+    const name = plain(m.name);
+    const isHair = /hair|lash|brow|scalp|beard|tear|occlusion|reflection|transparency/i.test(name);
+    // some jeans have the "rips" painted into the picture as skin-coloured patches: only trousers get that repaint
+    if (m.map && /jean|denim|short|pant|trouser/i.test(name)) await repaintRips(m.map);
     const empty = m.map ? await emptyFraction(m.map) : 0;
-    const cutout = forcedCutout || isHair || (empty > 0.002 && empty < 0.35);
+    const cutout = forcedCutout || empty > 0.01;
+    const cutoff = isHair ? 0.3 : 0.5;
     m.opacity = 1; m.transparent = false; m.depthWrite = true; m.side = THREE.DoubleSide;
-    m.alphaTest = isHair ? 0.25 : (cutout ? 0.5 : 0);
+    m.alphaTest = cutout ? cutoff : 0;
+    m.alphaToCoverage = cutout;                                           // soft edges (the game draws with antialiasing)
     if (!cutout) m.alphaMap = null;
+    if (cutout && m.map) await keepCutoutCoverage(m.map, cutoff);
     m.needsUpdate = true;
   }));
 
@@ -576,8 +611,7 @@ function applyCharacter(holder, shirt, characterId) {
 }
 
 // ---- the choose-your-character screen: a live 3D preview ----
-const FREE_IDS = ['male_civilian', 'male_wong', 'male_streetwear', 'female_floral', 'female_sammie', 'female_rocker'];
-const pick = { gender: 'male', id: null };
+const pick = { gender: 'female', id: null };
 let pv = null;
 
 function resizePreview() {
@@ -630,7 +664,10 @@ function showGender(gender) {
   const first = listFree(gender)[0]; if (first) choose(first);
 }
 function openChoose() {
-  showPanel('pChoose'); startPreview(); resizePreview(); showGender(pick.gender);
+  showPanel('pChoose'); startPreview(); resizePreview();
+  const hasMale = listFree('male').length > 0;                 // no free male characters at the moment: hide the Male tab
+  $('tabMale').style.display = hasMale ? '' : 'none';
+  showGender(hasMale ? pick.gender : 'female');
 }
 $('tabMale').addEventListener('click', () => showGender('male'));
 $('tabFemale').addEventListener('click', () => showGender('female'));
@@ -710,6 +747,7 @@ class World {
         world: this,
         applyCharacter: id => applyCharacter(this.player, 0x2c6e9b, id),
         loadSource: id => loadCharacterFile(CHARACTER_FILES[id]),
+        characters: FREE_IDS,                                   // the test button cycles through these
       });
     } catch (e) { console.error('Clothing could not start:', e); this.clothing = null; }
     this.connect();
@@ -1344,5 +1382,7 @@ class World {
 
 // start only after everything above has been defined
 boot();
+
+
 
 
