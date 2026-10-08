@@ -12,7 +12,7 @@ import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.
 import { buildHighSchoolExterior, HS_EXTERIOR_BOXES } from './high_school_exterior.js';
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
 import { initNin, IVORY_FILE } from './nin.js';
-import { initSchool } from './school.js';   // school step 1: the receptionist, the admission form, the uniform
+import { initClothing } from './clothing.js';   // clothing test: wear another character's outfit
 import { loadProp } from './props_library.js';
 import { HS_STAIRS, STAIR_SPEED_FACTOR, STAIR_ANIM_SPEED, addStairs, groundHeight, onStairs } from './stairs.js';   // Step 2: the school steps
 import { buildCity, cityClearRects, JUNCTION_GAPS_X, CITY, plotAt } from './city.js';
@@ -295,6 +295,8 @@ const DEFAULT_CHARACTER = 'male_civilian';
 const MIXAMO_CHARACTERS = {
   male_civilian: 'characters/free/male_civilian_for_mixamo.fbx',
   female_sammie: 'characters/free/female_sammie_for_mixamo.fbx',
+  female_elizabeth: 'characters/premium/female_elizabeth_for_mixamo.fbx',
+  female_emma: 'characters/premium/female_emma_for_mixamo.fbx',
 };
 Object.assign(CHARACTER_FILES, MIXAMO_CHARACTERS);
 if (!CHARACTER_FILES.female_ivory) CHARACTER_FILES.female_ivory = IVORY_FILE;   // Ivory, the NPC at the Immigration Office (nin.js)
@@ -703,9 +705,13 @@ class World {
     try {                                // the NIN card quest: Ivory, the form, the wait, the card (nin.js)
       this.nin = initNin({ world: this, building: BUILDINGS.find(b => b.key === 'immigration'), makeAvatar, animateAvatar });
     } catch (e) { console.error('NIN quest could not start:', e); this.nin = null; }
-    try {                                // the school: Madam Ngozi, the admission form, the uniform (school.js)
-      this.school = initSchool({ world: this, building: BUILDINGS.find(b => b.key === 'high_school') });
-    } catch (e) { console.error('School could not start:', e); this.school = null; }
+    try {                                // clothing test: put one character's outfit on another (clothing.js)
+      this.clothing = initClothing({
+        world: this,
+        applyCharacter: id => applyCharacter(this.player, 0x2c6e9b, id),
+        loadSource: id => loadCharacterFile(CHARACTER_FILES[id]),
+      });
+    } catch (e) { console.error('Clothing could not start:', e); this.clothing = null; }
     this.connect();
     this.renderer.setAnimationLoop(() => this.frame());
   }
@@ -1139,7 +1145,6 @@ class World {
       this.progress = data.progress;
       this.devTools = data.devTools;
       this.player.position.set(data.x / PX_PER_M, 0, data.y / PX_PER_M);
-      this.myName = data.name;               // the school form shows it
       this.setLabel(this.player, data.name);
       // the server is the authority on which character this account uses
       if (data.character && data.character !== this.player.userData.characterId) {
@@ -1326,7 +1331,7 @@ class World {
 
     // Ivory, "Talk to Ivory", the countdown and the quest text (after the interior check above, which sets b.inside)
     if (this.nin) { try { this.nin.update(dt); } catch (e) { console.error('NIN quest stopped:', e); this.nin = null; } }
-    if (this.school) { try { this.school.update(dt); } catch (e) { console.error('School stopped:', e); this.school = null; } }
+    if (this.clothing) { try { this.clothing.update(dt); } catch (e) { console.error('Clothing stopped:', e); this.clothing = null; } }
 
     // keep the sun's shadow box around the player
     this.sun.target.position.set(p.x, p.y, p.z);
