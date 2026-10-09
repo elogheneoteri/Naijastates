@@ -212,7 +212,7 @@ function startGame() {
   new World($('game'));
 }
 // A player with no saved choice on this device picks a character first.
-function afterLogin() { if (CHARACTER_FILES[localStorage.getItem('characterId')]) startGame(); else openChoose(); }   // a saved character that is no longer in characters.json sends the player to the choose screen
+function afterLogin() { if (FREE_IDS.includes(localStorage.getItem('characterId'))) startGame(); else openChoose(); }   // a saved character that is no longer in characters.json sends the player to the choose screen
 
 $('btnCreate').addEventListener('click', () => showPanel('pSignup'));
 $('btnBack').addEventListener('click', () => showPanel('pLanding'));
@@ -294,7 +294,7 @@ try {
   }
 } catch (e) { console.error('characters.json could not be read:', e); }
 
-const DEFAULT_CHARACTER = 'female_emma';
+const DEFAULT_CHARACTER = FREE_IDS[0] || 'female_emma';
 if (!CHARACTER_FILES.female_ivory) CHARACTER_FILES.female_ivory = IVORY_FILE;   // Ivory, the NPC at the Immigration Office (nin.js)
 
 // One animation set per gender (Mixamo: "FBX Binary", In Place, 30 fps). Every Mixamo character shares the same skeleton,
@@ -305,7 +305,7 @@ const MIXAMO_ANIMS = {
 };
 
 // The character the player picked (the choose-your-character screen will set this later).
-function myCharacterId() { const id = localStorage.getItem('characterId'); return CHARACTER_FILES[id] ? id : DEFAULT_CHARACTER; }
+function myCharacterId() { const id = localStorage.getItem('characterId'); return FREE_IDS.includes(id) ? id : DEFAULT_CHARACTER; }
 
 // ---------- Mixamo animations (FBX) retargeted onto our own skeleton ----------
 // Put the Mixamo files (download "FBX Binary", "Without Skin", 30 fps) in the animation/ folder.
@@ -371,7 +371,7 @@ function loadStairClips() {
       const clip = [...fbx.animations].sort((a, b) => b.duration - a.duration || b.tracks.length - a.tracks.length)[0];
       if (!clip) throw new Error('no animation inside ' + file);
       const h = hipsBone(fbx);
-      return { name, clip, hipsY: h ? h.position.y : 0, stairs: true };
+      return { name, clip, hipsY: h ? h.position.y : 0, stairs: true, rest: restOf(fbx) };
     }).catch(e => {                                                // a missing file does not stop the game: the normal walk is used on the steps
       console.warn('Stairs animation missing or broken:', file, e);
       showLoadError('Stairs animation not loaded: ' + file + ' -> ' + (e && e.message ? e.message : String(e)));
@@ -390,7 +390,7 @@ function loadMixamoSet(gender) {
         const clip = [...fbx.animations].sort((a, b) => b.duration - a.duration || b.tracks.length - a.tracks.length)[0];
         if (!clip) throw new Error('no animation inside ' + file);
         const h = hipsBone(fbx);
-        return { name, clip, hipsY: h ? h.position.y : 0 };
+        return { name, clip, hipsY: h ? h.position.y : 0, rest: restOf(fbx) };
       }).catch(e => { console.warn('Animation file missing or broken:', file, e); mixamoErrors[gender].push(file + ' -> ' + (e && e.message ? e.message : String(e))); return null; })
     )).then(list => Object.fromEntries(list.filter(Boolean).map(a => [a.name, a])));
   }
@@ -550,10 +550,105 @@ async function loadMixamoCharacter(file) {
   return { scene, animations, mixamoNative: true };
 }
 
+// ---------- Mixamo-rigged .glb characters (file name ends in _mixamo.glb) ----------
+// These have the Mixamo skeleton (mixamorig:Hips ...) but were exported from Blender, so their bones are turned differently from the
+// Mixamo .fbx files. Every animation rotation is therefore re-aimed bone by bone:  q_glb = (parentRest_glb^-1 * parentRest_fbx) * q_fbx * (rest_fbx^-1 * rest_glb)
+// where "rest" is the bone's rotation in the T-pose, in world space. The hips only keep their up-and-down bounce.
+const GLB_TARGET_HEIGHT = 1.68;   // metres: these .glb characters are exported small, so they are scaled to a normal height
+
+// world-space T-pose rotation of every bone (and of its parent), keyed by the Mixamo name without "mixamorig"
+function restOf(root) {
+  root.updateMatrixWorld(true);
+  const out = {};
+  root.traverse(o => {
+    if (!o.isBone) return;
+    const w = new THREE.Quaternion(), pw = new THREE.Quaternion();
+    o.getWorldQuaternion(w);
+    if (o.parent) o.parent.getWorldQuaternion(pw);
+    out[mixKey(o.name)] = { name: o.name, w, pw };
+  });
+  return out;
+}
+
+async function loadMixamoGlbCharacter(file) {
+  const base = file.split('/').pop();
+  const gender = base.startsWith('female') ? 'female' : 'male';
+  const [gltf, set, stairClips] = await Promise.all([new GLTFLoader().loadAsync(file), loadMixamoSet(gender), loadStairClips()]);
+  if (!set.idle) throw new Error('the ' + gender + ' idle animation could not be loaded. ' + mixamoErrors[gender].join(' | '));
+  const model = gltf.scene;
+
+  // the embedded T-pose animation is not used: the shared Mixamo clips below replace it
+  model.updateMatrixWorld(true);
+  const height = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3()).y || 1;
+  model.scale.setScalar(GLB_TARGET_HEIGHT / height);
+  model.updateMatrixWorld(true);
+  model.position.y -= new THREE.Box3().setFromObject(model).min.y;   // feet on the ground
+  model.updateMatrixWorld(true);
+
+  // materials: same treatment as the .fbx characters (hair / lashes / brows are cut out by their see-through channel, the rest is solid)
+  const mats = new Set();
+  model.traverse(o => { if (o.isMesh) [].concat(o.material).forEach(m => mats.add(m)); });
+  const plainName = n => (n || '').replace(/^m\d+_/i, '').replace(/mat$/i, '');
+  await Promise.all([...mats].map(async m => {
+    const isHair = /hair|lash|brow|scalp|beard|tear|occlusion|reflection|transparency/i.test(plainName(m.name));
+    const empty = m.map ? await emptyFraction(m.map) : 0;
+    const cutout = empty > 0.01;
+    const cutoff = isHair ? 0.3 : 0.5;
+    m.opacity = 1; m.transparent = false; m.depthWrite = true; m.side = THREE.DoubleSide;
+    m.alphaTest = cutout ? cutoff : 0;
+    m.alphaToCoverage = cutout;
+    if (!cutout) m.alphaMap = null;
+    if (cutout && m.map) await keepCutoutCoverage(m.map, cutoff);
+    m.needsUpdate = true;
+  }));
+
+  // bones of this character
+  const mine = restOf(model);
+  const hips = mine.Hips && model.getObjectByName(mine.Hips.name);
+  const hipsWorld = new THREE.Vector3(); if (hips) hips.getWorldPosition(hipsWorld);
+  const hipsParentInv = new THREE.Matrix4(); if (hips && hips.parent) hipsParentInv.copy(hips.parent.matrixWorld).invert();
+  const hipsHeight = hipsWorld.y;                       // metres above the ground
+
+  const qs = new THREE.Quaternion(), cp = new THREE.Quaternion(), cb = new THREE.Quaternion(), tmp = new THREE.Vector3();
+  const animations = Object.values({ ...set, ...stairClips }).map(a => {
+    const tracks = [];
+    for (const t of a.clip.tracks) {
+      const dot = t.name.lastIndexOf('.');
+      const key = mixKey(t.name.slice(0, dot)), prop = t.name.slice(dot + 1);
+      const src = a.rest && a.rest[key], dst = mine[key];
+      if (!src || !dst) continue;
+      if (prop === 'quaternion') {
+        cp.copy(dst.pw).invert().multiply(src.pw);        // parentRest_glb^-1 * parentRest_fbx
+        cb.copy(src.w).invert().multiply(dst.w);          // rest_fbx^-1 * rest_glb
+        const v = Array.from(t.values);
+        for (let i = 0; i < v.length; i += 4) { qs.fromArray(v, i); qs.premultiply(cp).multiply(cb); qs.toArray(v, i); }
+        tracks.push(new THREE.QuaternionKeyframeTrack(dst.name + '.quaternion', Array.from(t.times), v));
+      } else if (prop === 'position' && key === 'Hips' && hips && a.hipsY) {
+        // keep only the bounce: height as a share of the standing hip height, taken to this character's hip height
+        const n = t.times.length, T = (t.times[n - 1] - t.times[0]) || 1;
+        const v = new Array(n * 3);
+        for (let k = 0; k < n; k++) {
+          let y = t.values[k * 3 + 1];
+          if (a.stairs) { const f = (t.times[k] - t.times[0]) / T; y -= (t.values[(n - 1) * 3 + 1] - t.values[1]) * f; }   // take the climb out of the stairs clips
+          tmp.set(hipsWorld.x, hipsWorld.y + hipsHeight * (y / a.hipsY - 1), hipsWorld.z).applyMatrix4(hipsParentInv);
+          tmp.toArray(v, k * 3);
+        }
+        tracks.push(new THREE.VectorKeyframeTrack(dst.name + '.position', Array.from(t.times), v));
+      }
+    }
+    return new THREE.AnimationClip(a.name, a.clip.duration, tracks);
+  });
+
+  const scene = new THREE.Group();
+  scene.add(model);
+  return { scene, animations, mixamoNative: true };
+}
+
 const characterLoads = new Map();
 function loadCharacterFile(file) {
   if (!characterLoads.has(file)) characterLoads.set(file, /\.fbx$/i.test(file)
     ? loadMixamoCharacter(file)
+    : /_mixamo\.glb$/i.test(file) ? loadMixamoGlbCharacter(file)
     : new Promise((ok, fail) => new GLTFLoader().load(file, ok, undefined, fail)));
   return characterLoads.get(file);
 }
@@ -1382,7 +1477,3 @@ class World {
 
 // start only after everything above has been defined
 boot();
-
-
-
-
