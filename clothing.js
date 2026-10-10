@@ -223,11 +223,16 @@ function smoothPush(pts, disp, radius, passes) {
 
 // ---- wardrobe.json and the piece files ----
 async function loadWardrobe() {
-  try {
-    const list = await (await fetch(WARDROBE_URL)).json();
-    for (const p of (Array.isArray(list) ? list : list.pieces || [])) if (p.id && p.slot && p.file) PIECES[p.id] = { slot: p.slot, label: p.label || p.id, file: p.file, colors: p.colors || [], custom: p.custom || null };
-    log('wardrobe: ' + Object.keys(PIECES).length + ' pieces');
-  } catch (e) { warn('wardrobe.json could not be read (' + WARDROBE_URL + '):', e); }
+  for (const url of [WARDROBE_URL, 'wardrobe.json']) {          // the main folder is tried too (that is where wardrobe.json sits in the repo); piece files are always relative to clothing/female/
+    try {
+      const res = await fetch(url); if (!res.ok) continue;
+      const list = await res.json();
+      for (const p of (Array.isArray(list) ? list : list.pieces || [])) if (p.id && p.slot && p.file) PIECES[p.id] = { slot: p.slot, label: p.label || p.id, file: p.file, colors: p.colors || [], custom: p.custom || null };
+      log('wardrobe: ' + Object.keys(PIECES).length + ' pieces (from ' + url + ')');
+      return;
+    } catch (e) { /* try the next place */ }
+  }
+  warn('wardrobe.json was not found (tried ' + WARDROBE_URL + ' and wardrobe.json)');
 }
 const pieceLoads = new Map();     // piece id -> promise of its loaded .glb (each file is read once)
 function loadPiece(id) {

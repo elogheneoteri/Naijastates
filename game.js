@@ -237,7 +237,7 @@ $('btnLogin').addEventListener('click', async () => {
 
 async function boot() {
   // small build tag in the corner, so you can see at once whether the newest game.js is the one running
-  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-08 clothes-1';
+  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-10 creator-1';
   tag.style.cssText = 'position:fixed;left:8px;bottom:4px;z-index:99;font:11px sans-serif;color:#7f8c8d;pointer-events:none';
   document.body.appendChild(tag); window.__buildTag = tag;
   authBox.style.display = 'flex'; showPanel('pLanding');
@@ -768,7 +768,11 @@ function choose(id) {
 function updatePlayLabel() {
   const cr = ensureCreator();
   $('btnPlay').textContent = cr && cr.available(pick.id) ? 'Next: Customize' : 'Play';
-  if (pv && pv.clothing && !pv.labelHooked) { pv.labelHooked = true; pv.clothing.ready.then(() => { if (pv) updatePlayLabel(); }); }     // the wardrobe list loads a moment after the screen opens
+  if (pv && pv.clothing && !pv.labelHooked) { pv.labelHooked = true; pv.clothing.ready.then(() => {
+      if (!pv) return;
+      updatePlayLabel();
+      if (/^female_/.test(pick.id || '') && !Object.keys(pv.clothing.PIECES).length) say('Outfit step skipped: wardrobe.json was not found (it should be in the main folder or in clothing/female/).');
+    }); }     // the wardrobe list loads a moment after the screen opens
 }
 function showGender(gender) {
   pick.gender = gender;
