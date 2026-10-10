@@ -1,0 +1,64 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && wc -l scripts/glbs/build_all.mjs && grep -n "for (\|exportGLB(\|optimizeGLB(\|writeFileSync(\|const keys\|Object.keys(GEN)\|BUILD" scripts/glbs/build_all.mjs | head -30 && echo "=== helpers: car, tree tail, glb naming ===" && sed -n '60,90p' scripts/glbs/build_all.mjs
+Cwd: /workspace/repo
+
+=== STDOUT ===
+565 scripts/glbs/build_all.mjs
+26:  for (let i = 0; i < cols; i++) {
+40:  for (const [bx, by, bz, br] of blobs) {
+53:  for (const [wx, wz] of [[1.4, 0.75], [1.4, -0.75], [-1.4, 0.75], [-1.4, -0.75]]) {
+106:  for (let i = 0; i < units; i++) {
+116:    for (const vx of [cx - 2, cx, cx + 2]) { cyl(g, M.concrete, 0.12, 2.4, vx, 1.2, D / 2 + 0.9, 8, 'vPillar'); }
+132:    for (let f = 0; f < F; f++) {
+159:  for (let f = 0; f < 2; f++) {
+170:  for (const px of [-4.5, -1.5, 1.5, 4.5]) cyl(g, M.concrete, 0.35, 3, px, 1.5, WD / 2 + 0.6, 12, 'porticoCol');
+175:  for (let f = 0; f < 3; f++) {
+187:  for (const [lx, lw] of [[5.6, 0.15], [18.4, 0.15]]) box(g, M, 'whitePaint', 0.15, 0.02, 23.6, lx, 0.1, 4);
+214:  for (let i = 0; i < 4; i++) box(g, M, 'sand', 10, 0.1, 1.1, -4.5, 0.05, 4.2 + i * 2.1, 'cropRow');
+230:  for (let f = 0; f < 2; f++) {
+318:    for (let f = 0; f < floors; f++) {
+397:  for (const sx of [-1, 1]) {
+425:  for (let i = 0; i < F; i++) {
+438:  for (const sx of [-1, 1]) {
+440:    for (let i = 0; i < 2; i++) {
+444:    for (const wx of [-3.5, 0, 3.5]) acUnit(g, M, sx * 15.5 + wx, 7.0, -3, sx > 0 ? 1 : -1);
+452:  for (let i = 0; i < 6; i++) box(g, M, 'yellow', 0.15, 0.02, 2, -20 + i * 8, 0.12, 18, `line_${i}`);
+470:  for (let i = 0; i < 4; i++) box(g, M, 'white', 0.2, 0.02, 2.5, -30 + i * 10, 0.1, 0, `mark_${i}`);
+485:    for (const px of [-W / 2 + 1, W / 2 - 1]) acUnit(h, M, px, h1 + 0.8, D / 2 + 0.15, 1);
+520:  for (let i = 0; i < 5; i++) {
+541:  for (let row = 0; row < 2; row++) {
+543:    for (let i = 0; i < cols; i++) {
+=== helpers: car, tree tail, glb naming ===
+
+// Pavement slab strip
+function slab(parent, M, x0, x1, z0, z1, y = 0.03, mat = 'band') {
+  box(parent, M, mat, x1 - x0, 0.06, z1 - z0, (x0 + x1) / 2, y, (z0 + z1) / 2, 'slab');
+}
+
+// ---------------------------------------------------------------- generators
+
+const GEN = {};
+
+// ===================== AERIAL / ARRIVAL =====================
+// Plot 32 x 24. Front faces +Z.
+GEN.airport = (M) => {
+  const g = new THREE.Group(); g.name = 'airport';
+  // Terminal block: 24 x 12, glass curtain front, flat roof
+  const W = 24, D = 12, H = 6.4;
+  wallWithOpenings(g, M, { x0: -W / 2, x1: W / 2, z: D / 2, th: 0.3, baseY: 0, h: H, mat: 'white',
+    windows: winRow(-W / 2, W / 2, 1.0, 3.2, 8),
+    doors: [{ x0: -1.6, x1: 1.6, y0: 0, fill: 'glass' }] });
+  box(g, M, 'white', W, H, 0.3, 0, H / 2, -D / 2, 'back');
+  box(g, M, 'white', 0.3, H, D, -W / 2, H / 2, 0, 'left');
+  box(g, M, 'white', 0.3, H, D, W / 2, H / 2, 0, 'right');
+  box(g, M, 'band', W + 0.4, 0.5, D + 0.4, 0, 0.25, 0, 'plinth');
+  glassCurtain(g, M, -11, 11, D / 2 - 0.15, 0.4, 3.6, 8);
+  flatRoof(g, M, -W / 2 - 0.6, W / 2 + 0.6, -D / 2 - 0.6, D / 2 + 0.6, H, 0.18, 'alu');
+  canopy(g, M, -9, 9, D / 2, 3.6, 3.6, 6);
+  signBoard(g, M, 'NAIJA INTL AIRPORT', 12, 1.4, 0, H - 0.9, D / 2 + 0.4, 'darkMetal');
+  // Control tower on the west side
+  const tx = -13, tz = -2;
+  cyl(g, M.concrete, 1.6, 14, tx, 7, tz, 12, 'tower');
+  box(g, M, 'darkMetal', 6.5, 3.2, 6.5, tx, 15.4, tz, 'cab');
+
+
+=== STDERR ===

@@ -1,0 +1,50 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && node scripts/audit_world.mjs 2>/dev/null; node -e "
+const a = require('./assets/reports/world_audit.json');
+const missing = ['airport','oil_well','rural'].filter(c => !a.plotsByCode[c]);
+if (missing.length) { console.error('MISSING:', missing); process.exit(1); }
+console.log('OK: plots:', a.plots.length, '| keyed:', Object.keys(a.plotsByCode).length, '| buildings:', a.buildings.length, '| builtPlots:', JSON.stringify(a.builtPlots), '| props:', a.props.length, '(' + a.props.filter(p=>p.file.endsWith('.glb')).length + ' glb)');
+console.log('rural:', JSON.stringify(a.plotsByCode.rural));
+console.log('registered building keys:', a.buildings.map(b=>b.key).join(', '));
+"
+Cwd: /workspace/repo
+
+=== STDOUT ===
+OK world_audit.json: 24 plots, 3 BUILDINGS entries, 1 built plots, 137 props -> assets/reports/world_audit.json
+OK: plots: 24 | keyed: 24 | buildings: 3 | builtPlots: ["high_school"] | props: 137 (119 glb)
+rural: {"code":"rural","label":"Rural District","x":275,"z":13,"w":74,"d":22,"front":"S","rotY":0}
+registered building keys: 'immigration', name: 'Immigration Office', file: 'immigration_office.glb',
+    // Realistic office building (low_rise_wall_to_wall_office_building.glb, saved as immigration_office.glb).
+    // The model is in centimetre-style units, so scale shrinks it to game metres.
+    // Make it bigger or smaller with scale (0.008 = about 25.6 m wide, 23 m tall tower).
+    // The code centres it on x/z and sits it on the ground; the glass front faces +Z (south, towards the road).
+    scale: 0.008,
+    x: 50, z: 11.8, rotY: 0,
+    // The inside is built in code (immigration_office.js). Walk through the door in the south wall to go in:
+    // the outside model hides and the office interior shows. Solid parts = the office walls (with the door gap) and furniture.
+    interior: buildImmigrationOffice,
+    boxes: IMMIGRATION_BOXES,
+    fallback: [25.6, 23, 24.2], 'refugee', name: 'Refugee Camp', file: 'refugee_camp.glb',
+    build: buildRefugeeCamp,                // built in code (refugee_camp.js); the .glb is no longer used
+    x: 21, z: 40, rotY: 180,
+    boxes: CAMP_BOXES,                      // big tent, small tents and fence (defined in refugee_camp.js)
+    fallback: [19, 4, 19], 'high_school', name: 'High School', file: 'high_school.glb',
+    // Realistic 3-storey school (your high_school.glb). The model is already in metres (47 m wide, 34.5 m deep with the steps),
+    // so scale 0.62 shrinks it to fit the 84 x 22 m plot: about 29 m wide, 21 m deep and 11 m tall.
+    // Make it bigger or smaller with scale (do not go above 0.64 or the front steps stick out of the plot).
+    // Step 3: you can walk in. The front door is in the south wall (x = 1.9 from the school centre, in line with the steps), marked by the
+    // blue marker outside. Inside, the outside model hides and the ground floor shows (high_school_interior.js).
+    scale: 0.62,
+    x: HS_PLOT.x, z: HS_PLOT.z, rotY: HS_PLOT.rotY,
+    interior: buildHighSchoolInterior,     // Step 3: classrooms, corridor, hall, toilets, store, principal's office
+    boxes: [
+      ...HS_INTERIOR_BOXES,                // walls (with the front doorway and the room doorways), desks, counter, stalls ...
+      [-1.9, 0.6, 8.1, 10.8],              // the front steps, left of the walkway to the door
+      [3.2, 5.7, 8.1, 10.8],               // the front steps, right of the walkway to the door
+      ...HS_EXTERIOR_BOXES                 // Step 2: trees, shed, tower, goals, lamps ... (high_school_exterior.js)
+    ],
+    extras: buildHighSchoolExterior,       // Step 2: the props around the school
+    stairs: HS_STAIRS,                     // Step 2: the front steps (stairs.js): the floor rises towards the door and the stairs animation plays
+    fallback: [29.2, 11.1, 21.4]
+
+
+=== STDERR ===

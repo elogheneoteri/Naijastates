@@ -1,0 +1,69 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && sed -n '29,90p' city.js
+Cwd: /workspace/repo
+
+=== STDOUT ===
+const RAW_PLOTS = [
+  // ----- arrival side (west of the gate, north of the main road, next to the immigration office, across from the camp) -----
+  ['airport',        'Airport',                        18,  12, 32, 24],
+  // ----- north strip (faces the main road) -----
+  ['low_line',       'Low-Class Housing: Line Houses', 83.5, 13, 25, 22],
+  ['low_bedsit',     'Low-Class Housing: Bed-Sitters', 110, 13, 24, 22],
+  ['university',     'University',                    202, 188, 38, 37],   // swapped with the High School plot
+  ['rural',          'Rural District',                338,  12, 20, 20],   // moved to the riverside NE corner (see assets/reports/rural_plot_preview.json); old site (275, 13) left as open ground
+  // ----- central zone -----
+  ['rental',         'Rental Desk',                    83,  49, 26, 22],
+  ['police',         'Police Station',                110,  49, 24, 22],
+  ['judiciary',      'Judiciary (Courts)',             96,  76, 52, 20],
+  ['government',     'Government Offices Area',       168,  61, 60, 50],
+  ['city_hall',      'City Hall',                     211,  48, 22, 22],
+  ['bank',           'Bank',                          211,  75, 22, 22],
+  ['hotel',          'Hotel',                         275,  61, 74, 50],
+  ['governor_villa', "Governor's Villa",               96, 127, 52, 48],
+  ['high_housing',   'High-Class Housing',            180, 127, 84, 48],
+  ['commercial',     'Commercial District',           275, 127, 74, 48],
+  // ----- south zone -----
+  ['mid_housing',    'Mid-Class Housing',              96, 188, 52, 37],
+  ['hospital',       'Hospital',                      160, 188, 40, 37],
+  ['high_school',    'High School',                   180,  13, 84, 22],   // swapped with the University plot (north strip, faces the main road)
+  ['market',         'Market',                        275, 188, 74, 37],
+  ['transport',      'Transport District',            180, 231, 84, 14],
+  ['broadcasting',   'Broadcasting Station',          275, 231, 60, 14],
+  // ----- east edge -----
+  ['industrial',     'Industrial District',           343,  62, 28, 50],
+  ['automotive',     'Automotive District',           343, 127, 28, 48],
+  ['oil_well',       'Oil Well',                      343, 188, 28, 37]
+];
+
+// Which way the front of a building on this plot should face: towards the nearest road centre-line.
+function frontOf(x, z, w, d) {
+  const c = [];                                                    // [distance, direction]
+  c.push([Math.abs(z + d / 2 - CITY.mainRoadZ) , 'S'], [Math.abs(z - d / 2 - CITY.mainRoadZ), 'N']);    // main road lies south of the north strip, north of the rest
+  CITY.streetsZ.forEach(sz => { c.push([Math.abs(z + d / 2 - sz), 'S'], [Math.abs(z - d / 2 - sz), 'N']); });
+  CITY.avenuesX.forEach(ax => { c.push([Math.abs(x + w / 2 - ax), 'E'], [Math.abs(x - w / 2 - ax), 'W']); });
+  if (x < CITY.gateX) return 'S';                                  // the airport faces the main road
+  c.sort((a, b) => a[0] - b[0]);
+  return c[0][1];
+}
+const ROT = { S: 0, E: 90, N: 180, W: 270 };                       // building models face +Z (south) at rotY 0
+const FACE_NAME = { S: 'south', N: 'north', E: 'east', W: 'west' };
+
+export const PLOTS = RAW_PLOTS.map(([code, label, x, z, w, d]) => {
+  const front = frontOf(x, z, w, d);
+  return { code, label, x, z, w, d, front, rotY: ROT[front] };
+});
+export const plotAt = code => PLOTS.find(p => p.code === code);
+
+// Rectangles where grass must not grow (roads, pavements, plots): game.js adds these to its keep-clear list.
+export function cityClearRects() {
+  const { avenuesX, streetsZ, avenueW, streetW, pave, worldW, worldH, gateX } = CITY;
+  const r = [];
+  avenuesX.forEach(ax => r.push({ x0: ax - avenueW / 2 - pave - 0.3, x1: ax + avenueW / 2 + pave + 0.3, z0: 0, z1: worldH }));
+  streetsZ.forEach(sz => r.push({ x0: gateX, x1: worldW, z0: sz - streetW / 2 - pave - 0.3, z1: sz + streetW / 2 + pave + 0.3 }));
+  PLOTS.forEach(p => r.push({ x0: p.x - p.w / 2 - 1, x1: p.x + p.w / 2 + 1, z0: p.z - p.d / 2 - 1, z1: p.z + p.d / 2 + 1 }));
+  return r;
+}
+
+// The main road (game.js) has pavement and kerbs along its whole length. They skip these x ranges so the avenues can join it.
+
+
+=== STDERR ===

@@ -1,0 +1,108 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && sed -n '150,250p' scripts/glbs/lib.mjs
+Cwd: /workspace/repo
+
+=== STDOUT ===
+  // corrugated zinc
+  M.zinc = new THREE.MeshStandardMaterial({
+    map: canvasTex('zinc', 128, 128, (g, w, h) => {
+      g.fillStyle = '#9aa2a8'; g.fillRect(0, 0, w, h);
+      for (let x = 0; x < w; x += 16) {
+        g.fillStyle = '#b7bdc2'; g.fillRect(x, 0, 7, h);
+        g.fillStyle = '#6d747a'; g.fillRect(x + 12, 0, 3, h);
+      }
+      const rnd = mulberry32(11);
+      g.globalAlpha = 0.18;
+      for (let i = 0; i < 30; i++) { g.fillStyle = '#5b4632'; g.fillRect(rnd() * w, rnd() * h, 2 + rnd() * 6, 8 + rnd() * 30); }
+      g.globalAlpha = 1;
+    }),
+    roughness: 0.55, metalness: 0.7,
+  });
+
+  // long-span aluminium roof
+  M.alu = new THREE.MeshStandardMaterial({
+    map: canvasTex('alu', 128, 128, (g, w, h) => {
+      g.fillStyle = '#8f9aa4'; g.fillRect(0, 0, w, h);
+      for (let x = 0; x < w; x += 32) { g.fillStyle = '#aab4bd'; g.fillRect(x, 0, 16, h); g.fillStyle = '#727c85'; g.fillRect(x + 28, 0, 3, h); }
+    }),
+    roughness: 0.4, metalness: 0.85,
+  });
+
+  // glass curtain
+  M.glass = new THREE.MeshStandardMaterial({ color: 0x9fc4d8, roughness: 0.08, metalness: 0.25, transparent: true, opacity: 0.55 });
+  M.glassFrame = new THREE.MeshStandardMaterial({ color: 0x2e3338, roughness: 0.5, metalness: 0.6 });
+
+  // burglar-proof grille / metalwork
+  M.grille = new THREE.MeshStandardMaterial({ color: 0x23262a, roughness: 0.45, metalness: 0.8 });
+  M.darkMetal = new THREE.MeshStandardMaterial({ color: 0x2b2e33, roughness: 0.5, metalness: 0.7 });
+  M.redOxide = new THREE.MeshStandardMaterial({ color: 0x8a4a2b, roughness: 0.7, metalness: 0.3 });
+
+  // boundary wall + gate
+  M.boundWall = new THREE.MeshStandardMaterial({
+    map: canvasTex('bound', 128, 128, (g, w, h) => {
+      g.fillStyle = '#b7ad9d'; g.fillRect(0, 0, w, h);
+      const rnd = mulberry32(5);
+      g.globalAlpha = 0.12;
+      for (let i = 0; i < 25; i++) { g.fillStyle = '#8f8574'; g.fillRect(rnd() * w, rnd() * h, 6 + rnd() * 20, 4 + rnd() * 12); }
+      g.globalAlpha = 1;
+      g.fillStyle = '#9c9283'; g.fillRect(0, 0, w, 10);
+    }),
+    roughness: 0.92,
+  });
+  M.gate = new THREE.MeshStandardMaterial({ color: 0x30343a, roughness: 0.4, metalness: 0.85 });
+
+  // road / tarmac (drop-off lanes, driveways)
+  M.tarmac = new THREE.MeshStandardMaterial({
+    map: canvasTex('tarmac', 128, 128, (g, w, h) => {
+      g.fillStyle = '#3b3d40'; g.fillRect(0, 0, w, h);
+      const rnd = mulberry32(21);
+      g.globalAlpha = 0.25;
+      for (let i = 0; i < 200; i++) { g.fillStyle = rnd() > 0.5 ? '#4a4c50' : '#2e3033'; g.fillRect(rnd() * w, rnd() * h, 2, 2); }
+      g.globalAlpha = 1;
+    }),
+    roughness: 0.98,
+  });
+
+  // brick
+  M.brick = new THREE.MeshStandardMaterial({
+    map: canvasTex('brick', 128, 128, (g, w, h) => {
+      g.fillStyle = '#9c5b3c'; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#d8cfc0';
+      for (let y = 0; y < h; y += 16) { g.fillRect(0, y, w, 2); const off = (y / 16) % 2 ? 16 : 0; for (let x = off; x < w; x += 32) g.fillRect(x, y, 2, 16); }
+    }),
+    roughness: 0.95,
+  });
+
+  // trees / planting
+  M.leaf = new THREE.MeshStandardMaterial({ color: 0x3f6b2f, roughness: 0.9 });
+  M.trunk = new THREE.MeshStandardMaterial({ color: 0x5b4632, roughness: 0.95 });
+  M.earth = new THREE.MeshStandardMaterial({ color: 0x8a6b45, roughness: 1 });
+
+  // signage
+  M.signBoard = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, side: THREE.DoubleSide });
+  M.white = new THREE.MeshStandardMaterial({ color: 0xe8e6df, roughness: 0.85 });
+  M.blue = new THREE.MeshStandardMaterial({ color: 0x1f4e9c, roughness: 0.6 });
+  M.yellow = new THREE.MeshStandardMaterial({ color: 0xd8b62a, roughness: 0.7 });
+  M.red = new THREE.MeshStandardMaterial({ color: 0xb03028, roughness: 0.6 });
+  M.black = new THREE.MeshStandardMaterial({ color: 0x1c1e21, roughness: 0.7 });
+
+  M.pool = new THREE.MeshStandardMaterial({ color: 0x2f8fa3, roughness: 0.15, metalness: 0.1 });
+  M.sand = new THREE.MeshStandardMaterial({ color: 0xcfc2a0, roughness: 1 });
+  M.whitePaint = new THREE.MeshStandardMaterial({ color: 0xf2f0ea, roughness: 0.85 });
+  M.plasticTank = new THREE.MeshStandardMaterial({ color: 0x182026, roughness: 0.55, metalness: 0.1 });
+  M.cream = new THREE.MeshStandardMaterial({ color: 0xefe6d0, roughness: 0.9 });
+  M.nigerianFlag = new THREE.MeshStandardMaterial({ color: 0x1d8a43, roughness: 0.7, side: THREE.DoubleSide });
+  return M;
+}
+
+// ---------------------------------------------------------------- geometry helpers
+export function box(parent, M, mat, w, h, d, x, y, z, name) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M[mat] || M);
+  m.position.set(x, y, z);
+  m.castShadow = true; m.receiveShadow = true;
+  if (name) m.name = name;
+  parent.add(m);
+  return m;
+}
+
+
+=== STDERR ===

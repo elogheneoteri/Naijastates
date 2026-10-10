@@ -1,0 +1,24 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && node scripts/glbs/_smoke.mjs && ls -la assets/buildings/_smoke_test.glb && npx @gltf-transform/cli inspect assets/buildings/_smoke_test.glb
+Cwd: /workspace/repo
+
+=== STDOUT ===
+
+
+=== STDERR ===
+GLTFExporter: Use MeshStandardMaterial or MeshBasicMaterial for best results.
+file:///workspace/repo/node_modules/three/examples/jsm/exporters/GLTFExporter.js:1667
+		const color = material.color.toArray().concat( [ material.opacity ] );
+		                             ^
+
+TypeError: Cannot read properties of undefined (reading 'toArray')
+    at GLTFWriter.processMaterialAsync (file:///workspace/repo/node_modules/three/examples/jsm/exporters/GLTFExporter.js:1667:32)
+    at GLTFWriter.processMeshAsync (file:///workspace/repo/node_modules/three/examples/jsm/exporters/GLTFExporter.js:2156:32)
+    at GLTFWriter.processNodeAsync (file:///workspace/repo/node_modules/three/examples/jsm/exporters/GLTFExporter.js:2522:33)
+    at GLTFWriter.processNodeAsync (file:///workspace/repo/node_modules/three/examples/jsm/exporters/GLTFExporter.js:2547:40)
+    at async GLTFWriter.processNodeAsync (file:///workspace/repo/node_modules/three/examples/jsm/exporters/GLTFExporter.js:2547:29)
+    at async GLTFWriter.processSceneAsync (file:///workspace/repo/node_modules/three/examples/jsm/exporters/GLTFExporter.js:2719:23)
+    at async GLTFWriter.processObjectsAsync (file:///workspace/repo/node_modules/three/examples/jsm/exporters/GLTFExporter.js:2750:3)
+    at async GLTFWriter.processInputAsync (file:///workspace/repo/node_modules/three/examples/jsm/exporters/GLTFExporter.js:2787:4)
+    at async GLTFWriter.writeAsync (file:///workspace/repo/node_modules/three/examples/jsm/exporters/GLTFExporter.js:666:3)
+
+Node.js v22.23.2

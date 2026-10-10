@@ -1,0 +1,61 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && head -50 city.js && echo '===WC===' && wc -l city.js && echo '===GIT STATUS===' && git --no-pager status --short
+Cwd: /workspace/repo
+
+=== STDOUT ===
+// city.js: the Naija city east of the border gate. Roads, junctions, pavements, street lamps, palms and EMPTY, labelled
+// building plots (nothing is built on them yet). Every plot is a flat pad with a yellow border and a floating sign.
+// Trees: mango_tree.glb and coconut_palm.glb from your props folder (use the light copies that came with this file).
+//
+// HOW TO PUT A BUILDING ON A PLOT LATER (in game.js, in the BUILDINGS list):
+//   const P = plotAt('bank');                        // or look the plot up in PLOTS below
+//   { key: 'bank', name: 'Bank', file: 'bank.glb', scale: 0.01, x: P.x, z: P.z, rotY: P.rotY, boxes: [...], fallback: [P.w, 8, P.d] }
+// P.rotY already turns the building's front (+Z) towards the nearest road. Then delete that plot's line in PLOTS (or leave it:
+// the pad just sits under the building).
+//
+// The layout (metres, the world is 360 m wide and 240 m deep; the gate is at x = 66.7; the main road at z = 28.75 is built in game.js):
+//   avenues run north-south at x = 130, 230, 320.  Streets run east-west at z = 95, 160, 215 (between the avenues).
+//   Zones follow your Delta order: north (housing, university, rural), central (police, courts, government, bank, hotel,
+//   governor's villa, high-class housing), south (mid-class housing, hospital, school, market, transport, broadcasting).
+
+import * as THREE from 'three';
+
+export const CITY = {
+  worldW: 360, worldH: 240,
+  gateX: 2000 / 30,
+  mainRoadZ: 28.75, mainRoadW: 3.5,
+  avenuesX: [130, 230, 320], avenueW: 8,
+  streetsZ: [95, 160, 215], streetW: 7,
+  pave: 1.6,                                   // pavement width beside every road
+  arrivalWallZ: 52                             // the arrival strip (camp + immigration + airport) ends at this wall
+};
+
+// code, label, centre x, centre z, width (x), depth (z). 'front' is worked out below from the nearest road.
+const RAW_PLOTS = [
+  // ----- arrival side (west of the gate, north of the main road, next to the immigration office, across from the camp) -----
+  ['airport',        'Airport',                        18,  12, 32, 24],
+  // ----- north strip (faces the main road) -----
+  ['low_line',       'Low-Class Housing: Line Houses', 83.5, 13, 25, 22],
+  ['low_bedsit',     'Low-Class Housing: Bed-Sitters', 110, 13, 24, 22],
+  ['university',     'University',                    202, 188, 38, 37],   // swapped with the High School plot
+  ['rural',          'Rural District',                275,  13, 74, 22],
+  // ----- central zone -----
+  ['rental',         'Rental Desk',                    83,  49, 26, 22],
+  ['police',         'Police Station',                110,  49, 24, 22],
+  ['judiciary',      'Judiciary (Courts)',             96,  76, 52, 20],
+  ['government',     'Government Offices Area',       168,  61, 60, 50],
+  ['city_hall',      'City Hall',                     211,  48, 22, 22],
+  ['bank',           'Bank',                          211,  75, 22, 22],
+  ['hotel',          'Hotel',                         275,  61, 74, 50],
+  ['governor_villa', "Governor's Villa",               96, 127, 52, 48],
+  ['high_housing',   'High-Class Housing',            180, 127, 84, 48],
+  ['commercial',     'Commercial District',           275, 127, 74, 48],
+  // ----- south zone -----
+  ['mid_housing',    'Mid-Class Housing',              96, 188, 52, 37],
+  ['hospital',       'Hospital',                      160, 188, 40, 37],
+===WC===
+215 city.js
+===GIT STATUS===
+?? .helix-overflow/
+
+
+=== STDERR ===

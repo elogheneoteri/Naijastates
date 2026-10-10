@@ -1,0 +1,82 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && grep -n "export function\|export const" scripts/glbs/lib.mjs | head -40 && echo "=== material keys ===" && sed -n '/makeMaterials/,/^}/p' scripts/glbs/lib.mjs | head -50
+Cwd: /workspace/repo
+
+=== STDOUT ===
+86:export function mulberry32(seed) {
+95:export function rngFor(code, salt = 0) {
+103:export function makeMaterials(variant = {}) {
+243:export function box(parent, M, mat, w, h, d, x, y, z, name) {
+251:export function cyl(parent, mat, r, h, x, y, z, seg = 10, name) {
+261:export function wallWithOpenings(parent, M, wall) {
+317:export function flatRoof(parent, M, x0, x1, z0, z1, y, th = 0.12, mat = 'zinc') {
+325:export function gableRoof(parent, M, x0, x1, z0, z1, eaveY, apexY, mat = 'zinc') {
+347:export function canopy(parent, M, x0, x1, zEdge, y, depth = 1.6, posts = 3) {
+355:export function signBoard(parent, M, text, w, h, x, y, z, mat = 'signBoard', rotY = 0) {
+380:export function markEntrance(parent, x, z, w = 2.4) {
+391:export function boundaryWall(parent, M, W, D, h = 2.2, gateW = 4, inset = 1.6, mat = 'boundWall') {
+430:export function guardPost(parent, M, x, z, rotY = 0) {
+447:export function genHouse(parent, M, x, z, rotY = 0, s = 1) {
+468:export function waterTank(parent, M, x, z, s = 1, overhead = true) {
+484:export function dstvDish(parent, M, x, y, z, rotY = 0) {
+496:export function acUnit(parent, M, x, y, z, face = 1) {
+510:export function antenna(parent, M, x, y, z) {
+524:export function flagpole(parent, M, x, z, h = 7, flag = 'green') {
+534:export function colonnade(parent, M, x0, x1, zEdge, yBase, h, n = 4, gap = 0.6) {
+549:export function clockFace(parent, M, x, y, z, r = 0.9, rotY = 0) {
+569:export function coatOfArms(parent, M, x, y, z, s = 1, rotY = 0) {
+581:export function fountain(parent, M, x, z, s = 1) {
+592:export function glassCurtain(parent, M, x0, x1, z, y0, y1, bays = 6) {
+=== material keys ===
+export function makeMaterials(variant = {}) {
+  const M = {};
+  const paintColor = variant.paint || '#c9b458';
+  const paint2 = variant.paint2 || '#7a8c5c';
+
+  // painted rendered wall with rain streaks + rust
+  M.wall = new THREE.MeshStandardMaterial({
+    map: canvasTex('wall:' + paintColor + ':' + paint2, 256, 256, (g, w, h) => {
+      g.fillStyle = paintColor; g.fillRect(0, 0, w, h);
+      // blotchy render
+      const rnd = mulberry32(7);
+      g.globalAlpha = 0.08;
+      for (let i = 0; i < 40; i++) {
+        g.fillStyle = rnd() > 0.5 ? paint2 : '#ffffff';
+        g.fillRect(rnd() * w, rnd() * h, 20 + rnd() * 60, 10 + rnd() * 30);
+      }
+      // rain streaks
+      g.globalAlpha = 0.16;
+      for (let i = 0; i < 26; i++) {
+        g.fillStyle = '#4a3b2a';
+        const x = rnd() * w, len = 30 + rnd() * 120;
+        g.fillRect(x, 0, 1.5, len);
+      }
+      // rust drips under window line
+      g.globalAlpha = 0.25;
+      g.fillStyle = '#7c4a1e';
+      for (let i = 0; i < 14; i++) { const x = rnd() * w; g.fillRect(x, 120, 2, 20 + rnd() * 50); }
+      g.globalAlpha = 1;
+    }),
+    roughness: 0.9, metalness: 0.02,
+  });
+
+  // plain rendered band (lintels / plinths)
+  M.band = new THREE.MeshStandardMaterial({ color: new THREE.Color(variant.band || '#b9b2a6'), roughness: 0.92 });
+
+  // concrete frame / columns
+  M.concrete = new THREE.MeshStandardMaterial({
+    map: canvasTex('concrete', 128, 128, (g, w, h) => {
+      g.fillStyle = '#a7a49c'; g.fillRect(0, 0, w, h);
+      const rnd = mulberry32(3);
+      g.globalAlpha = 0.1;
+      for (let i = 0; i < 60; i++) { g.fillStyle = rnd() > 0.5 ? '#8d8a82' : '#c2beb5'; g.fillRect(rnd() * w, rnd() * h, 3 + rnd() * 14, 3 + rnd() * 14); }
+      g.globalAlpha = 1;
+    }),
+    roughness: 0.95,
+  });
+
+  // corrugated zinc
+  M.zinc = new THREE.MeshStandardMaterial({
+    map: canvasTex('zinc', 128, 128, (g, w, h) => {
+
+
+=== STDERR ===

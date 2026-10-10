@@ -1,0 +1,58 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && wc -l scripts/rural_relocation.mjs && head -50 scripts/rural_relocation.mjs
+Cwd: /workspace/repo
+
+=== STDOUT ===
+140 scripts/rural_relocation.mjs
+// rural_relocation.mjs — proposes the new riverside Rural District plot, verifies it against the
+// existing world (plots, roads, pavements, map edge), writes assets/reports/rural_plot_preview.json,
+// and moves the `rural` line in city.js to the proposed coordinates.
+// Usage: node scripts/rural_relocation.mjs
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const { PLOTS, CITY, plotAt } = await import(path.join(ROOT, 'city.js'));
+
+// The site the original plan proposed (re-evaluated here before building).
+const PLANNER_SITE = { x: 339, z: 127, w: 24, d: 36 };
+// The river it paired: a band down the east edge of the map.
+const PLANNER_RIVER = { x: 354, z: 80, zEnd: 180, width: 12 };
+
+// Corrected proposal: the northeast corner of the map — far from the city centre (x 90-280),
+// at the map edge, with the river running along the east edge (x 351-360) and a muddy bank
+// strip between the village and the water. The village front (south) faces the main road.
+const NEW_RURAL = { x: 338, z: 12, w: 20, d: 20 };
+const RIVER = { x0: 351, x1: 360, z0: 0, zEnd: 24, width: RIVER ? 9 : 9 };
+RIVER.width = RIVER.x1 - RIVER.x0;
+const OLD_RURAL = { x: 275, z: 13, w: 74, d: 22, status: 'openGround' };
+
+const rect = (p) => ({ x0: p.x - p.w / 2, x1: p.x + p.w / 2, z0: p.z - p.d / 2, z1: p.z + p.d / 2 });
+const intersect = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.z0 < b.z1 && b.z0 < a.z1;
+
+// --- verify the planner's site first (so the rejection is on record) ---
+const plannerRect = rect(PLANNER_SITE);
+const plannerConflicts = PLOTS
+  .filter(p => p.code !== 'rural' && intersect(plannerRect, rect(p)))
+  .map(p => ({ code: p.code, ...rect(p) }));
+const plannerRiver = { x0: PLANNER_RIVER.x - PLANNER_RIVER.width / 2, x1: PLANNER_RIVER.x + PLANNER_RIVER.width / 2, z0: PLANNER_RIVER.z, z1: PLANNER_RIVER.zEnd };
+const plannerRiverConflicts = PLOTS
+  .filter(p => intersect(plannerRiver, rect(p)))
+  .map(p => p.code);
+
+// --- verify the corrected site ---
+const newRect = rect(NEW_RURAL);
+const plotConflicts = PLOTS
+  .filter(p => p.code !== 'rural' && intersect(newRect, rect(p)))
+  .map(p => p.code);
+
+// Roads (centre lines + pavement + 0.3 m kerb buffer), from CITY.
+const roadRects = [];
+roadRects.push({ name: 'main road', x0: 0, x1: CITY.worldW, z0: CITY.mainRoadZ - CITY.mainRoadW / 2 - CITY.pave - 0.3, z1: CITY.mainRoadZ + CITY.mainRoadW / 2 + CITY.pave + 0.3 });
+CITY.avenuesX.forEach(ax => roadRects.push({ name: `avenue x=${ax}`, x0: ax - CITY.avenueW / 2 - CITY.pave - 0.3, x1: ax + CITY.avenueW / 2 + CITY.pave + 0.3, z0: 0, z1: CITY.worldH }));
+CITY.streetsZ.forEach(sz => roadRects.push({ name: `street z=${sz}`, x0: CITY.gateX, x1: CITY.worldW, z0: sz - CITY.streetW / 2 - CITY.pave - 0.3, z1: sz + CITY.streetW / 2 + CITY.pave + 0.3 }));
+const roadConflicts = roadRects.filter(r => intersect(newRect, r)).map(r => r.name);
+const riverRoadConflicts = roadRects.filter(r => intersect(RIVER, r)).map(r => r.name);
+
+
+=== STDERR ===

@@ -1,0 +1,87 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && grep -n "plasticTank\|wood\|metal\|asphalt\|ironGate\|M\['\|M\.\|box(parent, M, '\|'paint'\|'glass'\|'band'\|'zinc'\|'alu'\|'whitePaint'\|'darkMetal'\|'pool'" scripts/glbs/lib.mjs | head -80
+Cwd: /workspace/repo
+
+=== STDOUT ===
+109:  M.wall = new THREE.MeshStandardMaterial({
+132:    roughness: 0.9, metalness: 0.02,
+136:  M.band = new THREE.MeshStandardMaterial({ color: new THREE.Color(variant.band || '#b9b2a6'), roughness: 0.92 });
+139:  M.concrete = new THREE.MeshStandardMaterial({
+151:  M.zinc = new THREE.MeshStandardMaterial({
+152:    map: canvasTex('zinc', 128, 128, (g, w, h) => {
+163:    roughness: 0.55, metalness: 0.7,
+167:  M.alu = new THREE.MeshStandardMaterial({
+168:    map: canvasTex('alu', 128, 128, (g, w, h) => {
+172:    roughness: 0.4, metalness: 0.85,
+176:  M.glass = new THREE.MeshStandardMaterial({ color: 0x9fc4d8, roughness: 0.08, metalness: 0.25, transparent: true, opacity: 0.55 });
+177:  M.glassFrame = new THREE.MeshStandardMaterial({ color: 0x2e3338, roughness: 0.5, metalness: 0.6 });
+179:  // burglar-proof grille / metalwork
+180:  M.grille = new THREE.MeshStandardMaterial({ color: 0x23262a, roughness: 0.45, metalness: 0.8 });
+181:  M.darkMetal = new THREE.MeshStandardMaterial({ color: 0x2b2e33, roughness: 0.5, metalness: 0.7 });
+182:  M.redOxide = new THREE.MeshStandardMaterial({ color: 0x8a4a2b, roughness: 0.7, metalness: 0.3 });
+185:  M.boundWall = new THREE.MeshStandardMaterial({
+196:  M.gate = new THREE.MeshStandardMaterial({ color: 0x30343a, roughness: 0.4, metalness: 0.85 });
+199:  M.tarmac = new THREE.MeshStandardMaterial({
+211:  M.brick = new THREE.MeshStandardMaterial({
+221:  M.leaf = new THREE.MeshStandardMaterial({ color: 0x3f6b2f, roughness: 0.9 });
+222:  M.trunk = new THREE.MeshStandardMaterial({ color: 0x5b4632, roughness: 0.95 });
+223:  M.earth = new THREE.MeshStandardMaterial({ color: 0x8a6b45, roughness: 1 });
+226:  M.signBoard = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, side: THREE.DoubleSide });
+227:  M.white = new THREE.MeshStandardMaterial({ color: 0xe8e6df, roughness: 0.85 });
+228:  M.blue = new THREE.MeshStandardMaterial({ color: 0x1f4e9c, roughness: 0.6 });
+229:  M.yellow = new THREE.MeshStandardMaterial({ color: 0xd8b62a, roughness: 0.7 });
+230:  M.red = new THREE.MeshStandardMaterial({ color: 0xb03028, roughness: 0.6 });
+231:  M.black = new THREE.MeshStandardMaterial({ color: 0x1c1e21, roughness: 0.7 });
+233:  M.pool = new THREE.MeshStandardMaterial({ color: 0x2f8fa3, roughness: 0.15, metalness: 0.1 });
+234:  M.sand = new THREE.MeshStandardMaterial({ color: 0xcfc2a0, roughness: 1 });
+235:  M.whitePaint = new THREE.MeshStandardMaterial({ color: 0xf2f0ea, roughness: 0.85 });
+280:      box(parent, M, 'glass', cw - 0.08, ch - 0.08, 0.04, x0 + o.x0 + cw / 2, baseY + o.y0 + ch / 2, z);
+283:      box(parent, M, 'glassFrame', cw, f, th + 0.02, x0 + o.x0 + cw / 2, baseY + o.y0 + f / 2, z);
+284:      box(parent, M, 'glassFrame', cw, f, th + 0.02, x0 + o.x0 + cw / 2, baseY + o.y1 - f / 2, z);
+285:      box(parent, M, 'glassFrame', f, ch, th + 0.02, x0 + o.x0 + f / 2, baseY + o.y0 + ch / 2, z);
+286:      box(parent, M, 'glassFrame', f, ch, th + 0.02, x0 + o.x1 - f / 2, baseY + o.y0 + ch / 2, z);
+292:        box(parent, M, 'grille', 0.035, ch - 0.05, 0.03, bx, baseY + o.y0 + ch / 2, z + th / 2 + 0.03);
+296:        box(parent, M, 'grille', cw - 0.05, 0.035, 0.03, x0 + o.x0 + cw / 2, by, z + th / 2 + 0.03);
+302:        const s = box(parent, M, 'glassFrame', cw - 0.06, 0.05, 0.06, x0 + o.x0 + cw / 2, baseY + o.y0 + 0.06 + i * 0.11, z);
+307:      box(parent, M, 'glassFrame', cw, 0.08, th + 0.04, x0 + o.x0 + cw / 2, baseY + o.y1 - 0.04, z);
+308:      if (o.fill !== 'open') box(parent, M, o.fill || 'darkMetal', cw - 0.06, o.y1 - 0.1, 0.06, x0 + o.x0 + cw / 2, baseY + (o.y1 - 0.1) / 2, z + 0.05);
+314:export function flatRoof(parent, M, x0, x1, z0, z1, y, th = 0.12, mat = 'zinc') {
+317:  box(parent, M, 'band', x1 - x0 + 0.1, 0.18, 0.08, (x0 + x1) / 2, y + 0.02, z0 - 0.02);
+318:  box(parent, M, 'band', x1 - x0 + 0.1, 0.18, 0.08, (x0 + x1) / 2, y + 0.02, z1 + 0.02);
+319:  box(parent, M, 'band', 0.08, 0.18, z1 - z0 + 0.1, x0 - 0.02, y + 0.02, (z0 + z1) / 2);
+320:  box(parent, M, 'band', 0.08, 0.18, z1 - z0 + 0.1, x1 + 0.02, y + 0.02, (z0 + z1) / 2);
+322:export function gableRoof(parent, M, x0, x1, z0, z1, eaveY, apexY, mat = 'zinc') {
+334:  box(parent, M, 'band', (x1 - x0) + 0.44, 0.12, 0.12, cx, apexY + 0.02, cz);
+336:    const tri = box(parent, M, 'band', 0.1, rise, Lz * 0.96, x0 + 0.05 - (s < 0 ? 0 : (x1 - x0)), eaveY + rise / 2, cz);
+338:    box(parent, M, 'band', 0.08, rise * 0.94, Lz * 0.9, x0 + 0.04, eaveY + rise * 0.47, cz);
+339:    box(parent, M, 'band', 0.08, rise * 0.94, Lz * 0.9, x1 - 0.04, eaveY + rise * 0.47, cz);
+345:  box(parent, M, 'alu', x1 - x0, 0.1, depth, (x0 + x1) / 2, y, zEdge + depth / 2);
+349:    cyl(parent, M.darkMetal, 0.07, y - 0.05, px, (y - 0.05) / 2, zEdge + depth - 0.15, 8);
+355:  box(grp, M, 'band', w + 0.1, h + 0.1, 0.05, 0, 0, -0.03);
+362:    box(grp, M, 'whitePaint', 0.14, bh, 0.05, bx, -h / 2 + bh / 2 + h * 0.1, 0.06);
+380:  box(g, M0, 'band', w, 0.05, 1.0, 0, 0.025, 0.3); // invisible-in-play mat, just a named node
+402:    box(parent, M, 'band', Lx + 0.06, 0.07, Lz + 0.06, cx, h + 0.035, cz);
+406:    box(parent, M, 'band', w1 + 0.06, 0.07, th + 0.06, x0 + w1 / 2, h + 0.035, z1);
+410:    box(parent, M, 'band', w2 + 0.06, 0.07, th + 0.06, x1 - w2 / 2, h + 0.035, z1);
+414:    box(parent, M, 'band', 0.5, h + 0.5, 0.5, px, (h + 0.5) / 2, z1);
+415:    cyl(parent, M.gate, 0.06, 0.4, px, h + 0.7, z1, 8);
+420:    box(parent, M, 'gate', 0.05, h - 0.3, 0.05, bx, (h - 0.3) / 2 + 0.15, z1);
+422:  box(parent, M, 'gate', gateW, 0.08, 0.05, 0, h - 0.2, z1);
+423:  box(parent, M, 'gate', gateW, 0.08, 0.05, 0, 0.35, z1);
+430:  box(g, M, 'band', w, 0.4, d, 0, 0.2, 0);
+431:  box(g, M, 'whitePaint', w - 0.2, h - 0.6, d - 0.2, 0, 0.4 + (h - 0.6) / 2, 0);
+433:    x0: -w / 2 + 0.2, x1: w / 2 - 0.2, z: d / 2 - 0.12, th: 0.1, baseY: 0.5, h: h - 0.6, mat: 'whitePaint',
+436:  gableRoof(g, M, -w / 2 - 0.25, w / 2 + 0.25, -d / 2 - 0.25, d / 2 + 0.25, h - 0.05, h + 0.75, 'zinc');
+448:  box(g, M, 'whitePaint', w - 0.1, h - 0.4, d - 0.1, 0, 0.35 + (h - 0.4) / 2, 0);
+450:    x0: -w / 2 + 0.05, x1: w / 2 - 0.05, z: d / 2 - 0.1, th: 0.1, baseY: 0.35, h: h - 0.4, mat: 'whitePaint',
+453:      { x0: w - 1.4, x1: w - 0.2, y0: 0.3, y1: 1.6, glass: false, fill: 'darkMetal' },
+456:  flatRoof(g, M, -w / 2 - 0.15, w / 2 + 0.15, -d / 2 - 0.15, d / 2 + 0.15, h, 0.1, 'alu');
+457:  cyl(g, M.darkMetal, 0.09, 1.2, -w / 4, h + 0.7, -d / 4, 10, 'gen_chimney');
+471:      box(g, M, 'darkMetal', 0.08, 1.9 * s, 0.08, lx * s, 0.95 * s, lz * s);
+473:    box(g, M, 'darkMetal', 1.6 * s, 0.08, 1.3 * s, 0, 1.95 * s, 0);
+475:  cyl(g, M.plasticTank, r, 0.9 * s, 0, (overhead ? 1.95 * s : 0) + 0.45 * s, 0, 14, 'tank_body');
+476:  box(g, M, 'plasticTank', r * 1.9, 0.12, r * 1.9, 0, (overhead ? 1.95 * s : 0) + 0.95 * s, 0); // lid
+484:  cyl(g, M.whitePaint, 0.3, 0.04, 0, 0.12, 0, 12);
+486:  box(g, M, 'darkMetal', 0.05, 0.3, 0.05, 0, -0.15, 0); // arm down to roof
+
+
+=== STDERR ===

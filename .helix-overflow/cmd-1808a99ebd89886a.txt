@@ -1,0 +1,105 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && sed -n '69,166p' scripts/glbs/build_all.mjs
+Cwd: /workspace/repo
+
+=== STDOUT ===
+// __MORE__
+// ===================== AERIAL / ARRIVAL =====================
+GEN.airport = (M) => {
+  const g = new THREE.Group(); g.name = 'airport';
+  // Terminal block: 24 x 12, glass curtain front, flat roof, jet bridge
+  const W = 24, D = 12, H = 6.4;
+  wallWithOpenings(g, M, { x0: -W / 2, x1: W / 2, z: D / 2, th: 0.3, baseY: 0, h: H, mat: 'white',
+    windows: winRow(-W / 2, W / 2, 1.0, 3.2, 8),
+    doors: [{ x0: -1.6, x1: 1.6, y0: 0, fill: 'glass' }] });
+  box(g, M, 'white', W, H, 0.3, 0, H / 2, -D / 2, 'back');
+  box(g, M, 'white', 0.3, H, D, -W / 2, H / 2, 0, 'left');
+  box(g, M, 'white', 0.3, H, D, W / 2, H / 2, 0, 'right');
+  box(g, M, 'band', W + 0.4, 0.5, D + 0.4, 0, 0.25, 0, 'plinth');
+  glassCurtain(g, M, -11, 11, D / 2 - 0.15, 0.4, 3.6, 8);
+  flatRoof(g, M, -W / 2 - 0.6, W / 2 + 0.6, -D / 2 - 0.6, D / 2 + 0.6, H, 0.18, 'alu');
+  canopy(g, M, -9, 9, D / 2, 3.6, 3.6, 6);
+  signBoard(g, M, 'NAIJA INTL AIRPORT', 12, 1.4, 0, H - 0.9, D / 2 + 0.4, 'darkMetal');
+  // Control tower on the west side
+  const tx = -13, tz = -2;
+  cyl(g, M.concrete, 1.6, 14, tx, 7, tz, 12, 'tower');
+  box(g, M, 'darkMetal', 6.5, 3.2, 6.5, tx, 15.4, tz, 'cab');
+  glassCurtain(g, M, tx - 2.9, tx + 2.9, tz + 3.25, 14.6, 16.4, 4);
+  flatRoof(g, M, tx - 3.4, tx + 3.4, tz - 3.4, tz + 3.4, 17.0, 0.2, 'alu');
+  antenna(g, M, tx, 17.2, tz);
+  // Hanger (gable roof) on the apron
+  const hx = 12, hz = -1, hw = 12, hd = 10;
+  box(g, M, 'alu', hw, 5, hd, hx, 2.5, hz, 'hanger');
+  gableRoof(g, M, hx - hw / 2, hx + hw / 2, hz - hd / 2, hz + hd / 2, 5, 8, 'alu');
+  box(g, M, 'darkMetal', 7, 4.2, 0.15, hx, 2.1, hz + hd / 2 + 0.02, 'hangerDoor');
+  // Apron + taxiway to the east edge
+  slab(g, M, -15.5, 15.5, 5.5, 11.5, 0.02, 'tarmac');
+  slab(g, M, 8, 24, 7.5, 10.5, 0.02, 'tarmac');
+  box(g, M, 'yellow', 1, 0.02, 1.6, 16, 0.05, 9, 'taxiLine');
+  flagpole(g, M, -15, 9.5, 8);
+  tree(g, M, -15.5, 8.5, 0.9); tree(g, M, 15.5, 8.5, 0.9);
+  return g;
+};
+
+// ===================== HOUSING: LINE HOUSES =====================
+GEN.low_line = (M) => {
+  const g = new THREE.Group(); g.name = 'low_line';
+  // Five attached single-storey line houses in one row, facing the road
+  const units = 5, uW = 5.0, D = 11, H = 3.2, W = units * uW;
+  for (let i = 0; i < units; i++) {
+    const cx = -W / 2 + i * uW + uW / 2;
+    wallWithOpenings(g, M, { x0: cx - uW / 2, x1: cx + uW / 2, z: D / 2, th: 0.25, baseY: 0, h: H, mat: 'wall',
+      windows: [{ x0: cx - 1.9, x1: cx - 0.5, y0: 1.0, y1: 2.5, grille: true }, { x0: cx + 0.5, x1: cx + 1.9, y0: 1.0, y1: 2.5, grille: true }],
+      doors: [{ x0: cx - 0.6, x1: cx + 0.6, y0: 0, fill: 'darkMetal' }] });
+    box(g, M, 'wall', uW, H, 0.25, cx, H / 2, -D / 2, 'back');
+    box(g, M, 'wall', 0.25, H, D, cx - uW / 2, H / 2, 0, 'left');
+    box(g, M, 'wall', 0.25, H, D, cx + uW / 2, H / 2, 0, 'right');
+    // rear window on the back wall
+    box(g, M, 'glass', 1.4, 1.3, 0.06, cx, 1.6, -D / 2 - 0.1, 'backWin');
+    gableRoof(g, M, cx - uW / 2 - 0.4, cx + uW / 2 + 0.4, -D / 2 - 0.4, D / 2 + 0.4, H, H + 1.6, 'zinc');
+    // veranda pillars
+    for (const vx of [cx - 2, cx, cx + 2]) { cyl(g, M.concrete, 0.12, 2.4, vx, 1.2, D / 2 + 0.9, 8, 'vPillar'); }
+    slab(g, M, cx - uW / 2, cx + uW / 2, D / 2, D / 2 + 1.6, 0.02, 'band');
+  }
+  // boundary + gate at the front
+  boundaryWall(g, M, 24, 21, 2.0, 5, 1.2);
+  slab(g, M, -12, 12, D / 2 + 1.6, 10.4, 0.02, 'band');
+  car(g, M, -6, 9, 180, 'red'); car(g, M, 4, 9, 180, 'white');
+  tree(g, M, -11.5, -9, 1.1); tree(g, M, 11.5, -9, 0.9);
+  return g;
+};
+
+// ===================== HOUSING: BED-SITTERS =====================
+GEN.low_bedsit = (M) => {
+  const g = new THREE.Group(); g.name = 'low_bedsit';
+  // Two 2-storey bedsit blocks flanking a central passage
+  const block = (offX, seed) => {
+    const W = 11, D = 12, h = 3.0, F = 2;
+    for (let f = 0; f < F; f++) {
+      wallWithOpenings(g, M, { x0: offX - W / 2, x1: offX + W / 2, z: 5.5, th: 0.25, baseY: f * h, h, mat: 'wall',
+        windows: winRow(offX - W / 2, offX + W / 2, 0.9, 2.4, 4, f === 0 ? { x0: offX - 1.1, x1: offX + 1.1 } : null),
+        doors: f === 0 ? [{ x0: offX - 1.1, x1: offX + 1.1, y0: 0, fill: 'darkMetal' }] : [] });
+      box(g, M, 'wall', W, h, 0.25, offX, f * h + h / 2, -D / 2 + 5.5, 'bBack');
+      box(g, M, 'wall', 0.25, h, D, offX - W / 2, f * h + h / 2, 5.5 - D / 2, 'bLeft');
+      box(g, M, 'wall', 0.25, h, D, offX + W / 2, f * h + h / 2, 5.5 - D / 2, 'bRight');
+      if (f === F - 1) flatRoof(g, M, offX - W / 2 - 0.4, offX + W / 2 + 0.4, -D / 2 + 5.1, 5.9, F * h, 0.14, 'zinc');
+    }
+    // rooftop water tanks — the classic Naija skyline
+    waterTank(g, M, offX - 3, 1.5, 1.0, true);
+    waterTank(g, M, offX + 3.5, 1.5, 0.9, true);
+    dstvDish(g, M, offX - 1, 1.2, 5.6, 0);
+    acUnit(g, M, offX + 1.5, 1.4, 5.6, 1);
+  };
+  block(-6, 1); block(6, 2);
+  // passage between blocks
+  slab(g, M, -2.2, 2.2, -6.5, 7, 0.02, 'band');
+  boundaryWall(g, M, 23, 21, 2.0, 4.5, 1.0);
+  car(g, M, -9.5, 9.5, 180, 'blue');
+  tree(g, M, 10.5, 9.5, 1.0); tree(g, M, -10.5, -9.5, 0.9);
+  return g;
+};
+// __MORE__
+// ===================== AERIAL / ARRIVAL =====================
+// Plot 32 x 24 (x: -16..16, z: -12..12). Front faces +Z.
+
+
+=== STDERR ===

@@ -1,0 +1,116 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo 2>/dev/null || cd /workspace/repo
+echo "===TREE==="
+find . -maxdepth 3 -type f | sort | head -100
+echo "===PACKAGE==="
+(cat package.json 2>/dev/null || echo "{}")
+echo "===README==="
+(cat README.md 2>/dev/null || echo "No README")
+echo "===CONFIG==="
+(cat tsconfig.json 2>/dev/null || echo "No tsconfig.json")
+Cwd: /workspace/repo
+
+=== STDOUT ===
+===TREE===
+./.git/HEAD
+./.git/config
+./.git/index
+./.git/shallow
+./.helix-overflow/cmd-018b104954bd14c3.txt
+./.helix-overflow/cmd-115092bf92a2f646.txt
+./.helix-overflow/cmd-1404f681a6763ee5.txt
+./.helix-overflow/cmd-151c6c6dfd0d9780.txt
+./.helix-overflow/cmd-1808a99ebd89886a.txt
+./.helix-overflow/cmd-181411b4c7187f83.txt
+./.helix-overflow/cmd-1c97f80ba7bdd5af.txt
+./.helix-overflow/cmd-2103885ec3b279ee.txt
+./.helix-overflow/cmd-224f8b88772cacf7.txt
+./.helix-overflow/cmd-2b67cb19d043a8e5.txt
+./.helix-overflow/cmd-2c84d934ab8d62f1.txt
+./.helix-overflow/cmd-320b85c49835b744.txt
+./.helix-overflow/cmd-33bc32ab314b8548.txt
+./.helix-overflow/cmd-33d54fb65f7234dc.txt
+./.helix-overflow/cmd-33e116358dcf6243.txt
+./.helix-overflow/cmd-37cb11a19d07e708.txt
+./.helix-overflow/cmd-397f3100954251dc.txt
+./.helix-overflow/cmd-4a82c6b3aa543381.txt
+./.helix-overflow/cmd-4d6ff24710f14901.txt
+./.helix-overflow/cmd-502e5833711029c8.txt
+./.helix-overflow/cmd-55bb4841be7db430.txt
+./.helix-overflow/cmd-5be646a5367a3be1.txt
+./.helix-overflow/cmd-5d031dcfc7ee4e6f.txt
+./.helix-overflow/cmd-5f127af56c7e9659.txt
+./.helix-overflow/cmd-651584d201e4aeab.txt
+./.helix-overflow/cmd-669b712d81880341.txt
+./.helix-overflow/cmd-675e5a49619d7d99.txt
+./.helix-overflow/cmd-6bb3448be793eb71.txt
+./.helix-overflow/cmd-6fa0814c6fc421f5.txt
+./.helix-overflow/cmd-74a7caa2f25b4332.txt
+./.helix-overflow/cmd-7de18b787a1987a7.txt
+./.helix-overflow/cmd-7e63df8bc2116aaa.txt
+./.helix-overflow/cmd-82d6952ee652c32f.txt
+./.helix-overflow/cmd-8661c9a0f937d45c.txt
+./.helix-overflow/cmd-8bf12fc13d54dff3.txt
+./.helix-overflow/cmd-8e73f17cc6c56361.txt
+./.helix-overflow/cmd-91233958df560bce.txt
+./.helix-overflow/cmd-95b1dec61378a615.txt
+./.helix-overflow/cmd-9ad5961c9a1dffa5.txt
+./.helix-overflow/cmd-9cd826a6c5b13cec.txt
+./.helix-overflow/cmd-9d264ac47fd47e39.txt
+./.helix-overflow/cmd-a0431223af755ee1.txt
+./.helix-overflow/cmd-b95a157f222df568.txt
+./.helix-overflow/cmd-bc778ae9fb56692a.txt
+./.helix-overflow/cmd-bd094a3e4856011c.txt
+./.helix-overflow/cmd-c70217a36bc0fa03.txt
+./.helix-overflow/cmd-cb2725654cdf1211.txt
+./.helix-overflow/cmd-d621b03f5412fdd9.txt
+./.helix-overflow/cmd-d736d33e4047d74f.txt
+./.helix-overflow/cmd-d97d1d530ca0087e.txt
+./.helix-overflow/cmd-da531968a33ab784.txt
+./.helix-overflow/cmd-de42442865281289.txt
+./.helix-overflow/cmd-e39dcfa638a0de16.txt
+./.helix-overflow/cmd-e935d6f7d3257654.txt
+./.helix-overflow/cmd-eb15ac23ef46aa4e.txt
+./.helix-overflow/cmd-ef51bf475f450eea.txt
+./.helix-overflow/cmd-f243a0b740932cf9.txt
+./.helix-overflow/cmd-f36152bba4611048.txt
+./animation/Descending Stairs.fbx
+./animation/Walking Up The Stairs.fbx
+./animation/female/Idle.fbx
+./animation/female/Running.fbx
+./animation/female/Walking.fbx
+./animation/male/Idle.fbx
+./animation/male/Running.fbx
+./animation/male/Walking.fbx
+./animation/male/greeting_waving_110_frames_loop.glb
+./animation/male/idle_2_male_free_animation_220_frames_loop.glb
+./animation/male/idle_talking_by_phone_free_animation_180f_loop.glb
+./animation/male/male_basic_walk_30_frames_loop.glb
+./animation/male/male_jogging_30_frames_loop.glb
+./animation/male/male_phone_walking_40_frames_loop.glb
+./animation/male/male_slow_walk_40_frames_loop.glb
+./assets/buildings/_smoke_test.glb
+./assets/icons/ammo.png
+./assets/icons/armor.png
+./assets/icons/avatar.png
+./assets/icons/bg.jpg
+./assets/icons/car.png
+./assets/icons/cash.png
+./assets/icons/dock.png
+./assets/icons/energy.png
+./assets/icons/health.png
+./assets/icons/home.png
+./assets/icons/hunger.png
+./assets/icons/hygiene.png
+./assets/icons/logo.png
+./assets/icons/minimap.png
+./assets/icons/pee.png
+./assets/icons/social.png
+./assets/icons/stress.png
+./assets/icons/thirst.png
+./assets/reports/rural_plot_preview.json
+./assets/reports/world_audit.json
+./build_rig.py
+./characters.json
+
+
+=== STDERR ===

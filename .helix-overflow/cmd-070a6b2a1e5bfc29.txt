@@ -1,0 +1,87 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && ls assets/ && find . -name "immigration_office.glb" -not -path "./node_modules/*" && sed -n '1055,1130p' game.js
+Cwd: /workspace/repo
+
+=== STDOUT ===
+buildings
+icons
+reports
+./immigration_office.glb
+    this.scene.add(this.gateGroup);
+    this.gateBox = { x0: gx - 0.2, x1: gx + 0.3, z0: gz0, z1: gz1 };
+    this.gateClosed = true;
+  }
+
+  // ----- buildings (the .glb files) -----
+  addBuilding(b) {
+    const root = new THREE.Group();
+    root.position.set(b.x, 0, b.z);
+    root.rotation.y = THREE.MathUtils.degToRad(b.rotY);
+    this.scene.add(root);
+
+    // Collision boxes: rotate the relative boxes by rotY (multiples of 90 only)
+    const r = ((Math.round(b.rotY / 90) % 4) + 4) % 4;
+    b.boxes.forEach(([x0, x1, z0, z1, lv]) => {      // lv (optional): 0 = only solid downstairs, 1 = only solid upstairs, missing = both floors
+      let a = [x0, x1, z0, z1];
+      for (let i = 0; i < r; i++) a = [a[2], a[3], -a[1], -a[0]];   // 90 degrees turn
+      this.boxes.push({ x0: b.x + a[0], x1: b.x + a[1], z0: b.z + a[2], z1: b.z + a[3], lv });
+    });
+
+    // Name zone for the top-left text
+    b.zone = { x0: b.x - 14, x1: b.x + 14, z0: b.z - 14, z1: b.z + 14 };
+
+    if (b.interior) {                    // a room you can walk into: hidden until the player is inside
+      b.room = b.interior();
+      b.inside = false;
+      root.add(b.room.group, b.room.marker);
+      if (b.stairs) b.room.group.position.y = b.stairs.rise;     // Step 2: the school floor sits on top of the steps (the marker outside stays on the pavement)
+    }
+    if (b.stairs) addStairs(b.stairs, b.x, b.z, b.rotY);          // Step 2: the steps (stairs.js)
+
+    if (b.extras) {                      // props around the building (kept visible when the player is inside)
+      const ex = b.extras();
+      root.add(ex.group);
+      if (ex.update) this.animators.push(ex.update);
+    }
+
+    if (b.build) {                       // building made in code instead of a .glb file
+      const built = b.build();
+      root.add(built.group);
+      if (built.update) this.animators.push(built.update);
+      return;
+    }
+
+    new GLTFLoader().load(b.file, gltf => {
+      gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      b.exterior = gltf.scene;           // kept so it can be hidden while the player is inside
+      gltf.scene.visible = !b.inside;
+      if (b.scale) {                     // shrink to game size, centre on x/z, sit on the ground
+        gltf.scene.scale.setScalar(b.scale);
+        gltf.scene.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(gltf.scene);
+        gltf.scene.position.x -= (box.min.x + box.max.x) / 2;
+        gltf.scene.position.z -= (box.min.z + box.max.z) / 2;
+        gltf.scene.position.y -= box.min.y;
+      }
+      root.add(gltf.scene);
+    }, undefined, () => {
+      // File missing or wrong name: show a plain block so the game still works
+      const m = new THREE.Mesh(new THREE.BoxGeometry(...b.fallback), new THREE.MeshStandardMaterial({ color: 0xbbbbbb }));
+      m.position.y = b.fallback[1] / 2; root.add(m);
+      b.exterior = m; m.visible = !b.inside;
+      this.say3d('Could not load ' + b.file + ' (check the file name)');
+    });
+  }
+
+  // ----- the player -----
+  buildPlayer() {
+    this.player = makeAvatar(0x2c6e9b, myCharacterId());
+    this.player.position.set(SPAWN.x, 0, SPAWN.z);
+    this.scene.add(this.player);
+    this.pvel = { x: 0, z: 0 };
+  }
+
+  setLabel(holder, name) {
+    holder.remove(holder.userData.label || new THREE.Object3D());
+
+
+=== STDERR ===

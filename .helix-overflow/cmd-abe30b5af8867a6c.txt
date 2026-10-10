@@ -1,0 +1,73 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && ls -la assets/buildings/ && echo ===PLOTS=== && sed -n '29,58p' city.js && echo ===BUILDSIZE=== && grep -n "unit\|metre\|meter\|scale\|SIZE\|W =\|D =" scripts/glbs/build_all.mjs | head -30
+Cwd: /workspace/repo
+
+=== STDOUT ===
+total 1528
+drwxr-xr-x 2 root root   4096 Oct  9 20:55 .
+drwxr-xr-x 5 root root   4096 Oct  9 16:11 ..
+-rw-r--r-- 1 root root  22972 Oct  9 18:44 _smoke_test.glb
+-rw-r--r-- 1 root root  67636 Oct 10 02:37 airport.glb
+-rw-r--r-- 1 root root  81240 Oct 10 02:37 bank.glb
+-rw-r--r-- 1 root root  84804 Oct 10 02:37 city_hall.glb
+-rw-r--r-- 1 root root  79996 Oct 10 02:37 commercial.glb
+-rw-r--r-- 1 root root 215840 Oct 10 02:37 government.glb
+-rw-r--r-- 1 root root 165740 Oct 10 02:37 high_housing.glb
+-rw-r--r-- 1 root root 101772 Oct 10 02:37 hotel.glb
+-rw-r--r-- 1 root root  83176 Oct 10 02:37 judiciary.glb
+-rw-r--r-- 1 root root  73612 Oct 10 02:37 low_bedsit.glb
+-rw-r--r-- 1 root root  66172 Oct 10 02:37 low_line.glb
+-rw-r--r-- 1 root root 143832 Oct 10 02:38 mid_housing.glb
+-rw-r--r-- 1 root root  73012 Oct 10 02:37 police.glb
+-rw-r--r-- 1 root root  96456 Oct 10 02:37 rental.glb
+-rw-r--r-- 1 root root  28928 Oct 10 02:37 rural.glb
+-rw-r--r-- 1 root root 141056 Oct 10 02:37 university.glb
+===PLOTS===
+const RAW_PLOTS = [
+  // ----- arrival side (west of the gate, north of the main road, next to the immigration office, across from the camp) -----
+  ['airport',        'Airport',                        18,  12, 32, 24],
+  // ----- north strip (faces the main road) -----
+  ['low_line',       'Low-Class Housing: Line Houses', 83.5, 13, 25, 22],
+  ['low_bedsit',     'Low-Class Housing: Bed-Sitters', 110, 13, 24, 22],
+  ['university',     'University',                    202, 188, 38, 37],   // swapped with the High School plot
+  ['rural',          'Rural District',                338,  12, 20, 20],   // moved to the riverside NE corner (see assets/reports/rural_plot_preview.json); old site (275, 13) left as open ground
+  // ----- central zone -----
+  ['rental',         'Rental Desk',                    83,  49, 26, 22],
+  ['police',         'Police Station',                110,  49, 24, 22],
+  ['judiciary',      'Judiciary (Courts)',             96,  76, 52, 20],
+  ['government',     'Government Offices Area',       168,  61, 60, 50],
+  ['city_hall',      'City Hall',                     211,  48, 22, 22],
+  ['bank',           'Bank',                          211,  75, 22, 22],
+  ['hotel',          'Hotel',                         275,  61, 74, 50],
+  ['governor_villa', "Governor's Villa",               96, 127, 52, 48],
+  ['high_housing',   'High-Class Housing',            180, 127, 84, 48],
+  ['commercial',     'Commercial District',           275, 127, 74, 48],
+  // ----- south zone -----
+  ['mid_housing',    'Mid-Class Housing',              96, 188, 52, 37],
+  ['hospital',       'Hospital',                      160, 188, 40, 37],
+  ['high_school',    'High School',                   180,  13, 84, 22],   // swapped with the University plot (north strip, faces the main road)
+  ['market',         'Market',                        275, 188, 74, 37],
+  ['transport',      'Transport District',            180, 231, 84, 14],
+  ['broadcasting',   'Broadcasting Station',          275, 231, 60, 14],
+  // ----- east edge -----
+  ['industrial',     'Industrial District',           343,  62, 28, 50],
+  ['automotive',     'Automotive District',           343, 127, 28, 48],
+  ['oil_well',       'Oil Well',                      343, 188, 28, 37]
+===BUILDSIZE===
+75:  const W = 24, D = 12, H = 6.4;
+105:  const units = 5, uW = 5.0, D = 11, H = 3.2, W = units * uW;
+106:  for (let i = 0; i < units; i++) {
+131:    const W = 11, D = 12, h = 3.0, F = 2;
+158:  const WH = 21, WD = 13, fh = 3.6;
+229:  const W = 17, D = 10, fh = 3.4;
+257:    const W = 10, D = 8, h = 3.6;
+279:  // perimeter with wide main gate + guard
+291:  const W = 30, D = 12, h = 4.6;
+353:  const W = 12, D = 10, h = 5;
+384:  const W = 14, D = 10, h = 4.2;
+424:  const TW = 18, TD = 16, FH = 3.2, F = 7;
+475:    const W = 13, D = 11, h1 = 3.4, h2 = 3.2;
+506:  const W = 34, D = 22, h1 = 4.2, h2 = 3.6;
+546:      const W = span / cols - 0.8, D = 9, h1 = 3.2, h2 = 3.0;
+
+
+=== STDERR ===

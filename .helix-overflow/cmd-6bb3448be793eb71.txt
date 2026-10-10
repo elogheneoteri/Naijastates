@@ -1,0 +1,75 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && echo "=== build_all.mjs lines: $(wc -l < scripts/glbs/build_all.mjs) ===" && grep -n "__MORE__\|GEN\.\w* = \|__REGEN__" scripts/glbs/build_all.mjs && echo "=== lib.mjs exports ===" && grep -n "^export function\|^export const" scripts/glbs/lib.mjs && echo "=== game.js BUILDINGS block ===" && sed -n '44,75p' game.js
+Cwd: /workspace/repo
+
+=== STDOUT ===
+=== build_all.mjs lines: 262 ===
+69:// __MORE__
+71:GEN.airport = (M) => {
+108:GEN.low_line = (M) => {
+136:GEN.low_bedsit = (M) => {
+164:// __MORE__
+167:GEN.airport = (M) => {
+206:GEN.low_line = (M) => {
+234:GEN.low_bedsit = (M) => {
+262:// __MORE__
+=== lib.mjs exports ===
+86:export function mulberry32(seed) {
+95:export function rngFor(code, salt = 0) {
+103:export function makeMaterials(variant = {}) {
+243:export function box(parent, M, mat, w, h, d, x, y, z, name) {
+251:export function cyl(parent, mat, r, h, x, y, z, seg = 10, name) {
+261:export function wallWithOpenings(parent, M, wall) {
+317:export function flatRoof(parent, M, x0, x1, z0, z1, y, th = 0.12, mat = 'zinc') {
+325:export function gableRoof(parent, M, x0, x1, z0, z1, eaveY, apexY, mat = 'zinc') {
+347:export function canopy(parent, M, x0, x1, zEdge, y, depth = 1.6, posts = 3) {
+355:export function signBoard(parent, M, text, w, h, x, y, z, mat = 'signBoard', rotY = 0) {
+380:export function markEntrance(parent, x, z, w = 2.4) {
+391:export function boundaryWall(parent, M, W, D, h = 2.2, gateW = 4, inset = 1.6, mat = 'boundWall') {
+430:export function guardPost(parent, M, x, z, rotY = 0) {
+447:export function genHouse(parent, M, x, z, rotY = 0, s = 1) {
+468:export function waterTank(parent, M, x, z, s = 1, overhead = true) {
+484:export function dstvDish(parent, M, x, y, z, rotY = 0) {
+496:export function acUnit(parent, M, x, y, z, face = 1) {
+510:export function antenna(parent, M, x, y, z) {
+524:export function flagpole(parent, M, x, z, h = 7, flag = 'green') {
+534:export function colonnade(parent, M, x0, x1, zEdge, yBase, h, n = 4, gap = 0.6) {
+549:export function clockFace(parent, M, x, y, z, r = 0.9, rotY = 0) {
+569:export function coatOfArms(parent, M, x, y, z, s = 1, rotY = 0) {
+581:export function fountain(parent, M, x, z, s = 1) {
+592:export function glassCurtain(parent, M, x0, x1, z, y0, y1, bays = 6) {
+=== game.js BUILDINGS block ===
+const BUILDINGS = [
+  {
+    key: 'immigration', name: 'Immigration Office', file: 'immigration_office.glb',
+    // Realistic office building (low_rise_wall_to_wall_office_building.glb, saved as immigration_office.glb).
+    // The model is in centimetre-style units, so scale shrinks it to game metres.
+    // Make it bigger or smaller with scale (0.008 = about 25.6 m wide, 23 m tall tower).
+    // The code centres it on x/z and sits it on the ground; the glass front faces +Z (south, towards the road).
+    scale: 0.008,
+    x: 50, z: 11.8, rotY: 0,
+    // The inside is built in code (immigration_office.js). Walk through the door in the south wall to go in:
+    // the outside model hides and the office interior shows. Solid parts = the office walls (with the door gap) and furniture.
+    interior: buildImmigrationOffice,
+    boxes: IMMIGRATION_BOXES,
+    fallback: [25.6, 23, 24.2]
+  },
+  {
+    key: 'refugee', name: 'Refugee Camp', file: 'refugee_camp.glb',
+    build: buildRefugeeCamp,                // built in code (refugee_camp.js); the .glb is no longer used
+    x: 21, z: 40, rotY: 180,
+    boxes: CAMP_BOXES,                      // big tent, small tents and fence (defined in refugee_camp.js)
+    fallback: [19, 4, 19]
+  },
+  {
+    key: 'high_school', name: 'High School', file: 'high_school.glb',
+    // Realistic 3-storey school (your high_school.glb). The model is already in metres (47 m wide, 34.5 m deep with the steps),
+    // so scale 0.62 shrinks it to fit the 84 x 22 m plot: about 29 m wide, 21 m deep and 11 m tall.
+    // Make it bigger or smaller with scale (do not go above 0.64 or the front steps stick out of the plot).
+    // Step 3: you can walk in. The front door is in the south wall (x = 1.9 from the school centre, in line with the steps), marked by the
+    // blue marker outside. Inside, the outside model hides and the ground floor shows (high_school_interior.js).
+    scale: 0.62,
+    x: HS_PLOT.x, z: HS_PLOT.z, rotY: HS_PLOT.rotY,
+    interior: buildHighSchoolInterior,     // Step 3: classrooms, corridor, hall, toilets, store, principal's office
+
+
+=== STDERR ===

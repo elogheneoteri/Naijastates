@@ -1,0 +1,81 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && grep -n "GEN\|generators\|const [a-z_]* = () => {" scripts/glbs/build_all.mjs | head -30 && sed -n '64,120p' scripts/glbs/build_all.mjs
+Cwd: /workspace/repo
+
+=== STDOUT ===
+66:// ---------------------------------------------------------------- generators
+68:const GEN = {};
+72:GEN.airport = (M) => {
+103:GEN.low_line = (M) => {
+128:GEN.low_bedsit = (M) => {
+155:GEN.university = (M) => {
+199:GEN.rural = (M) => {
+226:GEN.rental = (M) => {
+253:GEN.police = (M) => {
+288:GEN.judiciary = (M) => {
+314:GEN.government = (M) => {
+350:GEN.city_hall = (M) => {
+382:GEN.bank = (M) => {
+421:GEN.hotel = (M) => {
+467:GEN.high_housing = (M) => {
+502:GEN.commercial = (M) => {
+537:GEN.mid_housing = (M) => {
+}
+
+// ---------------------------------------------------------------- generators
+
+const GEN = {};
+
+// ===================== AERIAL / ARRIVAL =====================
+// Plot 32 x 24. Front faces +Z.
+GEN.airport = (M) => {
+  const g = new THREE.Group(); g.name = 'airport';
+  // Terminal block: 24 x 12, glass curtain front, flat roof
+  const W = 24, D = 12, H = 6.4;
+  wallWithOpenings(g, M, { x0: -W / 2, x1: W / 2, z: D / 2, th: 0.3, baseY: 0, h: H, mat: 'white',
+    windows: winRow(-W / 2, W / 2, 1.0, 3.2, 8),
+    doors: [{ x0: -1.6, x1: 1.6, y0: 0, fill: 'glass' }] });
+  box(g, M, 'white', W, H, 0.3, 0, H / 2, -D / 2, 'back');
+  box(g, M, 'white', 0.3, H, D, -W / 2, H / 2, 0, 'left');
+  box(g, M, 'white', 0.3, H, D, W / 2, H / 2, 0, 'right');
+  box(g, M, 'band', W + 0.4, 0.5, D + 0.4, 0, 0.25, 0, 'plinth');
+  glassCurtain(g, M, -11, 11, D / 2 - 0.15, 0.4, 3.6, 8);
+  flatRoof(g, M, -W / 2 - 0.6, W / 2 + 0.6, -D / 2 - 0.6, D / 2 + 0.6, H, 0.18, 'alu');
+  canopy(g, M, -9, 9, D / 2, 3.6, 3.6, 6);
+  signBoard(g, M, 'NAIJA INTL AIRPORT', 12, 1.4, 0, H - 0.9, D / 2 + 0.4, 'darkMetal');
+  // Control tower on the west side
+  const tx = -13, tz = -2;
+  cyl(g, M.concrete, 1.6, 14, tx, 7, tz, 12, 'tower');
+  box(g, M, 'darkMetal', 6.5, 3.2, 6.5, tx, 15.4, tz, 'cab');
+  glassCurtain(g, M, tx - 2.9, tx + 2.9, tz + 3.25, 14.6, 16.4, 4);
+  flatRoof(g, M, tx - 3.4, tx + 3.4, tz - 3.4, tz + 3.4, 17.0, 0.2, 'alu');
+  antenna(g, M, tx, 17.2, tz);
+  // Apron + taxiway markings
+  slab(g, M, -14, 14, D / 2, 11.5, 0.01, 'tarmac');
+  box(g, M, 'whitePaint', 0.3, 0.02, 4, 4, 0.04, 9.5, 'apronLine');
+  box(g, M, 'whitePaint', 0.3, 0.02, 4, 9, 0.04, 9.5, 'apronLine2');
+  return g;
+};
+
+// ===================== HOUSING: LINE HOUSES =====================
+// Plot 25 x 22. Front faces +Z.
+GEN.low_line = (M) => {
+  const g = new THREE.Group(); g.name = 'low_line';
+  const units = 5, uW = 5.0, D = 11, H = 3.2, W = units * uW;
+  for (let i = 0; i < units; i++) {
+    const cx = -W / 2 + i * uW + uW / 2;
+    wallWithOpenings(g, M, { x0: cx - uW / 2, x1: cx + uW / 2, z: D / 2, th: 0.25, baseY: 0, h: H, mat: 'wall',
+      windows: [{ x0: cx - 1.9, x1: cx - 0.5, y0: 1.0, y1: 2.5, grille: true }, { x0: cx + 0.5, x1: cx + 1.9, y0: 1.0, y1: 2.5, grille: true }],
+      doors: [{ x0: cx - 0.6, x1: cx + 0.6, y0: 0, fill: 'darkMetal' }] });
+    box(g, M, 'wall', uW, H, 0.25, cx, H / 2, -D / 2, 'back');
+    box(g, M, 'wall', 0.25, H, D, cx - uW / 2, H / 2, 0, 'left');
+    box(g, M, 'wall', 0.25, H, D, cx + uW / 2, H / 2, 0, 'right');
+    box(g, M, 'glass', 1.4, 1.3, 0.06, cx, 1.6, -D / 2 - 0.1, 'backWin');
+    gableRoof(g, M, cx - uW / 2 - 0.4, cx + uW / 2 + 0.4, -D / 2 - 0.4, D / 2 + 0.4, H, H + 1.6, 'zinc');
+    for (const vx of [cx - 2, cx, cx + 2]) { cyl(g, M.concrete, 0.12, 2.4, vx, 1.2, D / 2 + 0.9, 8, 'vPillar'); }
+    slab(g, M, cx - uW / 2, cx + uW / 2, D / 2, D / 2 + 1.6, 0.02, 'band');
+  }
+  boundaryWall(g, M, 24, 21, 2.0, 5, 1.2);
+  slab(g, M, -12, 12, D / 2 + 1.6, 10.4, 0.02, 'band');
+
+
+=== STDERR ===

@@ -1,0 +1,92 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && echo '=== BUILDINGS in game.js ===' && grep -n "BUILDINGS" game.js | head -5 && sed -n "$(grep -n 'const BUILDINGS' game.js | head -1 | cut -d: -f1),+40p" game.js && echo '=== how existing glb loaded ===' && grep -n "glb" game.js | head -20 && echo '=== audit: civic plots ===' && node -e "
+const a = require('./assets/reports/world_audit.json');
+const codes = ['airport','low_line','low_bedsit','rental','police','judiciary','government','city_hall','bank','hotel','governor_villa'];
+const plots = a.plots || a;
+codes.forEach(c => { const p = (Array.isArray(plots)?plots:plots.plots||[]).find(x=>x.code===c); console.log(c, JSON.stringify(p)); });
+console.log('BUILT_PLOTS:', JSON.stringify(a.builtPlots||a.BUILT_PLOTS));
+" 2>&1 | grep -v MODULE_TYPELESS | grep -v Reparsing | grep -v trace-warnings | grep -v 'type.*module'
+Cwd: /workspace/repo
+
+=== STDOUT ===
+=== BUILDINGS in game.js ===
+44:const BUILDINGS = [
+831:    BUILDINGS.forEach(b => this.addBuilding(b));
+838:      this.nin = initNin({ world: this, building: BUILDINGS.find(b => b.key === 'immigration'), makeAvatar, animateAvatar });
+906:    const clear = BUILDINGS.map(b => { const [w, , d] = b.fallback || [20, 0, 20]; return { x0: b.x - w / 2 - 2, x1: b.x + w / 2 + 2, z0: b.z - d / 2 - 2, z1: b.z + d / 2 + 2 }; }).concat(cityClearRects());
+1418:    const z = BUILDINGS.find(b => p.x >= b.zone.x0 && p.x <= b.zone.x1 && p.z >= b.zone.z0 && p.z <= b.zone.z1);
+const BUILDINGS = [
+  {
+    key: 'immigration', name: 'Immigration Office', file: 'immigration_office.glb',
+    // Realistic office building (low_rise_wall_to_wall_office_building.glb, saved as immigration_office.glb).
+    // The model is in centimetre-style units, so scale shrinks it to game metres.
+    // Make it bigger or smaller with scale (0.008 = about 25.6 m wide, 23 m tall tower).
+    // The code centres it on x/z and sits it on the ground; the glass front faces +Z (south, towards the road).
+    scale: 0.008,
+    x: 50, z: 11.8, rotY: 0,
+    // The inside is built in code (immigration_office.js). Walk through the door in the south wall to go in:
+    // the outside model hides and the office interior shows. Solid parts = the office walls (with the door gap) and furniture.
+    interior: buildImmigrationOffice,
+    boxes: IMMIGRATION_BOXES,
+    fallback: [25.6, 23, 24.2]
+  },
+  {
+    key: 'refugee', name: 'Refugee Camp', file: 'refugee_camp.glb',
+    build: buildRefugeeCamp,                // built in code (refugee_camp.js); the .glb is no longer used
+    x: 21, z: 40, rotY: 180,
+    boxes: CAMP_BOXES,                      // big tent, small tents and fence (defined in refugee_camp.js)
+    fallback: [19, 4, 19]
+  },
+  {
+    key: 'high_school', name: 'High School', file: 'high_school.glb',
+    // Realistic 3-storey school (your high_school.glb). The model is already in metres (47 m wide, 34.5 m deep with the steps),
+    // so scale 0.62 shrinks it to fit the 84 x 22 m plot: about 29 m wide, 21 m deep and 11 m tall.
+    // Make it bigger or smaller with scale (do not go above 0.64 or the front steps stick out of the plot).
+    // Step 3: you can walk in. The front door is in the south wall (x = 1.9 from the school centre, in line with the steps), marked by the
+    // blue marker outside. Inside, the outside model hides and the ground floor shows (high_school_interior.js).
+    scale: 0.62,
+    x: HS_PLOT.x, z: HS_PLOT.z, rotY: HS_PLOT.rotY,
+    interior: buildHighSchoolInterior,     // Step 3: classrooms, corridor, hall, toilets, store, principal's office
+    boxes: [
+      ...HS_INTERIOR_BOXES,                // walls (with the front doorway and the room doorways), desks, counter, stalls ...
+      [-1.9, 0.6, 8.1, 10.8],              // the front steps, left of the walkway to the door
+      [3.2, 5.7, 8.1, 10.8],               // the front steps, right of the walkway to the door
+      ...HS_EXTERIOR_BOXES                 // Step 2: trees, shed, tower, goals, lamps ... (high_school_exterior.js)
+    ],
+    extras: buildHighSchoolExterior,       // Step 2: the props around the school
+    stairs: HS_STAIRS,                     // Step 2: the front steps (stairs.js): the floor rises towards the door and the stairs animation plays
+    fallback: [29.2, 11.1, 21.4]
+=== how existing glb loaded ===
+46:    key: 'immigration', name: 'Immigration Office', file: 'immigration_office.glb',
+47:    // Realistic office building (low_rise_wall_to_wall_office_building.glb, saved as immigration_office.glb).
+60:    key: 'refugee', name: 'Refugee Camp', file: 'refugee_camp.glb',
+61:    build: buildRefugeeCamp,                // built in code (refugee_camp.js); the .glb is no longer used
+67:    key: 'high_school', name: 'High School', file: 'high_school.glb',
+68:    // Realistic 3-storey school (your high_school.glb). The model is already in metres (47 m wide, 34.5 m deep with the steps),
+278:// ---------- The 3D character (player_female_01.glb: has a skeleton and idle / walk / run animations) ----------
+312:// Any file that is missing is skipped and the old idle / walk / run inside the character .glb is used instead.
+553:// ---------- Mixamo-rigged .glb characters (file name ends in _mixamo.glb) ----------
+555:// Mixamo .fbx files. Every animation rotation is therefore re-aimed bone by bone:  q_glb = (parentRest_glb^-1 * parentRest_fbx) * q_fbx * (rest_fbx^-1 * rest_glb)
+557:const GLB_TARGET_HEIGHT = 1.68;   // metres: these .glb characters are exported small, so they are scaled to a normal height
+621:        cp.copy(dst.pw).invert().multiply(src.pw);        // parentRest_glb^-1 * parentRest_fbx
+622:        cb.copy(src.w).invert().multiply(dst.w);          // rest_fbx^-1 * rest_glb
+651:    : /_mixamo\.glb$/i.test(file) ? loadMixamoGlbCharacter(file)
+688:    // swap in the Mixamo clips as soon as they have loaded (the .glb clips above are the fallback)
+780:  // Characters without stairs clips (the old .glb ones) just keep walking.
+1060:  // ----- buildings (the .glb files) -----
+1092:    if (b.build) {                       // building made in code instead of a .glb file
+=== audit: civic plots ===
+airport {"code":"airport","label":"Airport","x":18,"z":12,"w":32,"d":24,"front":"S","rotY":0}
+low_line {"code":"low_line","label":"Low-Class Housing: Line Houses","x":83.5,"z":13,"w":25,"d":22,"front":"S","rotY":0}
+low_bedsit {"code":"low_bedsit","label":"Low-Class Housing: Bed-Sitters","x":110,"z":13,"w":24,"d":22,"front":"S","rotY":0}
+rental {"code":"rental","label":"Rental Desk","x":83,"z":49,"w":26,"d":22,"front":"N","rotY":180}
+police {"code":"police","label":"Police Station","x":110,"z":49,"w":24,"d":22,"front":"E","rotY":90}
+judiciary {"code":"judiciary","label":"Judiciary (Courts)","x":96,"z":76,"w":52,"d":20,"front":"E","rotY":90}
+government {"code":"government","label":"Government Offices Area","x":168,"z":61,"w":60,"d":50,"front":"N","rotY":180}
+city_hall {"code":"city_hall","label":"City Hall","x":211,"z":48,"w":22,"d":22,"front":"E","rotY":90}
+bank {"code":"bank","label":"Bank","x":211,"z":75,"w":22,"d":22,"front":"E","rotY":90}
+hotel {"code":"hotel","label":"Hotel","x":275,"z":61,"w":74,"d":50,"front":"N","rotY":180}
+governor_villa {"code":"governor_villa","label":"Governor's Villa","x":96,"z":127,"w":52,"d":48,"front":"N","rotY":180}
+BUILT_PLOTS: ["high_school"]
+
+
+=== STDERR ===

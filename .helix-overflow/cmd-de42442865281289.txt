@@ -1,0 +1,186 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && sed -n '23,63p' scripts/glbs/build_all.mjs && echo "=== lib: boundary/guard/flag/colonnade/clock/coat/fountain ===" && sed -n '391,446p;524,604p' scripts/glbs/lib.mjs
+Cwd: /workspace/repo
+
+=== STDOUT ===
+function winRow(x0, x1, y0, y1, cols, door = null) {
+  const span = x1 - x0, out = [];
+  const step = span / cols;
+  for (let i = 0; i < cols; i++) {
+    const wx0 = x0 + i * step + step * 0.22, wx1 = x0 + (i + 1) * step - step * 0.22;
+    if (door && wx1 > door.x0 + 0.1 && wx0 < door.x1 - 0.1) continue;
+    out.push({ x0: wx0, x1: wx1, y0, y1, glass: true, grille: true });
+  }
+  return out;
+}
+function doorsAt(x, w) { return [{ x0: x - w / 2, x1: x + w / 2, y0: 0, fill: 'darkMetal' }]; }
+
+// Tree: trunk + 2-3 leaf blobs
+function tree(parent, M, x, z, s = 1) {
+  cyl(parent, M.trunk, 0.16 * s, 2.6 * s, x, 1.3 * s, z, 7);
+  const rnd = Math.random;
+  const blobs = [[0, 3.4, 0, 1.3], [0.7, 2.9, 0.4, 1.0], [-0.7, 3.0, -0.3, 0.9], [0.1, 4.1, -0.5, 0.8]];
+  for (const [bx, by, bz, br] of blobs) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(br * s, 8, 7), M.leaf);
+    m.position.set(x + bx * s, by * s, z + bz * s); m.castShadow = true;
+    parent.add(m);
+  }
+}
+
+// Simple parked car (box body + cabin) — props make streets feel real
+function car(parent, M, x, z, rotYdeg, color) {
+  const g = new THREE.Group();
+  box(g, M, color, 4.2, 0.55, 1.7, 0, 0.55, 0, 'body');
+  box(g, M, color, 2.2, 0.5, 1.6, -0.2, 1.1, 0, 'cabin');
+  box(g, M, 'black', 4.3, 0.4, 1.8, 0, 0.3, 0, 'base');
+  for (const [wx, wz] of [[1.4, 0.75], [1.4, -0.75], [-1.4, 0.75], [-1.4, -0.75]]) {
+    cyl(g, M.black, 0.34, 0.2, wx, 0.34, wz, 10).rotation.z = Math.PI / 2;
+  }
+  g.rotation.y = rotYdeg * Math.PI / 180;
+  g.position.set(x, 0, z);
+  parent.add(g);
+}
+
+// Pavement slab strip
+function slab(parent, M, x0, x1, z0, z1, y = 0.03, mat = 'band') {
+  box(parent, M, mat, x1 - x0, 0.06, z1 - z0, (x0 + x1) / 2, y, (z0 + z1) / 2, 'slab');
+=== lib: boundary/guard/flag/colonnade/clock/coat/fountain ===
+export function boundaryWall(parent, M, W, D, h = 2.2, gateW = 4, inset = 1.6, mat = 'boundWall') {
+  const x0 = -W / 2 + inset, x1 = W / 2 - inset, z1 = D / 2 - inset, z0 = -D / 2 + inset;
+  const th = 0.22;
+  // back, left, right
+  box(parent, M, mat, x1 - x0, h, th, 0, h / 2, z0);
+  box(parent, M, mat, th, h, z1 - z0, x0, h / 2, 0);
+  box(parent, M, mat, th, h, z1 - z0, x1, h / 2, 0);
+  // front, split around gate
+  const g0 = -gateW / 2, g1 = gateW / 2;
+  if (g0 > x0) box(parent, M, mat, g0 - x0, h, th, (x0 + g0) / 2, h / 2, z1);
+  if (x1 > g1) box(parent, M, mat, x1 - g1, h, th, (g1 + x1) / 2, h / 2, z1);
+  // coping + bottle caps
+  for (const [cx, cz, Lx, Lz] of [[0, z0, x1 - x0, th], [x0, 0, th, z1 - z0], [x1, 0, th, z1 - z0],
+    [((x0 + g0) / 2 + x0) / 2 + x0 / 2 - x0 / 2, z1, Math.max(0.1, (g0 - x0) / 2), th]]) {
+    box(parent, M, 'band', Lx + 0.06, 0.07, Lz + 0.06, cx, h + 0.035, cz);
+  }
+  if (x0 < g0) {
+    const w1 = g0 - x0;
+    box(parent, M, 'band', w1 + 0.06, 0.07, th + 0.06, x0 + w1 / 2, h + 0.035, z1);
+  }
+  if (g1 < x1) {
+    const w2 = x1 - g1;
+    box(parent, M, 'band', w2 + 0.06, 0.07, th + 0.06, x1 - w2 / 2, h + 0.035, z1);
+  }
+  // gate posts + bars
+  for (const px of [g0 - 0.25, g1 + 0.25]) {
+    box(parent, M, 'band', 0.5, h + 0.5, 0.5, px, (h + 0.5) / 2, z1);
+    cyl(parent, M.gate, 0.06, 0.4, px, h + 0.7, z1, 8);
+  }
+  const bars = Math.floor(gateW / 0.35);
+  for (let i = 0; i <= bars; i++) {
+    const bx = g0 + (gateW * i) / bars;
+    box(parent, M, 'gate', 0.05, h - 0.3, 0.05, bx, (h - 0.3) / 2 + 0.15, z1);
+  }
+  box(parent, M, 'gate', gateW, 0.08, 0.05, 0, h - 0.2, z1);
+  box(parent, M, 'gate', gateW, 0.08, 0.05, 0, 0.35, z1);
+}
+
+// Small guard hut on a corner of the boundary.
+export function guardPost(parent, M, x, z, rotY = 0) {
+  const g = new THREE.Group();
+  const w = 2.6, d = 2.6, h = 2.6;
+  box(g, M, 'band', w, 0.4, d, 0, 0.2, 0);
+  box(g, M, 'whitePaint', w - 0.2, h - 0.6, d - 0.2, 0, 0.4 + (h - 0.6) / 2, 0);
+  wallWithOpenings(g, M, {
+    x0: -w / 2 + 0.2, x1: w / 2 - 0.2, z: d / 2 - 0.12, th: 0.1, baseY: 0.5, h: h - 0.6, mat: 'whitePaint',
+    windows: [{ x0: 0.3, x1: w - 0.9, y0: 0.4, y1: 1.3, glass: true, grille: true }],
+  });
+  gableRoof(g, M, -w / 2 - 0.25, w / 2 + 0.25, -d / 2 - 0.25, d / 2 + 0.25, h - 0.05, h + 0.75, 'zinc');
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  parent.add(g);
+  return g;
+}
+
+// Generator house: small locked box with louvred vents and a chimney pipe.
+export function flagpole(parent, M, x, z, h = 7, flag = 'green') {
+  const g = new THREE.Group();
+  g.name = 'flagpole';
+  cyl(g, M.whitePaint, 0.07, h, 0, h / 2, 0, 8);
+  box(g, M, 'band', 0.18, 0.18, 0.18, 0, h, 0);
+  box(g, M, flag === 'green' ? 'nigerianFlag' : 'blue', 1.9, 1.25, 0.04, 1.0, h - 0.95, 0, 'flag_cloth');
+  g.position.set(x, 0, z);
+  parent.add(g);
+  return g;
+}
+export function colonnade(parent, M, x0, x1, zEdge, yBase, h, n = 4, gap = 0.6) {
+  const g = new THREE.Group();
+  g.name = 'colonnade';
+  const span = x1 - x0;
+  for (let i = 0; i < n; i++) {
+    const px = x0 + gap + (span - gap * 2) * (i / (n - 1));
+    cyl(g, M.concrete, 0.28, h, px, yBase + h / 2, zEdge, 10, `column_${i}`);
+    box(g, M, 'concrete', 0.8, 0.14, 0.8, px, yBase, zEdge);
+    box(g, M, 'concrete', 0.8, 0.14, 0.8, px, yBase + h, zEdge);
+  }
+  box(g, M, 'concrete', span + 0.5, 0.35, 1.1, (x0 + x1) / 2, yBase + h + 0.25, zEdge, 'entablature');
+  box(g, M, 'concrete', span + 0.8, 0.2, 1.3, (x0 + x1) / 2, yBase + h + 0.5, zEdge, 'cornice');
+  parent.add(g);
+  return g;
+}
+export function clockFace(parent, M, x, y, z, r = 0.9, rotY = 0) {
+  const g = new THREE.Group();
+  g.name = 'clock';
+  cyl(g, M.whitePaint, r, 0.12, 0, 0, 0, 24, 'clock_body');
+  g.children[0].rotation.x = Math.PI / 2;
+  cyl(g, M.whitePaint, r, 0.05, 0, 0, 0.07, 24, 'clock_face');
+  g.children[1].rotation.x = Math.PI / 2;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    box(g, M.darkMetal, 0.05, 0.12, 0.02, Math.sin(a) * (r - 0.14), Math.cos(a) * (r - 0.14), 0.1, `tick_${i}`);
+  }
+  box(g, M.darkMetal, 0.05, 0.55, 0.02, 0, 0.27, 0.11, 'clock_hour');
+  box(g, M, 'darkMetal', 0.035, 0.72, 0.02, 0.16, 0.42, 0.11, 'clock_min');
+  g.children[g.children.length - 2].rotation.z = -Math.PI / 3;
+  g.children[g.children.length - 1].rotation.z = -Math.PI * 0.75;
+  g.position.set(x, y, z);
+  g.rotation.y = rotY;
+  parent.add(g);
+  return g;
+}
+export function coatOfArms(parent, M, x, y, z, s = 1, rotY = 0) {
+  const g = new THREE.Group();
+  g.name = 'coat_of_arms';
+  box(g, M, 'cream', 1.5 * s, 1.5 * s, 0.12 * s, 0, 0, 0, 'panel');
+  box(g, M, 'nigerianFlag', 1.2 * s, 0.16 * s, 0.14 * s, 0, 0.45 * s, 0);
+  cyl(g, M.darkMetal, 0.28 * s, 0.16 * s, 0, 0, 0.06 * s, 12, 'eagle_body');
+  box(g, M.darkMetal, 0.5 * s, 0.08 * s, 0.1 * s, 0, 0.1 * s, 0.06 * s);
+  g.position.set(x, y, z);
+  g.rotation.y = rotY;
+  parent.add(g);
+  return g;
+}
+export function fountain(parent, M, x, z, s = 1) {
+  const g = new THREE.Group();
+  g.name = 'fountain';
+  cyl(g, M.concrete, 1.6 * s, 0.5 * s, 0, 0.25 * s, 0, 20, 'basin_ring');
+  cyl(g, M.pool, 1.45 * s, 0.06 * s, 0, 0.42 * s, 0, 20, 'water_surface');
+  cyl(g, M.concrete, 0.18 * s, 1.1 * s, 0, 1.0 * s, 0, 10);
+  cyl(g, M.concrete, 0.55 * s, 0.12 * s, 0, 1.55 * s, 0, 16, 'upper_basin');
+  g.position.set(x, 0, z);
+  parent.add(g);
+  return g;
+}
+export function glassCurtain(parent, M, x0, x1, z, y0, y1, bays = 6) {
+  const g = new THREE.Group();
+  g.name = 'glass_curtain';
+  const span = x1 - x0, hgt = y1 - y0, ymid = (y0 + y1) / 2;
+  box(parent, M, 'glass', span, hgt, 0.06, (x0 + x1) / 2, ymid, z, 'glass_sheet');
+  const bw = span / bays;
+  for (let i = 0; i <= bays; i++) {
+    box(parent, M, 'darkMetal', 0.1, hgt, 0.14, x0 + i * bw, ymid, z, `mullion_${i}`);
+  }
+  for (let j = 0; j <= 1; j++) {
+    box(parent, M, 'darkMetal', span, 0.12, 0.14, (x0 + x1) / 2, y0 + j * hgt, z, `transom_${j}`);
+  }
+  parent.add(g);
+
+
+=== STDERR ===

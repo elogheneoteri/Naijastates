@@ -1,0 +1,114 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && sed -n '314,420p' scripts/glbs/build_all.mjs
+Cwd: /workspace/repo
+
+=== STDOUT ===
+GEN.government = (M) => {
+  const g = new THREE.Group(); g.name = 'government';
+  const floors = 3, fh = 3.4;
+  const main = (x0, x1, z0, z1, ox = 0, oz = 0) => {
+    for (let f = 0; f < floors; f++) {
+      wallWithOpenings(g, M, { x0, x1, z: z1 + oz, th: 0.3, baseY: f * fh, h: fh, mat: 'concrete',
+        windows: winRow(x0, x1, 0.9, fh - 0.7, Math.max(3, Math.floor((x1 - x0) / 3)), f === 0 && ox ? { x0: (x0 + x1) / 2 - 1.6, x1: (x0 + x1) / 2 + 1.6 } : null),
+        doors: f === 0 && ox ? doorsAt((x0 + x1) / 2, 3.2) : [] });
+    }
+    box(g, M, 'concrete', x1 - x0, floors * fh, 0.3, (x0 + x1) / 2 + ox, (floors * fh) / 2, z0 + oz);
+    box(g, M, 'concrete', 0.3, floors * fh, z1 - z0, x0 + ox, (floors * fh) / 2, (z0 + z1) / 2 + oz);
+    box(g, M, 'concrete', 0.3, floors * fh, z1 - z0, x1 + ox, (floors * fh) / 2, (z0 + z1) / 2 + oz);
+    flatRoof(g, M, x0 - 0.3 + ox, x1 + 0.3 + ox, z0 - 0.3 + oz, z1 + 0.3 + oz, floors * fh, 0.18, 'alu');
+  };
+  main(-16, 16, -20, -8, 0, 0);   // main administration block
+  main(-28, -16, -12, 2, 0, 0);   // west annex
+  main(16, 28, -12, 2, 0, 0);     // east annex
+  // roof plant on main block
+  waterTank(g, M, -12, -15, 1.2, true);
+  dstvDish(g, M, -8, floors * fh + 1.2, -8.5, 0);
+  acUnit(g, M, 10, floors * fh + 0.3, -8, 1);
+  // forecourt + flag plaza
+  slab(g, M, -18, 18, -8, 10, 0.03, 'band');
+  flagpole(g, M, 0, 6, 10, 'green');
+  fountain(g, M, -12, 4, 1.0);
+  fountain(g, M, 12, 4, 1.0);
+  signBoard(g, M, 'GOVERNMENT OFFICES', 10, 1.6, 0, floors * fh + 1.4, -7.8);
+  boundaryWall(g, M, 58, 48, 2.4, 8, 1.4);
+  guardPost(g, M, -24, 20, 0);
+  guardPost(g, M, 24, 20, Math.PI);
+  car(g, M, -8, 21, 180, 'white'); car(g, M, 6, 21, 180, 'black');
+  tree(g, M, -24, -20, 1.1); tree(g, M, 24, -20, 1.1); tree(g, M, -24, 8, 1.0); tree(g, M, 24, 8, 1.0);
+  return g;
+};
+
+// ===================== CITY HALL =====================
+GEN.city_hall = (M) => {
+  const g = new THREE.Group(); g.name = 'city_hall';
+  // main hall block
+  const W = 12, D = 10, h = 5;
+  box(g, M, 'cream', W, h, D, 0, h / 2, 0);
+  wallWithOpenings(g, M, { x0: -W / 2 + 0.4, x1: W / 2 - 0.4, z: D / 2, th: 0.3, baseY: 0, h, mat: 'cream',
+    windows: winRow(-W / 2 + 0.4, W / 2 - 0.4, 1.4, 3.6, 5, { x0: -2.2, x1: 2.2 }),
+    doors: [] });
+  wallWithOpenings(g, M, { x0: -2.2, x1: 2.2, z: D / 2, th: 0.3, baseY: 0, h, mat: 'cream',
+    windows: [], doors: doorsAt(0, 2.6) });
+  colonnade(g, M, -5.5, 5.5, D / 2 + 0.2, 0, h, 4, 0.6);
+  flatRoof(g, M, -W / 2 - 0.4, W / 2 + 0.4, -D / 2 - 0.4, D / 2 + 0.4, h, 0.16, 'alu');
+  // clock tower
+  const tx = 0, tz = -D / 2 + 2, tw = 4;
+  box(g, M, 'cream', tw, 12, tw, tx, 6, tz);
+  box(g, M, 'band', tw + 0.3, 0.4, tw + 0.3, tx, h + 0.2, tz);
+  clockFace(g, M, tx, 9.5, tz + tw / 2 + 0.06, 0.95, 0);
+  clockFace(g, M, tx, 9.5, tz - tw / 2 - 0.06, 0.95, Math.PI);
+  // tower top: hip cap + finial
+  gableRoof(g, M, tx - tw / 2 - 0.3, tx + tw / 2 + 0.3, tz - tw / 2 - 0.3, tz + tw / 2 + 0.3, 12, 14.2, 'zinc');
+  antenna(g, M, tx, 14.2, tz);
+  flagpole(g, M, -8, 8, 8, 'green');
+  coatOfArms(g, M, -4.5, h - 0.9, D / 2 + 0.25, 0.8, 0);
+  coatOfArms(g, M, 4.5, h - 0.9, D / 2 + 0.25, 0.8, 0);
+  signBoard(g, M, 'CITY HALL', 7, 1.3, 0, h + 0.9, D / 2 + 0.3);
+  boundaryWall(g, M, 21, 21, 2.2, 5, 1.2);
+  fountain(g, M, 0, 10, 0.9);
+  tree(g, M, -10, -9, 1.0); tree(g, M, 10, -9, 1.0);
+  return g;
+};
+
+// ===================== BANK =====================
+GEN.bank = (M) => {
+  const g = new THREE.Group(); g.name = 'bank';
+  const W = 14, D = 10, h = 4.2;
+  // dark stone base course + render body
+  box(g, M, 'darkMetal', W, 0.5, D, 0, 0.25, 0);
+  box(g, M, 'whitePaint', W, h - 0.5, D, 0, 0.5 + (h - 0.5) / 2, 0);
+  // glass curtain lobby front with mullions
+  wallWithOpenings(g, M, { x0: -W / 2 + 0.5, x1: W / 2 - 0.5, z: D / 2, th: 0.3, baseY: 0, h, mat: 'whitePaint',
+    windows: [{ x0: -5.6, x1: 5.6, y0: 0.6, y1: h - 0.6, glass: true }],
+    doors: [] });
+  glassCurtain(g, M, -5.6, 5.6, D / 2 + 0.16, 0.6, h - 0.6, 6);
+  wallWithOpenings(g, M, { x0: -1.7, x1: 1.7, z: D / 2, th: 0.3, baseY: 0, h, mat: 'whitePaint',
+    windows: [], doors: doorsAt(0, 2.4) });
+  canopy(g, M, -3, 3, D / 2 + 0.1, h - 0.2, 2.2, 3);
+  // side windows
+  for (const sx of [-1, 1]) {
+    wallWithOpenings(g, M, { x0: -D / 2 + 1, x1: D / 2 - 1, z: 0, th: 0.28, baseY: 0, h, mat: 'whitePaint',
+      windows: winRow(-D / 2 + 1, D / 2 - 1, 1.4, 3.0, 3), doors: [] });
+    const side = new THREE.Group();
+    side.rotation.y = Math.PI / 2 * sx;
+    side.position.x = sx * (W / 2 - 0.14);
+    g.add(side);
+  }
+  flatRoof(g, M, -W / 2 - 0.3, W / 2 + 0.3, -D / 2 - 0.3, D / 2 + 0.3, h, 0.16, 'alu');
+  // gold band + signage
+  box(g, M, 'yellow', W + 0.1, 0.3, 0.12, 0, h - 0.75, D / 2 + 0.15);
+  signBoard(g, M, 'COMMUNITY BANK', 9, 1.4, 0, h + 1.0, D / 2 + 0.2, 'blue');
+  // ATM pod
+  box(g, M, 'darkMetal', 2.4, 2.6, 1.4, W / 2 + 1.6, 1.3, D / 2 - 1.5, 'atm_pod');
+  box(g, M, 'glass', 1.6, 1.0, 0.05, W / 2 + 1.6, 1.5, D / 2 - 0.78, 'atm_glass');
+  boundaryWall(g, M, 21, 21, 2.2, 4.5, 1.2);
+  guardPost(g, M, -9, 9, Math.PI / 4);
+  car(g, M, 5, 10, 180, 'black');
+  tree(g, M, -10, -9, 1.0);
+  return g;
+};
+
+// ===================== HOSPITALITY: HOTEL =====================
+// Plot 74 x 50. Front faces +Z.
+
+
+=== STDERR ===

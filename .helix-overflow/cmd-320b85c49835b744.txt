@@ -1,0 +1,75 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && echo '=== full civic plot data from audit ===' && node -e "
+const a = require('./assets/reports/world_audit.json');
+const plots = Array.isArray(a.plots) ? a.plots : (a.plots && a.plots.plots) || a;
+const codes = ['airport','low_line','low_bedsit','rental','police','judiciary','government','city_hall','bank','hotel','governor_villa'];
+const arr = Array.isArray(plots)?plots:Object.values(plots);
+codes.forEach(c => { const p = arr.find(x=>x.code===c); console.log(c, JSON.stringify(p)); });
+" 2>&1 | grep -viE 'MODULE_TYPELESS|Reparsing|trace-warnings|type.*module' 
+echo '=== BUILT_PLOTS in city.js ==='
+grep -n "BUILT_PLOTS" city.js
+echo '---'
+sed -n "$(grep -n 'BUILT_PLOTS' city.js | head -1 | cut -d: -f1),+10p" city.js
+echo '=== plotAt / CITY ==='
+grep -n "const CITY\|function plotAt\|const plotAt\|mainRoadZ\|avenuesX\|streetsZ\|worldW\|worldH" city.js | head -30
+Cwd: /workspace/repo
+
+=== STDOUT ===
+=== full civic plot data from audit ===
+airport {"code":"airport","label":"Airport","x":18,"z":12,"w":32,"d":24,"front":"S","rotY":0}
+low_line {"code":"low_line","label":"Low-Class Housing: Line Houses","x":83.5,"z":13,"w":25,"d":22,"front":"S","rotY":0}
+low_bedsit {"code":"low_bedsit","label":"Low-Class Housing: Bed-Sitters","x":110,"z":13,"w":24,"d":22,"front":"S","rotY":0}
+rental {"code":"rental","label":"Rental Desk","x":83,"z":49,"w":26,"d":22,"front":"N","rotY":180}
+police {"code":"police","label":"Police Station","x":110,"z":49,"w":24,"d":22,"front":"E","rotY":90}
+judiciary {"code":"judiciary","label":"Judiciary (Courts)","x":96,"z":76,"w":52,"d":20,"front":"E","rotY":90}
+government {"code":"government","label":"Government Offices Area","x":168,"z":61,"w":60,"d":50,"front":"N","rotY":180}
+city_hall {"code":"city_hall","label":"City Hall","x":211,"z":48,"w":22,"d":22,"front":"E","rotY":90}
+bank {"code":"bank","label":"Bank","x":211,"z":75,"w":22,"d":22,"front":"E","rotY":90}
+hotel {"code":"hotel","label":"Hotel","x":275,"z":61,"w":74,"d":50,"front":"N","rotY":180}
+governor_villa {"code":"governor_villa","label":"Governor's Villa","x":96,"z":127,"w":52,"d":48,"front":"N","rotY":180}
+=== BUILT_PLOTS in city.js ===
+164:const BUILT_PLOTS = ['high_school'];
+169:    if (BUILT_PLOTS.includes(p.code)) return;
+---
+const BUILT_PLOTS = ['high_school'];
+  const padMat = new THREE.MeshStandardMaterial({ color: 0xb4ae9f, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const edgeMat = new THREE.MeshStandardMaterial({ color: 0xf2c200, roughness: 0.7, emissive: 0x5a4600, emissiveIntensity: 0.4 });
+  PLOTS.forEach(p => {
+    flat(new THREE.PlaneGeometry(p.w, p.d), padMat, p.x, 0.0, p.z);
+    if (BUILT_PLOTS.includes(p.code)) return;
+    const e = 0.35, top = 0.012;
+    [[p.w, e, p.x, p.z - p.d / 2 + e / 2], [p.w, e, p.x, p.z + p.d / 2 - e / 2], [e, p.d - 2 * e, p.x - p.w / 2 + e / 2, p.z], [e, p.d - 2 * e, p.x + p.w / 2 - e / 2, p.z]]
+      .forEach(([w, d, x, z]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, top, d), edgeMat); m.position.set(x, top / 2 + 0.002, z); m.receiveShadow = true; group.add(m); });
+    // a bright strip on the FRONT edge, so you can see which way a building will face
+    const fw = p.front === 'N' || p.front === 'S' ? p.w * 0.5 : 0.9, fd = p.front === 'E' || p.front === 'W' ? p.d * 0.5 : 0.9;
+=== plotAt / CITY ===
+18:export const CITY = {
+19:  worldW: 360, worldH: 240,
+21:  mainRoadZ: 28.75, mainRoadW: 3.5,
+22:  avenuesX: [130, 230, 320], avenueW: 8,
+23:  streetsZ: [95, 160, 215], streetW: 7,
+64:  c.push([Math.abs(z + d / 2 - CITY.mainRoadZ) , 'S'], [Math.abs(z - d / 2 - CITY.mainRoadZ), 'N']);    // main road lies south of the north strip, north of the rest
+65:  CITY.streetsZ.forEach(sz => { c.push([Math.abs(z + d / 2 - sz), 'S'], [Math.abs(z - d / 2 - sz), 'N']); });
+66:  CITY.avenuesX.forEach(ax => { c.push([Math.abs(x + w / 2 - ax), 'E'], [Math.abs(x - w / 2 - ax), 'W']); });
+78:export const plotAt = code => PLOTS.find(p => p.code === code);
+82:  const { avenuesX, streetsZ, avenueW, streetW, pave, worldW, worldH, gateX } = CITY;
+84:  avenuesX.forEach(ax => r.push({ x0: ax - avenueW / 2 - pave - 0.3, x1: ax + avenueW / 2 + pave + 0.3, z0: 0, z1: worldH }));
+85:  streetsZ.forEach(sz => r.push({ x0: gateX, x1: worldW, z0: sz - streetW / 2 - pave - 0.3, z1: sz + streetW / 2 + pave + 0.3 }));
+91:export const JUNCTION_GAPS_X = CITY.avenuesX.map(ax => [ax - CITY.avenueW / 2 - 0.2, ax + CITY.avenueW / 2 + 0.2]);
+130:  const { avenuesX, streetsZ, avenueW, streetW, pave, worldH, worldW, gateX, mainRoadZ, mainRoadW } = CITY;
+138:  const xEdges = [gateX + 1.5, ...avenuesX.flatMap(ax => [ax - avenueW / 2, ax + avenueW / 2]), worldW - 1];
+143:  avenuesX.forEach(ax => {
+144:    const tex = aT.clone(); tex.needsUpdate = true; tex.repeat.set(1, worldH / 8);
+145:    flat(new THREE.PlaneGeometry(avenueW, worldH), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), ax, -0.015, worldH / 2);
+146:    [...streetsZ, mainRoadZ].forEach(sz => flat(new THREE.PlaneGeometry(avenueW, sz === mainRoadZ ? mainRoadW : streetW), jMat, ax, -0.005, sz));
+148:  streetsZ.forEach(sz => streetSpans.forEach(([x0, x1]) => {
+154:  const gapsZ = [...streetsZ.map(s => [s - streetW / 2 - pave, s + streetW / 2 + pave]), [mainRoadZ - mainRoadW / 2 - pave - 0.2, mainRoadZ + mainRoadW / 2 + pave + 0.2]].sort((a, b) => a[0] - b[0]);
+156:  avenuesX.forEach(ax => [-1, 1].forEach(side => span(0, worldH, gapsZ).forEach(([z0, z1]) =>
+158:  const gapsX = avenuesX.map(ax => [ax - avenueW / 2 - pave, ax + avenueW / 2 + pave]);
+159:  streetsZ.forEach(sz => [-1, 1].forEach(side => span(gateX + 1.5, worldW - 1, gapsX).forEach(([x0, x1]) =>
+183:  avenuesX.forEach(ax => [-1, 1].forEach(side => { for (let z = 14; z < worldH - 6; z += 30) {
+184:    if ([...streetsZ, mainRoadZ].some(sz => Math.abs(z - sz) < streetW / 2 + pave + 1.5)) continue;
+201:  avenuesX.forEach((ax, ai) => [-1, 1].forEach(side => { for (let z = 29 + (side > 0 ? 15 : 0); z < worldH - 8; z += 30) {
+202:    if ([...streetsZ, mainRoadZ].some(sz => Math.abs(z - sz) < streetW / 2 + pave + 3)) continue;
+
+
+=== STDERR ===

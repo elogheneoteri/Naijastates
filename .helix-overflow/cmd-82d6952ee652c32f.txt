@@ -1,0 +1,160 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && sed -n '391,430p;510,620p' scripts/glbs/lib.mjs && echo "=== TOTAL LINES ===" && wc -l scripts/glbs/lib.mjs
+Cwd: /workspace/repo
+
+=== STDOUT ===
+export function boundaryWall(parent, M, W, D, h = 2.2, gateW = 4, inset = 1.6, mat = 'boundWall') {
+  const x0 = -W / 2 + inset, x1 = W / 2 - inset, z1 = D / 2 - inset, z0 = -D / 2 + inset;
+  const th = 0.22;
+  // back, left, right
+  box(parent, M, mat, x1 - x0, h, th, 0, h / 2, z0);
+  box(parent, M, mat, th, h, z1 - z0, x0, h / 2, 0);
+  box(parent, M, mat, th, h, z1 - z0, x1, h / 2, 0);
+  // front, split around gate
+  const g0 = -gateW / 2, g1 = gateW / 2;
+  if (g0 > x0) box(parent, M, mat, g0 - x0, h, th, (x0 + g0) / 2, h / 2, z1);
+  if (x1 > g1) box(parent, M, mat, x1 - g1, h, th, (g1 + x1) / 2, h / 2, z1);
+  // coping + bottle caps
+  for (const [cx, cz, Lx, Lz] of [[0, z0, x1 - x0, th], [x0, 0, th, z1 - z0], [x1, 0, th, z1 - z0],
+    [((x0 + g0) / 2 + x0) / 2 + x0 / 2 - x0 / 2, z1, Math.max(0.1, (g0 - x0) / 2), th]]) {
+    box(parent, M, 'band', Lx + 0.06, 0.07, Lz + 0.06, cx, h + 0.035, cz);
+  }
+  if (x0 < g0) {
+    const w1 = g0 - x0;
+    box(parent, M, 'band', w1 + 0.06, 0.07, th + 0.06, x0 + w1 / 2, h + 0.035, z1);
+  }
+  if (g1 < x1) {
+    const w2 = x1 - g1;
+    box(parent, M, 'band', w2 + 0.06, 0.07, th + 0.06, x1 - w2 / 2, h + 0.035, z1);
+  }
+  // gate posts + bars
+  for (const px of [g0 - 0.25, g1 + 0.25]) {
+    box(parent, M, 'band', 0.5, h + 0.5, 0.5, px, (h + 0.5) / 2, z1);
+    cyl(parent, M.gate, 0.06, 0.4, px, h + 0.7, z1, 8);
+  }
+  const bars = Math.floor(gateW / 0.35);
+  for (let i = 0; i <= bars; i++) {
+    const bx = g0 + (gateW * i) / bars;
+    box(parent, M, 'gate', 0.05, h - 0.3, 0.05, bx, (h - 0.3) / 2 + 0.15, z1);
+  }
+  box(parent, M, 'gate', gateW, 0.08, 0.05, 0, h - 0.2, z1);
+  box(parent, M, 'gate', gateW, 0.08, 0.05, 0, 0.35, z1);
+}
+
+// Small guard hut on a corner of the boundary.
+export function guardPost(parent, M, x, z, rotY = 0) {
+export function antenna(parent, M, x, y, z) {
+  const g = new THREE.Group();
+  g.name = 'antenna';
+  cyl(g, M.darkMetal, 0.02, 1.6, 0, 0.8, 0, 6);
+  for (let i = 0; i < 5; i++) {
+    const w = 1.1 - i * 0.2;
+    box(g, M, 'darkMetal', w, 0.03, 0.03, 0, 0.5 + i * 0.28, 0);
+  }
+  g.position.set(x, y, z);
+  parent.add(g);
+  return g;
+}
+
+// ---------------------------------------------------------------- site furniture
+export function flagpole(parent, M, x, z, h = 7, flag = 'green') {
+  const g = new THREE.Group();
+  g.name = 'flagpole';
+  cyl(g, M.whitePaint, 0.07, h, 0, h / 2, 0, 8);
+  box(g, M, 'band', 0.18, 0.18, 0.18, 0, h, 0);
+  box(g, M, flag === 'green' ? 'nigerianFlag' : 'blue', 1.9, 1.25, 0.04, 1.0, h - 0.95, 0, 'flag_cloth');
+  g.position.set(x, 0, z);
+  parent.add(g);
+  return g;
+}
+export function colonnade(parent, M, x0, x1, zEdge, yBase, h, n = 4, gap = 0.6) {
+  const g = new THREE.Group();
+  g.name = 'colonnade';
+  const span = x1 - x0;
+  for (let i = 0; i < n; i++) {
+    const px = x0 + gap + (span - gap * 2) * (i / (n - 1));
+    cyl(g, M.concrete, 0.28, h, px, yBase + h / 2, zEdge, 10, `column_${i}`);
+    box(g, M, 'concrete', 0.8, 0.14, 0.8, px, yBase, zEdge);
+    box(g, M, 'concrete', 0.8, 0.14, 0.8, px, yBase + h, zEdge);
+  }
+  box(g, M, 'concrete', span + 0.5, 0.35, 1.1, (x0 + x1) / 2, yBase + h + 0.25, zEdge, 'entablature');
+  box(g, M, 'concrete', span + 0.8, 0.2, 1.3, (x0 + x1) / 2, yBase + h + 0.5, zEdge, 'cornice');
+  parent.add(g);
+  return g;
+}
+export function clockFace(parent, M, x, y, z, r = 0.9, rotY = 0) {
+  const g = new THREE.Group();
+  g.name = 'clock';
+  cyl(g, M.whitePaint, r, 0.12, 0, 0, 0, 24, 'clock_body');
+  g.children[0].rotation.x = Math.PI / 2;
+  cyl(g, M.whitePaint, r, 0.05, 0, 0, 0.07, 24, 'clock_face');
+  g.children[1].rotation.x = Math.PI / 2;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    box(g, M.darkMetal, 0.05, 0.12, 0.02, Math.sin(a) * (r - 0.14), Math.cos(a) * (r - 0.14), 0.1, `tick_${i}`);
+  }
+  box(g, M.darkMetal, 0.05, 0.55, 0.02, 0, 0.27, 0.11, 'clock_hour');
+  box(g, M, 'darkMetal', 0.035, 0.72, 0.02, 0.16, 0.42, 0.11, 'clock_min');
+  g.children[g.children.length - 2].rotation.z = -Math.PI / 3;
+  g.children[g.children.length - 1].rotation.z = -Math.PI * 0.75;
+  g.position.set(x, y, z);
+  g.rotation.y = rotY;
+  parent.add(g);
+  return g;
+}
+export function coatOfArms(parent, M, x, y, z, s = 1, rotY = 0) {
+  const g = new THREE.Group();
+  g.name = 'coat_of_arms';
+  box(g, M, 'cream', 1.5 * s, 1.5 * s, 0.12 * s, 0, 0, 0, 'panel');
+  box(g, M, 'nigerianFlag', 1.2 * s, 0.16 * s, 0.14 * s, 0, 0.45 * s, 0);
+  cyl(g, M.darkMetal, 0.28 * s, 0.16 * s, 0, 0, 0.06 * s, 12, 'eagle_body');
+  box(g, M.darkMetal, 0.5 * s, 0.08 * s, 0.1 * s, 0, 0.1 * s, 0.06 * s);
+  g.position.set(x, y, z);
+  g.rotation.y = rotY;
+  parent.add(g);
+  return g;
+}
+export function fountain(parent, M, x, z, s = 1) {
+  const g = new THREE.Group();
+  g.name = 'fountain';
+  cyl(g, M.concrete, 1.6 * s, 0.5 * s, 0, 0.25 * s, 0, 20, 'basin_ring');
+  cyl(g, M.pool, 1.45 * s, 0.06 * s, 0, 0.42 * s, 0, 20, 'water_surface');
+  cyl(g, M.concrete, 0.18 * s, 1.1 * s, 0, 1.0 * s, 0, 10);
+  cyl(g, M.concrete, 0.55 * s, 0.12 * s, 0, 1.55 * s, 0, 16, 'upper_basin');
+  g.position.set(x, 0, z);
+  parent.add(g);
+  return g;
+}
+export function glassCurtain(parent, M, x0, x1, z, y0, y1, bays = 6) {
+  const g = new THREE.Group();
+  g.name = 'glass_curtain';
+  const span = x1 - x0, hgt = y1 - y0, ymid = (y0 + y1) / 2;
+  box(parent, M, 'glass', span, hgt, 0.06, (x0 + x1) / 2, ymid, z, 'glass_sheet');
+  const bw = span / bays;
+  for (let i = 0; i <= bays; i++) {
+    box(parent, M, 'darkMetal', 0.1, hgt, 0.14, x0 + i * bw, ymid, z, `mullion_${i}`);
+  }
+  for (let j = 0; j <= 1; j++) {
+    box(parent, M, 'darkMetal', span, 0.12, 0.14, (x0 + x1) / 2, y0 + j * hgt, z, `transom_${j}`);
+  }
+  parent.add(g);
+  return g;
+}
+
+// ---------------------------------------------------------------- export / compress
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
+import { NodeIO } from '@gltf-transform/core';
+import { dedup, prune, quantize, flatten } from '@gltf-transform/functions';
+
+export async function exportGLB(root, outPath) {
+  const exporter = new GLTFExporter();
+  const glb = await new Promise((res, rej) => exporter.parse(root, res, rej, { binary: true, onlyVisible: true }));
+  return Buffer.from(glb);
+}
+
+export async function optimizeGLB(raw) {
+  const io = new NodeIO();
+=== TOTAL LINES ===
+629 scripts/glbs/lib.mjs
+
+
+=== STDERR ===

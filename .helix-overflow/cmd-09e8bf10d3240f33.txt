@@ -1,0 +1,72 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && sed -n '150,215p' city.js
+Cwd: /workspace/repo
+
+=== STDOUT ===
+    flat(new THREE.PlaneGeometry(len, streetW), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), (x0 + x1) / 2, -0.015, sz);
+  }));
+
+  // pavements beside the avenues and streets (they stop where another road crosses)
+  const gapsZ = [...streetsZ.map(s => [s - streetW / 2 - pave, s + streetW / 2 + pave]), [mainRoadZ - mainRoadW / 2 - pave - 0.2, mainRoadZ + mainRoadW / 2 + pave + 0.2]].sort((a, b) => a[0] - b[0]);
+  const span = (from, to, gaps) => { const out = []; let a = from; gaps.forEach(([g0, g1]) => { if (g0 > a) out.push([a, Math.min(g0, to)]); a = Math.max(a, g1); }); if (a < to) out.push([a, to]); return out.filter(([p, q]) => q - p > 0.5); };
+  avenuesX.forEach(ax => [-1, 1].forEach(side => span(0, worldH, gapsZ).forEach(([z0, z1]) =>
+    flat(new THREE.PlaneGeometry(pave, z1 - z0), paveMat, ax + side * (avenueW / 2 + pave / 2), -0.01, (z0 + z1) / 2))));
+  const gapsX = avenuesX.map(ax => [ax - avenueW / 2 - pave, ax + avenueW / 2 + pave]);
+  streetsZ.forEach(sz => [-1, 1].forEach(side => span(gateX + 1.5, worldW - 1, gapsX).forEach(([x0, x1]) =>
+    flat(new THREE.PlaneGeometry(x1 - x0, pave), paveMat, (x0 + x1) / 2, -0.01, sz + side * (streetW / 2 + pave / 2)))));
+
+  // ----- empty building plots -----
+// Plots that already have a building: they keep their plain ground pad, but lose the yellow border, front strip and floating sign.
+const BUILT_PLOTS = ['high_school'];
+  const padMat = new THREE.MeshStandardMaterial({ color: 0xb4ae9f, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const edgeMat = new THREE.MeshStandardMaterial({ color: 0xf2c200, roughness: 0.7, emissive: 0x5a4600, emissiveIntensity: 0.4 });
+  PLOTS.forEach(p => {
+    flat(new THREE.PlaneGeometry(p.w, p.d), padMat, p.x, 0.0, p.z);
+    if (BUILT_PLOTS.includes(p.code)) return;
+    const e = 0.35, top = 0.012;
+    [[p.w, e, p.x, p.z - p.d / 2 + e / 2], [p.w, e, p.x, p.z + p.d / 2 - e / 2], [e, p.d - 2 * e, p.x - p.w / 2 + e / 2, p.z], [e, p.d - 2 * e, p.x + p.w / 2 - e / 2, p.z]]
+      .forEach(([w, d, x, z]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, top, d), edgeMat); m.position.set(x, top / 2 + 0.002, z); m.receiveShadow = true; group.add(m); });
+    // a bright strip on the FRONT edge, so you can see which way a building will face
+    const fw = p.front === 'N' || p.front === 'S' ? p.w * 0.5 : 0.9, fd = p.front === 'E' || p.front === 'W' ? p.d * 0.5 : 0.9;
+    const fx = p.x + (p.front === 'E' ? p.w / 2 - 1.1 : p.front === 'W' ? -p.w / 2 + 1.1 : 0), fz = p.z + (p.front === 'S' ? p.d / 2 - 1.1 : p.front === 'N' ? -p.d / 2 + 1.1 : 0);
+    const f = new THREE.Mesh(new THREE.BoxGeometry(fw, 0.02, fd), edgeMat); f.position.set(fx, 0.012, fz); group.add(f);
+    const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: signTexture(p.label, `Building site  \u00B7  ${p.w} \u00D7 ${p.d} m  \u00B7  front: ${FACE_NAME[p.front]}`), transparent: true, depthWrite: false }));
+    const sw = Math.min(16, Math.max(9, p.w * 0.45)); sign.scale.set(sw, sw / 4, 1); sign.position.set(p.x, 4.6, p.z); group.add(sign);
+  });
+
+  // ----- street lamps along the avenues (looks only: no real lights, to keep phones fast) -----
+  const lamps = [];
+  avenuesX.forEach(ax => [-1, 1].forEach(side => { for (let z = 14; z < worldH - 6; z += 30) {
+    if ([...streetsZ, mainRoadZ].some(sz => Math.abs(z - sz) < streetW / 2 + pave + 1.5)) continue;
+    lamps.push([ax + side * (avenueW / 2 + pave / 2), z, side]);
+  } }));
+  const pole = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.07, 0.1, 6, 8).translate(0, 3, 0), new THREE.MeshStandardMaterial({ color: 0x4b5057, roughness: 0.6, metalness: 0.4 }), lamps.length);
+  const arm = new THREE.InstancedMesh(new THREE.BoxGeometry(1.4, 0.08, 0.08), pole.material, lamps.length);
+  const head = new THREE.InstancedMesh(new THREE.BoxGeometry(0.55, 0.12, 0.3), new THREE.MeshStandardMaterial({ color: 0xfff3c4, emissive: 0xffe9a0, emissiveIntensity: 0.9 }), lamps.length);
+  const o = new THREE.Object3D();
+  lamps.forEach(([x, z, side], i) => {
+    o.rotation.set(0, 0, 0); o.position.set(x, 0, z); o.updateMatrix(); pole.setMatrixAt(i, o.matrix);
+    o.position.set(x - side * 0.7, 6.0, z); o.updateMatrix(); arm.setMatrixAt(i, o.matrix);
+    o.position.set(x - side * 1.35, 5.93, z); o.updateMatrix(); head.setMatrixAt(i, o.matrix);
+  });
+  [pole, arm, head].forEach(m => { m.castShadow = false; m.frustumCulled = false; group.add(m); });
+
+  // ----- trees along the avenues: coconut palms with a mango tree every fourth spot (the light copies of your models, see props/) -----
+  const insidePlot = (x, z) => PLOTS.some(p => Math.abs(x - p.x) < p.w / 2 + 1.5 && Math.abs(z - p.z) < p.d / 2 + 1.5);
+  const spots = [];
+  avenuesX.forEach((ax, ai) => [-1, 1].forEach(side => { for (let z = 29 + (side > 0 ? 15 : 0); z < worldH - 8; z += 30) {
+    if ([...streetsZ, mainRoadZ].some(sz => Math.abs(z - sz) < streetW / 2 + pave + 3)) continue;
+    const x = ax + side * (avenueW / 2 + pave + 0.9);
+    if (insidePlot(x, z)) continue;
+    spots.push([x, z, (spots.length + ai) % 4 === 3 ? 'mango_tree' : 'coconut_palm']);
+  } }));
+  (async () => {
+    for (const [x, z, name] of spots) {
+      try { const t = await loadProp(name, { rotY: (x * 7 + z * 13) % 6.28 }); t.position.set(x, 0, z); t.traverse(m => { if (m.isMesh) m.castShadow = false; }); group.add(t); }
+      catch (e) { console.warn('city tree not loaded (' + name + ')', e); break; }
+    }
+  })();
+
+  return { group };
+
+
+=== STDERR ===

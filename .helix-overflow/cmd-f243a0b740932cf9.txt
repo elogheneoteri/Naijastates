@@ -1,0 +1,113 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && sed -n '29,58p' city.js && echo ===== && sed -n '1055,1095p' game.js && echo ===== && grep -n "^export\|^function\|^const " scripts/glbs/lib.mjs | head -60
+Cwd: /workspace/repo
+
+=== STDOUT ===
+const RAW_PLOTS = [
+  // ----- arrival side (west of the gate, north of the main road, next to the immigration office, across from the camp) -----
+  ['airport',        'Airport',                        18,  12, 32, 24],
+  // ----- north strip (faces the main road) -----
+  ['low_line',       'Low-Class Housing: Line Houses', 83.5, 13, 25, 22],
+  ['low_bedsit',     'Low-Class Housing: Bed-Sitters', 110, 13, 24, 22],
+  ['university',     'University',                    202, 188, 38, 37],   // swapped with the High School plot
+  ['rural',          'Rural District',                338,  12, 20, 20],   // moved to the riverside NE corner (see assets/reports/rural_plot_preview.json); old site (275, 13) left as open ground
+  // ----- central zone -----
+  ['rental',         'Rental Desk',                    83,  49, 26, 22],
+  ['police',         'Police Station',                110,  49, 24, 22],
+  ['judiciary',      'Judiciary (Courts)',             96,  76, 52, 20],
+  ['government',     'Government Offices Area',       168,  61, 60, 50],
+  ['city_hall',      'City Hall',                     211,  48, 22, 22],
+  ['bank',           'Bank',                          211,  75, 22, 22],
+  ['hotel',          'Hotel',                         275,  61, 74, 50],
+  ['governor_villa', "Governor's Villa",               96, 127, 52, 48],
+  ['high_housing',   'High-Class Housing',            180, 127, 84, 48],
+  ['commercial',     'Commercial District',           275, 127, 74, 48],
+  // ----- south zone -----
+  ['mid_housing',    'Mid-Class Housing',              96, 188, 52, 37],
+  ['hospital',       'Hospital',                      160, 188, 40, 37],
+  ['high_school',    'High School',                   180,  13, 84, 22],   // swapped with the University plot (north strip, faces the main road)
+  ['market',         'Market',                        275, 188, 74, 37],
+  ['transport',      'Transport District',            180, 231, 84, 14],
+  ['broadcasting',   'Broadcasting Station',          275, 231, 60, 14],
+  // ----- east edge -----
+  ['industrial',     'Industrial District',           343,  62, 28, 50],
+  ['automotive',     'Automotive District',           343, 127, 28, 48],
+  ['oil_well',       'Oil Well',                      343, 188, 28, 37]
+=====
+    this.scene.add(this.gateGroup);
+    this.gateBox = { x0: gx - 0.2, x1: gx + 0.3, z0: gz0, z1: gz1 };
+    this.gateClosed = true;
+  }
+
+  // ----- buildings (the .glb files) -----
+  addBuilding(b) {
+    const root = new THREE.Group();
+    root.position.set(b.x, 0, b.z);
+    root.rotation.y = THREE.MathUtils.degToRad(b.rotY);
+    this.scene.add(root);
+
+    // Collision boxes: rotate the relative boxes by rotY (multiples of 90 only)
+    const r = ((Math.round(b.rotY / 90) % 4) + 4) % 4;
+    b.boxes.forEach(([x0, x1, z0, z1, lv]) => {      // lv (optional): 0 = only solid downstairs, 1 = only solid upstairs, missing = both floors
+      let a = [x0, x1, z0, z1];
+      for (let i = 0; i < r; i++) a = [a[2], a[3], -a[1], -a[0]];   // 90 degrees turn
+      this.boxes.push({ x0: b.x + a[0], x1: b.x + a[1], z0: b.z + a[2], z1: b.z + a[3], lv });
+    });
+
+    // Name zone for the top-left text
+    b.zone = { x0: b.x - 14, x1: b.x + 14, z0: b.z - 14, z1: b.z + 14 };
+
+    if (b.interior) {                    // a room you can walk into: hidden until the player is inside
+      b.room = b.interior();
+      b.inside = false;
+      root.add(b.room.group, b.room.marker);
+      if (b.stairs) b.room.group.position.y = b.stairs.rise;     // Step 2: the school floor sits on top of the steps (the marker outside stays on the pavement)
+    }
+    if (b.stairs) addStairs(b.stairs, b.x, b.z, b.rotY);          // Step 2: the steps (stairs.js)
+
+    if (b.extras) {                      // props around the building (kept visible when the player is inside)
+      const ex = b.extras();
+      root.add(ex.group);
+      if (ex.update) this.animators.push(ex.update);
+    }
+
+    if (b.build) {                       // building made in code instead of a .glb file
+      const built = b.build();
+      root.add(built.group);
+      if (built.update) this.animators.push(built.update);
+=====
+7:const _canvasCache = new Map();
+8:function canvasTex(key, w, h, draw) {
+27:function nodeCanvasTex(key, w, h, draw) {
+71:function parseColor(s) {
+80:function parseAlpha(s) {
+86:export function mulberry32(seed) {
+95:export function rngFor(code, salt = 0) {
+103:export function makeMaterials(variant = {}) {
+243:export function box(parent, M, mat, w, h, d, x, y, z, name) {
+251:export function cyl(parent, mat, r, h, x, y, z, seg = 10, name) {
+261:export function wallWithOpenings(parent, M, wall) {
+317:export function flatRoof(parent, M, x0, x1, z0, z1, y, th = 0.12, mat = 'zinc') {
+325:export function gableRoof(parent, M, x0, x1, z0, z1, eaveY, apexY, mat = 'zinc') {
+347:export function canopy(parent, M, x0, x1, zEdge, y, depth = 1.6, posts = 3) {
+355:export function signBoard(parent, M, text, w, h, x, y, z, mat = 'signBoard', rotY = 0) {
+372:function hashStr(s) {
+380:export function markEntrance(parent, x, z, w = 2.4) {
+388:const M0 = makeMaterials();
+391:export function boundaryWall(parent, M, W, D, h = 2.2, gateW = 4, inset = 1.6, mat = 'boundWall') {
+430:export function guardPost(parent, M, x, z, rotY = 0) {
+447:export function genHouse(parent, M, x, z, rotY = 0, s = 1) {
+468:export function waterTank(parent, M, x, z, s = 1, overhead = true) {
+484:export function dstvDish(parent, M, x, y, z, rotY = 0) {
+496:export function acUnit(parent, M, x, y, z, face = 1) {
+510:export function antenna(parent, M, x, y, z) {
+524:export function flagpole(parent, M, x, z, h = 7, flag = 'green') {
+534:export function colonnade(parent, M, x0, x1, zEdge, yBase, h, n = 4, gap = 0.6) {
+549:export function clockFace(parent, M, x, y, z, r = 0.9, rotY = 0) {
+569:export function coatOfArms(parent, M, x, y, z, s = 1, rotY = 0) {
+581:export function fountain(parent, M, x, z, s = 1) {
+592:export function glassCurtain(parent, M, x0, x1, z, y0, y1, bays = 6) {
+613:export async function exportGLB(root, outPath) {
+619:export async function optimizeGLB(raw) {
+
+
+=== STDERR ===

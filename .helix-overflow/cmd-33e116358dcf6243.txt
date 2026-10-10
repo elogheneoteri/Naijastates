@@ -1,0 +1,107 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && sed -n '261,360p' scripts/glbs/lib.mjs
+Cwd: /workspace/repo
+
+=== STDOUT ===
+export function wallWithOpenings(parent, M, wall) {
+  const { x0, x1, z, th = 0.25, baseY = 0, h, mat = 'wall', windows = [], doors = [] } = wall;
+  const W = x1 - x0;
+  const mk = (wx, wy, ww, wh, m = mat) => box(parent, M, m, ww, wh, th, x0 + wx + ww / 2, baseY + wy + wh / 2, z);
+  // sort openings by x
+  const opens = [
+    ...windows.map(o => ({ ...o, kind: 'w' })),
+    ...doors.map(o => ({ ...o, kind: 'd' })),
+  ].sort((a, b) => a.x0 - b.x0);
+  // left/right/top pieces between openings
+  let cursor = 0;
+  for (const o of opens) {
+    if (o.x0 > cursor) mk(cursor, 0, o.x0 - cursor, h);           // pier
+    if (o.y0 > 0) mk(o.x0, 0, o.x1 - o.x0, o.y0);                  // below sill/door
+    if (o.y1 < h) mk(o.x0, o.y1, o.x1 - o.x0, h - o.y1);           // above head
+    cursor = Math.max(cursor, o.x1);
+  }
+  if (cursor < W) mk(cursor, 0, W - cursor, h);
+  // glass + frames + grilles
+  for (const o of opens) {
+    const cw = o.x1 - o.x0, ch = o.y1 - o.y0;
+    if (o.kind === 'w' && o.glass !== false) {
+      box(parent, M, 'glass', cw - 0.08, ch - 0.08, 0.04, x0 + o.x0 + cw / 2, baseY + o.y0 + ch / 2, z);
+      // frame
+      const f = 0.06;
+      box(parent, M, 'glassFrame', cw, f, th + 0.02, x0 + o.x0 + cw / 2, baseY + o.y0 + f / 2, z);
+      box(parent, M, 'glassFrame', cw, f, th + 0.02, x0 + o.x0 + cw / 2, baseY + o.y1 - f / 2, z);
+      box(parent, M, 'glassFrame', f, ch, th + 0.02, x0 + o.x0 + f / 2, baseY + o.y0 + ch / 2, z);
+      box(parent, M, 'glassFrame', f, ch, th + 0.02, x0 + o.x1 - f / 2, baseY + o.y0 + ch / 2, z);
+    }
+    if (o.kind === 'w' && o.grille) {
+      const bars = Math.max(2, Math.floor(cw / 0.22));
+      for (let i = 0; i <= bars; i++) {
+        const bx = x0 + o.x0 + (cw * i) / bars;
+        box(parent, M, 'grille', 0.035, ch - 0.05, 0.03, bx, baseY + o.y0 + ch / 2, z + th / 2 + 0.03);
+      }
+      for (let j = 0; j <= 2; j++) {
+        const by = baseY + o.y0 + (ch * j) / 2;
+        box(parent, M, 'grille', cw - 0.05, 0.035, 0.03, x0 + o.x0 + cw / 2, by, z + th / 2 + 0.03);
+      }
+    }
+    if (o.kind === 'w' && o.louvre) {
+      const slats = Math.floor(ch / 0.12);
+      for (let i = 0; i < slats; i++) {
+        const s = box(parent, M, 'glassFrame', cw - 0.06, 0.05, 0.06, x0 + o.x0 + cw / 2, baseY + o.y0 + 0.06 + i * 0.11, z);
+        s.rotation.x = 0.7;
+      }
+    }
+    if (o.kind === 'd') {
+      box(parent, M, 'glassFrame', cw, 0.08, th + 0.04, x0 + o.x0 + cw / 2, baseY + o.y1 - 0.04, z);
+      if (o.fill !== 'open') box(parent, M, o.fill || 'darkMetal', cw - 0.06, o.y1 - 0.1, 0.06, x0 + o.x0 + cw / 2, baseY + (o.y1 - 0.1) / 2, z + 0.05);
+    }
+  }
+}
+
+// Flat or gabled corrugated roof slab.
+export function flatRoof(parent, M, x0, x1, z0, z1, y, th = 0.12, mat = 'zinc') {
+  box(parent, M, mat, x1 - x0, th, z1 - z0, (x0 + x1) / 2, y + th / 2, (z0 + z1) / 2);
+  // fascia
+  box(parent, M, 'band', x1 - x0 + 0.1, 0.18, 0.08, (x0 + x1) / 2, y + 0.02, z0 - 0.02);
+  box(parent, M, 'band', x1 - x0 + 0.1, 0.18, 0.08, (x0 + x1) / 2, y + 0.02, z1 + 0.02);
+  box(parent, M, 'band', 0.08, 0.18, z1 - z0 + 0.1, x0 - 0.02, y + 0.02, (z0 + z1) / 2);
+  box(parent, M, 'band', 0.08, 0.18, z1 - z0 + 0.1, x1 + 0.02, y + 0.02, (z0 + z1) / 2);
+}
+export function gableRoof(parent, M, x0, x1, z0, z1, eaveY, apexY, mat = 'zinc') {
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const Lx = (x1 - x0) / 2, Lz = (z1 - z0) / 2;
+  const rise = apexY - eaveY;
+  const runZ = Lz;
+  const ang = Math.atan2(rise, runZ);
+  const lenZ = Math.hypot(rise, runZ) + 0.25;
+  for (const s of [-1, 1]) {
+    const slab = box(parent, M, mat, (x1 - x0) + 0.4, 0.08, lenZ, cx, eaveY + rise / 2 + 0.04, cz + (s * runZ) / 2);
+    slab.rotation.x = s * ang;
+  }
+  // ridge + gable triangles (approx with thin boxes)
+  box(parent, M, 'band', (x1 - x0) + 0.44, 0.12, 0.12, cx, apexY + 0.02, cz);
+  for (const s of [-1, 1]) {
+    const tri = box(parent, M, 'band', 0.1, rise, Lz * 0.96, x0 + 0.05 - (s < 0 ? 0 : (x1 - x0)), eaveY + rise / 2, cz);
+    void tri;
+    box(parent, M, 'band', 0.08, rise * 0.94, Lz * 0.9, x0 + 0.04, eaveY + rise * 0.47, cz);
+    box(parent, M, 'band', 0.08, rise * 0.94, Lz * 0.9, x1 - 0.04, eaveY + rise * 0.47, cz);
+  }
+}
+
+// ---------------------------------------------------------------- facade extras
+export function canopy(parent, M, x0, x1, zEdge, y, depth = 1.6, posts = 3) {
+  box(parent, M, 'alu', x1 - x0, 0.1, depth, (x0 + x1) / 2, y, zEdge + depth / 2);
+  const n = posts;
+  for (let i = 0; i < n; i++) {
+    const px = x0 + ((x1 - x0) * (i + 0.5)) / n;
+    cyl(parent, M.darkMetal, 0.07, y - 0.05, px, (y - 0.05) / 2, zEdge + depth - 0.15, 8);
+  }
+}
+export function signBoard(parent, M, text, w, h, x, y, z, mat = 'signBoard', rotY = 0) {
+  const grp = new THREE.Group();
+  box(grp, M, mat, w, h, 0.08, 0, 0, 0);
+  box(grp, M, 'band', w + 0.1, h + 0.1, 0.05, 0, 0, -0.03);
+  // simple bar-lettering so the board reads as signage without text meshes
+  const rnd = mulberry32(hashStr(text));
+
+
+=== STDERR ===

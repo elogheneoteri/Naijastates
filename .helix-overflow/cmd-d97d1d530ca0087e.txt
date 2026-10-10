@@ -1,0 +1,79 @@
+Command: export PATH="/workspace/repo/.helix-venv/bin:/workspace/repo/venv/bin:/workspace/repo/.venv/bin:/workspace/.helix-venv/bin:$PATH" && cd /workspace/repo && sed -n '1,72p' scripts/glbs/build_all.mjs
+Cwd: /workspace/repo
+
+=== STDOUT ===
+// Generates every building exterior GLB for the Naijastates world.
+// Each generator builds a THREE.Group centred on the origin, sitting on y=0,
+// facing +Z (south). Output: assets/buildings/<code>.glb (quantised/deduped).
+import { installDocumentShim } from './node_shims.mjs';
+installDocumentShim();
+import * as THREE from 'three';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import {
+  makeMaterials, box, cyl, wallWithOpenings, flatRoof, gableRoof, canopy, signBoard,
+  markEntrance, boundaryWall, guardPost, genHouse, waterTank, dstvDish, acUnit, antenna,
+  flagpole, colonnade, clockFace, coatOfArms, fountain, glassCurtain, exportGLB, optimizeGLB,
+} from './lib.mjs';
+
+mkdirSync('assets/buildings', { recursive: true });
+
+// ---------------------------------------------------------------- local helpers
+const rotY = (grp, deg) => { const r = new THREE.Group(); grp.rotation.y = deg * Math.PI / 180; r.add(grp); return r; };
+const vec = (x, y, z) => { const v = new THREE.Vector3(x, y, z); v.applyAxisAngle(new THREE.Vector3(0, 1, 0), deg2rad); return v; };
+const deg2rad = (d) => d * Math.PI / 180;
+
+// Window grid generator: returns an array of window specs for one wall run.
+// cols are placed across [x0, x1] with a door gap skipped.
+function winRow(x0, x1, y0, y1, cols, door = null) {
+  const span = x1 - x0, out = [];
+  const step = span / cols;
+  for (let i = 0; i < cols; i++) {
+    const wx0 = x0 + i * step + step * 0.22, wx1 = x0 + (i + 1) * step - step * 0.22;
+    if (door && wx1 > door.x0 + 0.1 && wx0 < door.x1 - 0.1) continue;
+    out.push({ x0: wx0, x1: wx1, y0, y1, glass: true, grille: true });
+  }
+  return out;
+}
+function doorsAt(x, w) { return [{ x0: x - w / 2, x1: x + w / 2, y0: 0, fill: 'darkMetal' }]; }
+
+// Tree: trunk + 2-3 leaf blobs
+function tree(parent, M, x, z, s = 1) {
+  cyl(parent, M.trunk, 0.16 * s, 2.6 * s, x, 1.3 * s, z, 7);
+  const rnd = Math.random;
+  const blobs = [[0, 3.4, 0, 1.3], [0.7, 2.9, 0.4, 1.0], [-0.7, 3.0, -0.3, 0.9], [0.1, 4.1, -0.5, 0.8]];
+  for (const [bx, by, bz, br] of blobs) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(br * s, 8, 7), M.leaf);
+    m.position.set(x + bx * s, by * s, z + bz * s); m.castShadow = true;
+    parent.add(m);
+  }
+}
+
+// Simple parked car (box body + cabin) — props make streets feel real
+function car(parent, M, x, z, rotYdeg, color) {
+  const g = new THREE.Group();
+  box(g, M, color, 4.2, 0.55, 1.7, 0, 0.55, 0, 'body');
+  box(g, M, color, 2.2, 0.5, 1.6, -0.2, 1.1, 0, 'cabin');
+  box(g, M, 'black', 4.3, 0.4, 1.8, 0, 0.3, 0, 'base');
+  for (const [wx, wz] of [[1.4, 0.75], [1.4, -0.75], [-1.4, 0.75], [-1.4, -0.75]]) {
+    cyl(g, M.black, 0.34, 0.2, wx, 0.34, wz, 10).rotation.z = Math.PI / 2;
+  }
+  g.rotation.y = rotYdeg * Math.PI / 180;
+  g.position.set(x, 0, z);
+  parent.add(g);
+}
+
+// Pavement slab strip
+function slab(parent, M, x0, x1, z0, z1, y = 0.03, mat = 'band') {
+  box(parent, M, mat, x1 - x0, 0.06, z1 - z0, (x0 + x1) / 2, y, (z0 + z1) / 2, 'slab');
+}
+
+// ---------------------------------------------------------------- generators
+
+const GEN = {};
+
+// ===================== AERIAL / ARRIVAL =====================
+// Plot 32 x 24. Front faces +Z.
+GEN.airport = (M) => {
+
+
+=== STDERR ===
