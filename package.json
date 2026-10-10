@@ -1,0 +1,28 @@
+{
+  "name": "repo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "city.js",
+  "scripts": {
+    "build": "node scripts/glbs/build_all.mjs",
+    "test": "node scripts/glbs/_smoke.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elogheneoteri/Naijastates.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/elogheneoteri/Naijastates/issues"
+  },
+  "homepage": "https://github.com/elogheneoteri/Naijastates#readme",
+  "dependencies": {
+    "@gltf-transform/cli": "^4.5.1",
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "three": "^0.186.1"
+  }
+}

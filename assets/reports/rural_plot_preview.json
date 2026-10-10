@@ -1,0 +1,102 @@
+{
+  "generatedAt": "2026-10-09T15:55:13.071Z",
+  "proposal": {
+    "plannerSite": {
+      "x": 339,
+      "z": 127,
+      "w": 24,
+      "d": 36
+    },
+    "plannerSiteVerdict": {
+      "acceptable": false,
+      "plotConflicts": [
+        {
+          "code": "automotive",
+          "x0": 329,
+          "x1": 357,
+          "z0": 103,
+          "z1": 151
+        }
+      ],
+      "riverConflictsWithPlots": [
+        "industrial",
+        "automotive",
+        "oil_well"
+      ],
+      "reason": "Sits on top of the existing plot(s): automotive. The river it paired would also cut across: industrial, automotive, oil_well. Rejected."
+    },
+    "newRuralPlot": {
+      "x": 338,
+      "z": 12,
+      "w": 20,
+      "d": 20,
+      "front": "S",
+      "rotY": 0,
+      "x0": 328,
+      "x1": 348,
+      "z0": 2,
+      "z1": 22
+    },
+    "river": {
+      "x0": 351,
+      "x1": 360,
+      "z0": 0,
+      "z1": 24,
+      "zEnd": 24,
+      "width": 9,
+      "note": "River along the east edge of the map; muddy bank strip between the village and the water."
+    },
+    "oldPlot": {
+      "x": 275,
+      "z": 13,
+      "w": 74,
+      "d": 22,
+      "status": "openGround",
+      "x0": 238,
+      "x1": 312,
+      "z0": 2,
+      "z1": 24,
+      "note": "Old Rural District plot. Becomes open ground (grass returns once the plot line is rewritten)."
+    }
+  },
+  "verification": {
+    "plotConflicts": [],
+    "roadConflicts": [],
+    "riverRoadConflicts": [],
+    "villageInsideMap": true,
+    "riverInsideMap": true,
+    "oldPlotNowFreeOfOtherPlots": true,
+    "riverVillageGap": 3,
+    "riverToMainRoadCurb": 1.0999999999999979,
+    "checks": [
+      {
+        "name": "new plot overlaps no other plot",
+        "pass": true
+      },
+      {
+        "name": "new plot touches no road or pavement",
+        "pass": true
+      },
+      {
+        "name": "river touches no road or pavement",
+        "pass": true
+      },
+      {
+        "name": "village inside map bounds",
+        "pass": true
+      },
+      {
+        "name": "river inside map bounds",
+        "pass": true
+      },
+      {
+        "name": "old plot free for open ground",
+        "pass": true
+      },
+      {
+        "name": "river does not cross the main road (ends before the kerb)",
+        "pass": true
+      }
+    ]
+  }
+}
