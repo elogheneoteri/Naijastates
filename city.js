@@ -33,7 +33,7 @@ const RAW_PLOTS = [
   ['low_line',       'Low-Class Housing: Line Houses', 83.5, 13, 25, 22],
   ['low_bedsit',     'Low-Class Housing: Bed-Sitters', 110, 13, 24, 22],
   ['university',     'University',                    202, 188, 38, 37],   // swapped with the High School plot
-  ['rural',          'Rural District',                338,  12, 20, 20],   // moved to the riverside NE corner (see assets/reports/rural_plot_preview.json); old site (275, 13) left as open ground
+  ['rural',          'Rural District',                275,  13, 74, 22],
   // ----- central zone -----
   ['rental',         'Rental Desk',                    83,  49, 26, 22],
   ['police',         'Police Station',                110,  49, 24, 22],
@@ -161,7 +161,7 @@ export function buildCity(loadProp) {
 
   // ----- empty building plots -----
 // Plots that already have a building: they keep their plain ground pad, but lose the yellow border, front strip and floating sign.
-const BUILT_PLOTS = ['high_school', 'airport', 'low_line', 'low_bedsit', 'university', 'rural', 'rental', 'police', 'judiciary', 'government', 'city_hall', 'bank', 'hotel', 'high_housing', 'commercial', 'mid_housing'];
+const BUILT_PLOTS = ['high_school'];
   const padMat = new THREE.MeshStandardMaterial({ color: 0xb4ae9f, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const edgeMat = new THREE.MeshStandardMaterial({ color: 0xf2c200, roughness: 0.7, emissive: 0x5a4600, emissiveIntensity: 0.4 });
   PLOTS.forEach(p => {
