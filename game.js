@@ -82,7 +82,26 @@ const BUILDINGS = [
     extras: buildHighSchoolExterior,       // Step 2: the props around the school
     stairs: HS_STAIRS,                     // Step 2: the front steps (stairs.js): the floor rises towards the door and the stairs animation plays
     fallback: [29.2, 11.1, 21.4]
-  }
+  },
+  // ---- The new .glb buildings (assets/buildings/). Each one is already in metres, centred on the
+  // origin, sitting on the ground and facing +Z (south), so scale just shrinks it to fit its plot.
+  // The collision box is the scaled footprint, centred (before rotation). Tweak scale if you want
+  // them bigger or smaller.
+  { key: 'airport',     name: 'Airport',          file: 'assets/buildings/airport.glb',     scale: 0.85, x: 18,   z: 12,  rotY: 0,   boxes: [[-15.9, 15.9, -7.8, 7.8]],    fallback: [32, 8, 24] },
+  { key: 'low_line',    name: 'Low Line Houses',  file: 'assets/buildings/low_line.glb',    scale: 0.57, x: 83.5, z: 13,  rotY: 0,   boxes: [[-12.5, 12.5, -5.9, 5.9]],    fallback: [25, 4, 22] },
+  { key: 'low_bedsit',  name: 'Bedsits',          file: 'assets/buildings/low_bedsit.glb', scale: 0.69, x: 110,  z: 13,  rotY: 0,   boxes: [[-11.9, 11.9, -7.4, 7.4]],    fallback: [24, 5, 22] },
+  { key: 'university',  name: 'University',       file: 'assets/buildings/university.glb', scale: 0.62, x: 202,  z: 188, rotY: 0,   boxes: [[-18.7, 18.7, -10.4, 10.4]], fallback: [38, 10, 37] },
+  { key: 'rural',       name: 'Rural Compound',   file: 'assets/buildings/rural.glb',       scale: 0.81, x: 338,  z: 12,  rotY: 0,   boxes: [[-10.0, 10.0, -8.1, 8.1]],    fallback: [20, 5, 20] },
+  { key: 'rental',      name: 'Rental Complex',   file: 'assets/buildings/rental.glb',      scale: 0.85, x: 83,   z: 49,  rotY: 180, boxes: [[-12.9, 12.9, -9.6, 9.6]],    fallback: [26, 6, 22] },
+  { key: 'police',      name: 'Police Station',   file: 'assets/buildings/police.glb',      scale: 0.69, x: 110,  z: 49,  rotY: 90,  boxes: [[-12.0, 12.0, -7.9, 7.9]],    fallback: [24, 5, 22] },
+  { key: 'judiciary',   name: 'Judiciary',        file: 'assets/buildings/judiciary.glb',   scale: 0.97, x: 96,   z: 76,  rotY: 90,  boxes: [[-25.6, 25.6, -9.9, 9.9]],    fallback: [52, 8, 20] },
+  { key: 'government',  name: 'Government House', file: 'assets/buildings/government.glb',  scale: 0.61, x: 168,  z: 61,  rotY: 180, boxes: [[-30.2, 30.2, -13.9, 13.9]],fallback: [60, 10, 50] },
+  { key: 'city_hall',   name: 'City Hall',        file: 'assets/buildings/city_hall.glb',   scale: 0.94, x: 211,  z: 48,  rotY: 90,  boxes: [[-11.0, 11.0, -10.2, 10.2]], fallback: [22, 12, 22] },
+  { key: 'bank',        name: 'Bank',             file: 'assets/buildings/bank.glb',        scale: 0.95, x: 211,  z: 75,  rotY: 90,  boxes: [[-10.7, 10.7, -10.9, 10.9]], fallback: [22, 6, 22] },
+{ key: 'hotel',      name: 'Grand Hotel',      file: 'assets/buildings/hotel.glb',       scale: 1.0,  x: 275,  z: 61,  rotY: 180, boxes: [[-36.8, 36.8, -24.9, 24.9]],fallback: [74, 24, 50] },
+  { key: 'high_housing',name: 'High Rise Estate', file: 'assets/buildings/high_housing.glb',scale: 0.90, x: 180,  z: 127, rotY: 180, boxes: [[-41.9, 41.9, -22.1, 22.1]],fallback: [84, 9, 48] },
+  { key: 'commercial',  name: 'Commercial Zone',  file: 'assets/buildings/commercial.glb',  scale: 1.01, x: 275,  z: 127, rotY: 180, boxes: [[-36.7, 36.7, -23.1, 23.1]],fallback: [74, 10, 48] },
+  { key: 'mid_housing', name: 'Mid Rise Estate',  file: 'assets/buildings/mid_housing.glb', scale: 0.97, x: 96,   z: 188, rotY: 90,  boxes: [[-24.9, 24.9, -18.4, 18.4]], fallback: [52, 9, 37] }
 ];
 
 // ---------------- Procedural textures for the ground, road and pavement ----------------
