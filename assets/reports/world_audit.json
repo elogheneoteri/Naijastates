@@ -1,0 +1,1102 @@
+{
+  "generatedAt": "2026-10-09T15:50:23.676Z",
+  "world": {
+    "width": 360,
+    "depth": 240,
+    "mainRoadZ": 28.75,
+    "avenuesX": [
+      130,
+      230,
+      320
+    ],
+    "streetsZ": [
+      95,
+      160,
+      215
+    ]
+  },
+  "plots": [
+    {
+      "code": "airport",
+      "label": "Airport",
+      "x": 18,
+      "z": 12,
+      "w": 32,
+      "d": 24,
+      "front": "S",
+      "rotY": 0
+    },
+    {
+      "code": "low_line",
+      "label": "Low-Class Housing: Line Houses",
+      "x": 83.5,
+      "z": 13,
+      "w": 25,
+      "d": 22,
+      "front": "S",
+      "rotY": 0
+    },
+    {
+      "code": "low_bedsit",
+      "label": "Low-Class Housing: Bed-Sitters",
+      "x": 110,
+      "z": 13,
+      "w": 24,
+      "d": 22,
+      "front": "S",
+      "rotY": 0
+    },
+    {
+      "code": "university",
+      "label": "University",
+      "x": 202,
+      "z": 188,
+      "w": 38,
+      "d": 37,
+      "front": "S",
+      "rotY": 0
+    },
+    {
+      "code": "rural",
+      "label": "Rural District",
+      "x": 275,
+      "z": 13,
+      "w": 74,
+      "d": 22,
+      "front": "S",
+      "rotY": 0
+    },
+    {
+      "code": "rental",
+      "label": "Rental Desk",
+      "x": 83,
+      "z": 49,
+      "w": 26,
+      "d": 22,
+      "front": "N",
+      "rotY": 180
+    },
+    {
+      "code": "police",
+      "label": "Police Station",
+      "x": 110,
+      "z": 49,
+      "w": 24,
+      "d": 22,
+      "front": "E",
+      "rotY": 90
+    },
+    {
+      "code": "judiciary",
+      "label": "Judiciary (Courts)",
+      "x": 96,
+      "z": 76,
+      "w": 52,
+      "d": 20,
+      "front": "E",
+      "rotY": 90
+    },
+    {
+      "code": "government",
+      "label": "Government Offices Area",
+      "x": 168,
+      "z": 61,
+      "w": 60,
+      "d": 50,
+      "front": "N",
+      "rotY": 180
+    },
+    {
+      "code": "city_hall",
+      "label": "City Hall",
+      "x": 211,
+      "z": 48,
+      "w": 22,
+      "d": 22,
+      "front": "E",
+      "rotY": 90
+    },
+    {
+      "code": "bank",
+      "label": "Bank",
+      "x": 211,
+      "z": 75,
+      "w": 22,
+      "d": 22,
+      "front": "E",
+      "rotY": 90
+    },
+    {
+      "code": "hotel",
+      "label": "Hotel",
+      "x": 275,
+      "z": 61,
+      "w": 74,
+      "d": 50,
+      "front": "N",
+      "rotY": 180
+    },
+    {
+      "code": "governor_villa",
+      "label": "Governor's Villa",
+      "x": 96,
+      "z": 127,
+      "w": 52,
+      "d": 48,
+      "front": "N",
+      "rotY": 180
+    },
+    {
+      "code": "high_housing",
+      "label": "High-Class Housing",
+      "x": 180,
+      "z": 127,
+      "w": 84,
+      "d": 48,
+      "front": "N",
+      "rotY": 180
+    },
+    {
+      "code": "commercial",
+      "label": "Commercial District",
+      "x": 275,
+      "z": 127,
+      "w": 74,
+      "d": 48,
+      "front": "N",
+      "rotY": 180
+    },
+    {
+      "code": "mid_housing",
+      "label": "Mid-Class Housing",
+      "x": 96,
+      "z": 188,
+      "w": 52,
+      "d": 37,
+      "front": "E",
+      "rotY": 90
+    },
+    {
+      "code": "hospital",
+      "label": "Hospital",
+      "x": 160,
+      "z": 188,
+      "w": 40,
+      "d": 37,
+      "front": "S",
+      "rotY": 0
+    },
+    {
+      "code": "high_school",
+      "label": "High School",
+      "x": 180,
+      "z": 13,
+      "w": 84,
+      "d": 22,
+      "front": "S",
+      "rotY": 0
+    },
+    {
+      "code": "market",
+      "label": "Market",
+      "x": 275,
+      "z": 188,
+      "w": 74,
+      "d": 37,
+      "front": "W",
+      "rotY": 270
+    },
+    {
+      "code": "transport",
+      "label": "Transport District",
+      "x": 180,
+      "z": 231,
+      "w": 84,
+      "d": 14,
+      "front": "W",
+      "rotY": 270
+    },
+    {
+      "code": "broadcasting",
+      "label": "Broadcasting Station",
+      "x": 275,
+      "z": 231,
+      "w": 60,
+      "d": 14,
+      "front": "N",
+      "rotY": 180
+    },
+    {
+      "code": "industrial",
+      "label": "Industrial District",
+      "x": 343,
+      "z": 62,
+      "w": 28,
+      "d": 50,
+      "front": "S",
+      "rotY": 0
+    },
+    {
+      "code": "automotive",
+      "label": "Automotive District",
+      "x": 343,
+      "z": 127,
+      "w": 28,
+      "d": 48,
+      "front": "N",
+      "rotY": 180
+    },
+    {
+      "code": "oil_well",
+      "label": "Oil Well",
+      "x": 343,
+      "z": 188,
+      "w": 28,
+      "d": 37,
+      "front": "S",
+      "rotY": 0
+    }
+  ],
+  "plotsByCode": {
+    "airport": {
+      "code": "airport",
+      "label": "Airport",
+      "x": 18,
+      "z": 12,
+      "w": 32,
+      "d": 24,
+      "front": "S",
+      "rotY": 0
+    },
+    "low_line": {
+      "code": "low_line",
+      "label": "Low-Class Housing: Line Houses",
+      "x": 83.5,
+      "z": 13,
+      "w": 25,
+      "d": 22,
+      "front": "S",
+      "rotY": 0
+    },
+    "low_bedsit": {
+      "code": "low_bedsit",
+      "label": "Low-Class Housing: Bed-Sitters",
+      "x": 110,
+      "z": 13,
+      "w": 24,
+      "d": 22,
+      "front": "S",
+      "rotY": 0
+    },
+    "university": {
+      "code": "university",
+      "label": "University",
+      "x": 202,
+      "z": 188,
+      "w": 38,
+      "d": 37,
+      "front": "S",
+      "rotY": 0
+    },
+    "rural": {
+      "code": "rural",
+      "label": "Rural District",
+      "x": 275,
+      "z": 13,
+      "w": 74,
+      "d": 22,
+      "front": "S",
+      "rotY": 0
+    },
+    "rental": {
+      "code": "rental",
+      "label": "Rental Desk",
+      "x": 83,
+      "z": 49,
+      "w": 26,
+      "d": 22,
+      "front": "N",
+      "rotY": 180
+    },
+    "police": {
+      "code": "police",
+      "label": "Police Station",
+      "x": 110,
+      "z": 49,
+      "w": 24,
+      "d": 22,
+      "front": "E",
+      "rotY": 90
+    },
+    "judiciary": {
+      "code": "judiciary",
+      "label": "Judiciary (Courts)",
+      "x": 96,
+      "z": 76,
+      "w": 52,
+      "d": 20,
+      "front": "E",
+      "rotY": 90
+    },
+    "government": {
+      "code": "government",
+      "label": "Government Offices Area",
+      "x": 168,
+      "z": 61,
+      "w": 60,
+      "d": 50,
+      "front": "N",
+      "rotY": 180
+    },
+    "city_hall": {
+      "code": "city_hall",
+      "label": "City Hall",
+      "x": 211,
+      "z": 48,
+      "w": 22,
+      "d": 22,
+      "front": "E",
+      "rotY": 90
+    },
+    "bank": {
+      "code": "bank",
+      "label": "Bank",
+      "x": 211,
+      "z": 75,
+      "w": 22,
+      "d": 22,
+      "front": "E",
+      "rotY": 90
+    },
+    "hotel": {
+      "code": "hotel",
+      "label": "Hotel",
+      "x": 275,
+      "z": 61,
+      "w": 74,
+      "d": 50,
+      "front": "N",
+      "rotY": 180
+    },
+    "governor_villa": {
+      "code": "governor_villa",
+      "label": "Governor's Villa",
+      "x": 96,
+      "z": 127,
+      "w": 52,
+      "d": 48,
+      "front": "N",
+      "rotY": 180
+    },
+    "high_housing": {
+      "code": "high_housing",
+      "label": "High-Class Housing",
+      "x": 180,
+      "z": 127,
+      "w": 84,
+      "d": 48,
+      "front": "N",
+      "rotY": 180
+    },
+    "commercial": {
+      "code": "commercial",
+      "label": "Commercial District",
+      "x": 275,
+      "z": 127,
+      "w": 74,
+      "d": 48,
+      "front": "N",
+      "rotY": 180
+    },
+    "mid_housing": {
+      "code": "mid_housing",
+      "label": "Mid-Class Housing",
+      "x": 96,
+      "z": 188,
+      "w": 52,
+      "d": 37,
+      "front": "E",
+      "rotY": 90
+    },
+    "hospital": {
+      "code": "hospital",
+      "label": "Hospital",
+      "x": 160,
+      "z": 188,
+      "w": 40,
+      "d": 37,
+      "front": "S",
+      "rotY": 0
+    },
+    "high_school": {
+      "code": "high_school",
+      "label": "High School",
+      "x": 180,
+      "z": 13,
+      "w": 84,
+      "d": 22,
+      "front": "S",
+      "rotY": 0
+    },
+    "market": {
+      "code": "market",
+      "label": "Market",
+      "x": 275,
+      "z": 188,
+      "w": 74,
+      "d": 37,
+      "front": "W",
+      "rotY": 270
+    },
+    "transport": {
+      "code": "transport",
+      "label": "Transport District",
+      "x": 180,
+      "z": 231,
+      "w": 84,
+      "d": 14,
+      "front": "W",
+      "rotY": 270
+    },
+    "broadcasting": {
+      "code": "broadcasting",
+      "label": "Broadcasting Station",
+      "x": 275,
+      "z": 231,
+      "w": 60,
+      "d": 14,
+      "front": "N",
+      "rotY": 180
+    },
+    "industrial": {
+      "code": "industrial",
+      "label": "Industrial District",
+      "x": 343,
+      "z": 62,
+      "w": 28,
+      "d": 50,
+      "front": "S",
+      "rotY": 0
+    },
+    "automotive": {
+      "code": "automotive",
+      "label": "Automotive District",
+      "x": 343,
+      "z": 127,
+      "w": 28,
+      "d": 48,
+      "front": "N",
+      "rotY": 180
+    },
+    "oil_well": {
+      "code": "oil_well",
+      "label": "Oil Well",
+      "x": 343,
+      "z": 188,
+      "w": 28,
+      "d": 37,
+      "front": "S",
+      "rotY": 0
+    }
+  },
+  "builtPlots": [
+    "high_school"
+  ],
+  "buildings": [
+    {
+      "index": 0,
+      "key": "'immigration'",
+      "name": "'Immigration Office'",
+      "file": "'immigration_office.glb'",
+      "scale": "0.008",
+      "x": "50",
+      "z": "11.8",
+      "rotY": "0",
+      "interior": "buildImmigrationOffice",
+      "build": null,
+      "fallback": "[25.6, 23, 24.2]",
+      "boxesRaw": "IMMIGRATION_BOXES",
+      "boxesSource": "IMMIGRATION_BOXES"
+    },
+    {
+      "index": 1,
+      "key": "'refugee'",
+      "name": "'Refugee Camp'",
+      "file": "'refugee_camp.glb'",
+      "scale": null,
+      "x": "21",
+      "z": "40",
+      "rotY": "180",
+      "interior": null,
+      "build": "buildRefugeeCamp",
+      "fallback": "[19, 4, 19]",
+      "boxesRaw": "CAMP_BOXES",
+      "boxesSource": "CAMP_BOXES"
+    },
+    {
+      "index": 2,
+      "key": "'high_school'",
+      "name": "'High School'",
+      "file": "'high_school.glb'",
+      "scale": "0.62",
+      "x": "HS_PLOT.x",
+      "z": "HS_PLOT.z",
+      "rotY": "HS_PLOT.rotY",
+      "interior": "buildHighSchoolInterior",
+      "build": null,
+      "fallback": "[29.2, 11.1, 21.4]",
+      "boxesRaw": "[\n      ...HS_INTERIOR_BOXES,                // walls (with the front doorway and the room doorways), desks, counter, stalls ...\n      [-1.9, 0.6, 8.1, 10.8],              // the front steps, left of the walkway to the door\n      [3.2, 5.7, 8.1, 10.8],               // the front steps, right of the walkway to the door\n      ...HS_EXTERIOR_BOXES                 // Step 2: trees, shed, tower, goals, lamps ... (high_school_exterior.js)\n    ]",
+      "boxesSource": "inline"
+    }
+  ],
+  "props": [
+    {
+      "file": "20l_water_jerry_can__h20_container__military.glb",
+      "bytes": 609888
+    },
+    {
+      "file": "3d_model_of_soccer__football_goal_post.glb",
+      "bytes": 690968
+    },
+    {
+      "file": "3d_toilet_signage_board.glb",
+      "bytes": 4103764
+    },
+    {
+      "file": "3d_wall_panel.glb",
+      "bytes": 65104
+    },
+    {
+      "file": "ac_outdoor_unit_-_low_poly.glb",
+      "bytes": 1889344
+    },
+    {
+      "file": "ac_outdoor_unit.glb",
+      "bytes": 2191348
+    },
+    {
+      "file": "air_conditioner.glb",
+      "bytes": 799352
+    },
+    {
+      "file": "atm_booth.glb",
+      "bytes": 516040
+    },
+    {
+      "file": "autorikshaw_-_indian_tuk_tuk (2).glb",
+      "bytes": 2019848
+    },
+    {
+      "file": "bench_with_three_seats.glb",
+      "bytes": 727588
+    },
+    {
+      "file": "bended_coconut_tree.glb",
+      "bytes": 1739700
+    },
+    {
+      "file": "billboard.glb",
+      "bytes": 1081820
+    },
+    {
+      "file": "BirchTree_1.fbx",
+      "bytes": 214508
+    },
+    {
+      "file": "BirchTree_2.fbx",
+      "bytes": 317804
+    },
+    {
+      "file": "BirchTree_3.fbx",
+      "bytes": 347036
+    },
+    {
+      "file": "BirchTree_4.fbx",
+      "bytes": 158348
+    },
+    {
+      "file": "bookshelf_optimised.glb",
+      "bytes": 317000
+    },
+    {
+      "file": "bookshelf.glb",
+      "bytes": 3534392
+    },
+    {
+      "file": "bucket_optimised.glb",
+      "bytes": 62168
+    },
+    {
+      "file": "bunk_bed.glb",
+      "bytes": 69704
+    },
+    {
+      "file": "burlap_sack.glb",
+      "bytes": 299480
+    },
+    {
+      "file": "bus_stop_shelter.glb",
+      "bytes": 2708140
+    },
+    {
+      "file": "Bush_Flowers.fbx",
+      "bytes": 42668
+    },
+    {
+      "file": "cafeteria_table.glb",
+      "bytes": 233268
+    },
+    {
+      "file": "cafeteria_tile_3d_scan.glb",
+      "bytes": 492136
+    },
+    {
+      "file": "cafeteria_tile_optimised.glb",
+      "bytes": 102872
+    },
+    {
+      "file": "camping_cooking_pots.glb",
+      "bytes": 1298584
+    },
+    {
+      "file": "carpet_office.jpg",
+      "bytes": 101265
+    },
+    {
+      "file": "carpet_staff.jpg",
+      "bytes": 71001
+    },
+    {
+      "file": "chinese_road_signs_32_road_signs_and_more.glb",
+      "bytes": 3584408
+    },
+    {
+      "file": "classroom_gameready_optimised.glb",
+      "bytes": 604552
+    },
+    {
+      "file": "clay_cooking_pot.glb",
+      "bytes": 349764
+    },
+    {
+      "file": "coconut_palm.glb",
+      "bytes": 649220
+    },
+    {
+      "file": "coffee_sack_group_asset.glb",
+      "bytes": 144452
+    },
+    {
+      "file": "crates_and_boxes_at_the_back_of_an_asian_store.glb",
+      "bytes": 5096732
+    },
+    {
+      "file": "crates.glb",
+      "bytes": 815368
+    },
+    {
+      "file": "cubicle_v2.glb",
+      "bytes": 2639772
+    },
+    {
+      "file": "DeadTree_1.fbx",
+      "bytes": 164860
+    },
+    {
+      "file": "DeadTree_3.fbx",
+      "bytes": 158092
+    },
+    {
+      "file": "dstv_dish.glb",
+      "bytes": 866352
+    },
+    {
+      "file": "electric_pole (1).glb",
+      "bytes": 5640368
+    },
+    {
+      "file": "electric_pole.glb",
+      "bytes": 1743624
+    },
+    {
+      "file": "empty_office_space.glb",
+      "bytes": 7397972
+    },
+    {
+      "file": "empty_room_2.glb",
+      "bytes": 2169648
+    },
+    {
+      "file": "empty_room.glb",
+      "bytes": 2014680
+    },
+    {
+      "file": "fence_concrete-_15mb.glb",
+      "bytes": 6255104
+    },
+    {
+      "file": "fence.glb",
+      "bytes": 580128
+    },
+    {
+      "file": "filing_cabinet.glb",
+      "bytes": 139252
+    },
+    {
+      "file": "fire_extinguisher.glb",
+      "bytes": 429828
+    },
+    {
+      "file": "Flower_1.fbx",
+      "bytes": 20380
+    },
+    {
+      "file": "Flower_2_Clump.fbx",
+      "bytes": 18284
+    },
+    {
+      "file": "Flowers.png",
+      "bytes": 318021
+    },
+    {
+      "file": "fluorescent_light_fixtures_-_4x_4096px2.glb",
+      "bytes": 2463092
+    },
+    {
+      "file": "free_iron_rod.glb",
+      "bytes": 477456
+    },
+    {
+      "file": "fridge.glb",
+      "bytes": 105984
+    },
+    {
+      "file": "generator_lp.glb",
+      "bytes": 4561724
+    },
+    {
+      "file": "generator.glb",
+      "bytes": 3762996
+    },
+    {
+      "file": "globe_optimised.glb",
+      "bytes": 328196
+    },
+    {
+      "file": "grass_04.glb",
+      "bytes": 314440
+    },
+    {
+      "file": "Grass.png",
+      "bytes": 734927
+    },
+    {
+      "file": "gta_marker_blue.glb",
+      "bytes": 30064
+    },
+    {
+      "file": "gta_marker_gradient_pack_blue_green_red.glb",
+      "bytes": 1387308
+    },
+    {
+      "file": "hedge.glb",
+      "bytes": 938444
+    },
+    {
+      "file": "high_school.glb",
+      "bytes": 1841508
+    },
+    {
+      "file": "hong_kong_food_stall.glb",
+      "bytes": 5241596
+    },
+    {
+      "file": "hospital_bench.glb",
+      "bytes": 244268
+    },
+    {
+      "file": "keke_optimised.glb",
+      "bytes": 514396
+    },
+    {
+      "file": "kiosk_wooden.glb",
+      "bytes": 1541264
+    },
+    {
+      "file": "kitchen_counters.glb",
+      "bytes": 695404
+    },
+    {
+      "file": "kitchen_station.glb",
+      "bytes": 1272244
+    },
+    {
+      "file": "laptop.glb",
+      "bytes": 403284
+    },
+    {
+      "file": "Leaves_BW.png",
+      "bytes": 105528
+    },
+    {
+      "file": "locker_bank.glb",
+      "bytes": 105036
+    },
+    {
+      "file": "locker.glb",
+      "bytes": 440588
+    },
+    {
+      "file": "low_rise_wall_to_wall_office_building.glb",
+      "bytes": 1150924
+    },
+    {
+      "file": "macbook_lowpoly_asset.glb",
+      "bytes": 5688864
+    },
+    {
+      "file": "mango_tree.glb",
+      "bytes": 1251444
+    },
+    {
+      "file": "metal_road_billboard_single_sided.glb",
+      "bytes": 4899088
+    },
+    {
+      "file": "mfp_office_printer.glb",
+      "bytes": 2586492
+    },
+    {
+      "file": "modern_office_reception_desk.glb",
+      "bytes": 4185028
+    },
+    {
+      "file": "monstera_deliciosa_potted_mid-century_plant.glb",
+      "bytes": 2680848
+    },
+    {
+      "file": "nin_card_template.webp",
+      "bytes": 134626
+    },
+    {
+      "file": "noticeboard.glb",
+      "bytes": 472780
+    },
+    {
+      "file": "office_bin.glb",
+      "bytes": 548424
+    },
+    {
+      "file": "office_chair.glb",
+      "bytes": 3668064
+    },
+    {
+      "file": "office_door_a.glb",
+      "bytes": 579284
+    },
+    {
+      "file": "office_door_b.glb",
+      "bytes": 1051348
+    },
+    {
+      "file": "office_partition.glb",
+      "bytes": 84400
+    },
+    {
+      "file": "office_table..glb",
+      "bytes": 2155828
+    },
+    {
+      "file": "old_outdoor_bench_optimised.glb",
+      "bytes": 119352
+    },
+    {
+      "file": "overhead_water_tank.glb",
+      "bytes": 590852
+    },
+    {
+      "file": "Overhead_Water_tank.usdz",
+      "bytes": 3898466
+    },
+    {
+      "file": "PalmTree_3.fbx",
+      "bytes": 25004
+    },
+    {
+      "file": "PalmTree_4.fbx",
+      "bytes": 29228
+    },
+    {
+      "file": "pbr_material_floor_tiles.glb",
+      "bytes": 2542644
+    },
+    {
+      "file": "personal_computer.glb",
+      "bytes": 3129384
+    },
+    {
+      "file": "plastic_chair (1).glb",
+      "bytes": 1650592
+    },
+    {
+      "file": "plastic_chair.glb",
+      "bytes": 785064
+    },
+    {
+      "file": "plastic_water_tank.glb",
+      "bytes": 77468
+    },
+    {
+      "file": "potted_plant.glb",
+      "bytes": 625880
+    },
+    {
+      "file": "power_generator_thing.glb",
+      "bytes": 1269936
+    },
+    {
+      "file": "printer_copy_machine_and_scanner_in_one.glb",
+      "bytes": 249012
+    },
+    {
+      "file": "psx_doors_pack.glb",
+      "bytes": 154412
+    },
+    {
+      "file": "psx_style_office_walls_pack.glb",
+      "bytes": 115968
+    },
+    {
+      "file": "realistics_grass_06.glb",
+      "bytes": 641808
+    },
+    {
+      "file": "realistics_grass_10.glb",
+      "bytes": 475364
+    },
+    {
+      "file": "reception_desk.glb",
+      "bytes": 131100
+    },
+    {
+      "file": "red_motorcycle.glb",
+      "bytes": 4280124
+    },
+    {
+      "file": "road__avenue__street.glb",
+      "bytes": 3592988
+    },
+    {
+      "file": "road.glb",
+      "bytes": 1202360
+    },
+    {
+      "file": "roadsign__cones_pack.glb",
+      "bytes": 548676
+    },
+    {
+      "file": "room_partition_model_5175-5.glb",
+      "bytes": 944332
+    },
+    {
+      "file": "satellite_dish.glb",
+      "bytes": 1708132
+    },
+    {
+      "file": "school_desk_optimised.glb",
+      "bytes": 174528
+    },
+    {
+      "file": "shower_cubicle.glb",
+      "bytes": 644804
+    },
+    {
+      "file": "simple_sink.glb",
+      "bytes": 263844
+    },
+    {
+      "file": "sour_orange_optimised.glb",
+      "bytes": 1418236
+    },
+    {
+      "file": "stairs_optimised.glb",
+      "bytes": 177460
+    },
+    {
+      "file": "standing_air_conditioner.glb",
+      "bytes": 1482952
+    },
+    {
+      "file": "standing_fan.glb",
+      "bytes": 2347468
+    },
+    {
+      "file": "steel_shelving.glb",
+      "bytes": 276748
+    },
+    {
+      "file": "street_lamp.glb",
+      "bytes": 1517336
+    },
+    {
+      "file": "study_desk.glb",
+      "bytes": 391452
+    },
+    {
+      "file": "tanker_truck_burnout_legends.glb",
+      "bytes": 212764
+    },
+    {
+      "file": "tent.glb",
+      "bytes": 2066284
+    },
+    {
+      "file": "toilet__exit_door.glb",
+      "bytes": 431076
+    },
+    {
+      "file": "toilet_stalls_4.glb",
+      "bytes": 216656
+    },
+    {
+      "file": "toilet.glb",
+      "bytes": 896160
+    },
+    {
+      "file": "traffic_lights.glb",
+      "bytes": 1529896
+    },
+    {
+      "file": "walls_window_door_optimised.glb",
+      "bytes": 170408
+    },
+    {
+      "file": "water_dispenser.glb",
+      "bytes": 1014260
+    },
+    {
+      "file": "water_drum_optimised.glb",
+      "bytes": 106900
+    },
+    {
+      "file": "water_tank_stand.glb",
+      "bytes": 75900
+    },
+    {
+      "file": "wheat_sack.glb",
+      "bytes": 242468
+    },
+    {
+      "file": "wood_pile.glb",
+      "bytes": 2210852
+    },
+    {
+      "file": "wood-logs.glb",
+      "bytes": 275832
+    },
+    {
+      "file": "zinc_roof.glb",
+      "bytes": 2208476
+    }
+  ]
+}
