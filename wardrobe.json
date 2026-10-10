@@ -11,22 +11,22 @@
           "id": "blue",
           "label": "Blue",
           "swatch": "#6190a6",
-          "file": "colors/top_khustup/blue.jpg"
+          "file": "colors/top_khustup_blue.jpg"
         },
         {
           "id": "brown",
           "label": "Brown",
           "swatch": "#2b1900",
-          "file": "colors/top_khustup/brown.jpg"
+          "file": "colors/top_khustup_brown.jpg"
         },
         {
           "id": "black",
           "label": "Black",
           "swatch": "#000000",
-          "file": "colors/top_khustup/black.jpg"
+          "file": "colors/top_khustup_black.jpg"
         }
       ],
-      "custom": "colors/top_khustup/custom.jpg"
+      "custom": "colors/top_khustup_custom.jpg"
     },
     {
       "id": "tshirt_arpi",
@@ -38,10 +38,10 @@
           "id": "default",
           "label": "Original",
           "swatch": "#a2aeb9",
-          "file": "colors/tshirt_arpi/default.jpg"
+          "file": "colors/tshirt_arpi_default.jpg"
         }
       ],
-      "custom": "colors/tshirt_arpi/custom.jpg"
+      "custom": "colors/tshirt_arpi_custom.jpg"
     },
     {
       "id": "hoodie_aras",
@@ -53,10 +53,10 @@
           "id": "default",
           "label": "Original",
           "swatch": "#9b7072",
-          "file": "colors/hoodie_aras/default.jpg"
+          "file": "colors/hoodie_aras_default.jpg"
         }
       ],
-      "custom": "colors/hoodie_aras/custom.jpg"
+      "custom": "colors/hoodie_aras_custom.jpg"
     },
     {
       "id": "shorts_vedi",
@@ -68,28 +68,28 @@
           "id": "beige",
           "label": "Beige",
           "swatch": "#938b82",
-          "file": "colors/shorts_vedi/beige.jpg"
+          "file": "colors/shorts_vedi_beige.jpg"
         },
         {
           "id": "brown",
           "label": "Brown",
           "swatch": "#512c01",
-          "file": "colors/shorts_vedi/brown.jpg"
+          "file": "colors/shorts_vedi_brown.jpg"
         },
         {
           "id": "teal",
           "label": "Teal",
           "swatch": "#038393",
-          "file": "colors/shorts_vedi/teal.jpg"
+          "file": "colors/shorts_vedi_teal.jpg"
         },
         {
           "id": "black",
           "label": "Black",
           "swatch": "#000000",
-          "file": "colors/shorts_vedi/black.jpg"
+          "file": "colors/shorts_vedi_black.jpg"
         }
       ],
-      "custom": "colors/shorts_vedi/custom.jpg"
+      "custom": "colors/shorts_vedi_custom.jpg"
     },
     {
       "id": "jeans_ayger",
@@ -101,10 +101,10 @@
           "id": "default",
           "label": "Original",
           "swatch": "#47535d",
-          "file": "colors/jeans_ayger/default.jpg"
+          "file": "colors/jeans_ayger_default.jpg"
         }
       ],
-      "custom": "colors/jeans_ayger/custom.jpg"
+      "custom": "colors/jeans_ayger_custom.jpg"
     },
     {
       "id": "sneakers_azat",
@@ -116,10 +116,10 @@
           "id": "default",
           "label": "Original",
           "swatch": "#87827d",
-          "file": "colors/sneakers_azat/default.jpg"
+          "file": "colors/sneakers_azat_default.jpg"
         }
       ],
-      "custom": "colors/sneakers_azat/custom.jpg"
+      "custom": "colors/sneakers_azat_custom.jpg"
     },
     {
       "id": "sneakers_arpi",
@@ -131,10 +131,10 @@
           "id": "default",
           "label": "Original",
           "swatch": "#9e9d9b",
-          "file": "colors/sneakers_arpi/default.jpg"
+          "file": "colors/sneakers_arpi_default.jpg"
         }
       ],
-      "custom": "colors/sneakers_arpi/custom.jpg"
+      "custom": "colors/sneakers_arpi_custom.jpg"
     },
     {
       "id": "necklace_pendant_03",
