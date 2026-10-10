@@ -13,6 +13,7 @@ import { buildHighSchoolExterior, HS_EXTERIOR_BOXES } from './high_school_exteri
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
 import { initNin, IVORY_FILE } from './nin.js';
 import { initClothing } from './clothing.js';   // clothing test: wear another character's outfit
+import { initCreator, restoreSavedLook } from './creator.js';   // step 2 of character creation: choose the outfit (first-time players only)
 import { loadProp } from './props_library.js';
 import { HS_STAIRS, STAIR_SPEED_FACTOR, STAIR_ANIM_SPEED, addStairs, groundHeight, onStairs } from './stairs.js';   // Step 2: the school steps
 import { buildCity, cityClearRects, JUNCTION_GAPS_X, CITY, plotAt } from './city.js';
@@ -728,13 +729,27 @@ function startPreview() {
   const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50); cam.position.set(0, 1.0, 4.6); cam.lookAt(0, 0.9, 0);
   const holder = new THREE.Group(); scene.add(holder);
   holder.userData.freeze = true;
-  pv = { renderer, scene, cam, holder, stage: $('stage'), clock: new THREE.Clock(), run: true };
+  pv = { renderer, scene, cam, holder, stage: $('stage'), clock: new THREE.Clock(), run: true, spin: true, view: { ly: 0.9, cd: 4.6 }, want: null, clothing: null };
+  try {                                // a second clothing.js that dresses the preview character (the customize step, creator.js)
+    pv.clothing = initClothing({
+      world: { player: holder, say3d() {} },
+      applyCharacter: id => applyCharacter(holder, 0xffffff, id),
+      loadSource: id => loadCharacterFile(CHARACTER_FILES[id]),
+      characters: [], noButtons: true,
+    });
+  } catch (e) { console.error('The outfit preview could not start:', e); pv.clothing = null; }
   resizePreview();
   addEventListener('resize', resizePreview);
   (function loop() {
     if (!pv || !pv.run) return;
     const dt = pv.clock.getDelta();
-    holder.rotation.y += dt * 0.6;
+    if (pv.spin) holder.rotation.y += dt * 0.6;
+    if (pv.want) {                                     // the customize step moves the camera to the part of the body being chosen
+      const k = 1 - Math.exp(-8 * dt), v = pv.view;
+      v.ly += (pv.want.ly - v.ly) * k; v.cd += (pv.want.cd - v.cd) * k;
+      cam.position.set(0, v.ly + 0.1, v.cd); cam.lookAt(0, v.ly, 0);
+    }
+    if (pv.clothing) { try { pv.clothing.update(dt); } catch (e) { console.error('Outfit preview stopped:', e); pv.clothing = null; } }
     if (holder.userData.mixer) holder.userData.mixer.update(dt);
     renderer.render(scene, cam);
     requestAnimationFrame(loop);
@@ -747,6 +762,13 @@ function choose(id) {
   pick.id = id;
   [...$('cards').children].forEach(c => c.classList.toggle('on', c.dataset.id === id));
   applyCharacter(pv.holder, 0xffffff, id);
+  updatePlayLabel();
+}
+// step 1 button: "Next: Customize" when this character has outfit pieces to choose from, otherwise "Play"
+function updatePlayLabel() {
+  const cr = ensureCreator();
+  $('btnPlay').textContent = cr && cr.available(pick.id) ? 'Next: Customize' : 'Play';
+  if (pv && pv.clothing && !pv.labelHooked) { pv.labelHooked = true; pv.clothing.ready.then(() => { if (pv) updatePlayLabel(); }); }     // the wardrobe list loads a moment after the screen opens
 }
 function showGender(gender) {
   pick.gender = gender;
@@ -766,10 +788,32 @@ function openChoose() {
 }
 $('tabMale').addEventListener('click', () => showGender('male'));
 $('tabFemale').addEventListener('click', () => showGender('female'));
-$('btnPlay').addEventListener('click', () => {
+// ---- step 2 of creation: customize the outfit (creator.js) ----
+let creator = null;
+function ensureCreator() {
+  if (creator || !pv || !pv.clothing) return creator;
+  try {
+    creator = initCreator({
+      clothing: pv.clothing, holder: pv.holder, stage: $('stage'),
+      side: document.querySelector('#pChoose .side'), title: document.querySelector('#pChoose h1'),
+      setView: (ly, dist) => { pv.want = { ly, cd: dist }; },
+      setSpin: on => { pv.spin = on; },
+      onPlay: () => finishCreation(),
+      onBack: () => {},
+    });
+  } catch (e) { console.error('The customize step could not start:', e); creator = null; }
+  return creator;
+}
+function finishCreation() {
   if (!pick.id) return;
   localStorage.setItem('characterId', pick.id);
   startGame();
+}
+$('btnPlay').addEventListener('click', () => {
+  if (!pick.id) return;
+  const cr = ensureCreator();
+  if (cr && cr.available(pick.id)) { cr.begin(); return; }       // female characters: choose the outfit first
+  finishCreation();
 });
 
 function animateAvatar(av, speed, dt) {
@@ -845,6 +889,7 @@ class World {
         characters: FREE_IDS,                                   // the test button cycles through these
       });
     } catch (e) { console.error('Clothing could not start:', e); this.clothing = null; }
+    if (this.clothing) restoreSavedLook(this, this.clothing);       // the outfit chosen on the creation screen (nothing happens if there is none)
     this.connect();
     this.renderer.setAnimationLoop(() => this.frame());
   }

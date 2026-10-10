@@ -244,11 +244,14 @@ function loadTexture(url) {
   }));
   return textureLoads.get(url);
 }
+function colourFile(pieceId, token) {              // which texture file (and tint) a colour token means for a piece
+  const p = PIECES[pieceId]; if (!p || !token) return {};
+  if (/^#[0-9a-f]{6}$/i.test(token)) return { file: p.custom, tint: token };
+  const c = (p.colors || []).find(c => c.id === token); return { file: c ? c.file : null, tint: null };
+}
 async function applyColour(copy, pieceId, token) {
   const p = PIECES[pieceId]; if (!p || !token) return;
-  let file = null, tint = null;
-  if (/^#[0-9a-f]{6}$/i.test(token)) { file = p.custom; tint = token; }
-  else { const c = (p.colors || []).find(c => c.id === token); if (c) file = c.file; }
+  const { file, tint } = colourFile(pieceId, token);
   if (!file) { warn('colour not available for ' + pieceId + ': ' + token); return; }
   const tex = await loadTexture(WARDROBE_BASE + file);
   const m = (Array.isArray(copy.material) ? copy.material[0] : copy.material).clone();      // a private copy, the shared material is untouched
@@ -403,6 +406,7 @@ export function initClothing(opts) {
     let src;
     try { src = outfit.pieces ? { scenes: (await Promise.all(outfit.pieces.map(loadPiece))).map(g => g.scene) } : { scenes: [(await loadSource(outfit.source)).scene] }; }
     catch (e) { warn('could not load the outfit source', outfit.source || outfit.pieces, e); return false; }
+    if (outfit.colors) { try { await Promise.all(Object.entries(outfit.colors).map(([pid, tok]) => { const f = colourFile(pid, tok).file; return f ? loadTexture(WARDROBE_BASE + f) : null; })); } catch (e) { /* applyColour reports it below */ } }   // colour textures are read BEFORE the old outfit comes off, so there is no flash of own clothes
     if (model !== world.player.userData.model) return false;                          // the character changed while we waited
 
     strip(model);
@@ -482,7 +486,7 @@ export function initClothing(opts) {
     const u = world.player.userData;
     if (busy || !u.model) return;
     if (dressed && dressed.model === u.model && dressed.outfit === wanted) return;
-    busy = true;
+    busy = true; let failed = false;
     try {
       const model = u.model;
       if (dressed && dressed.model === model) { strip(model); dressed = null; }
@@ -495,7 +499,8 @@ export function initClothing(opts) {
         }
         else { world.say3d('Could not put that outfit on this character (see the browser console).'); wanted = null; dressed = { model, outfit: null }; }
       } else { dressed = { model, outfit: null }; world.say3d('Own clothes.'); }
-    } catch (e) { console.error('[clothing] failed:', e); wanted = null; } finally { busy = false; }
+    } catch (e) { console.error('[clothing] failed:', e); wanted = null; failed = true; } finally { busy = false; }
+    if (!failed && dressed && dressed.model === world.player.userData.model && dressed.outfit !== wanted) sync();       // the choice changed while we were busy: catch up
   }
 
   // debug: hide / show the wearer's skin (the outfit parts stay), to see whether the outfit is really on
@@ -524,6 +529,20 @@ export function initClothing(opts) {
   function setColour(slot, col) {
     if (!piece[slot]) { warn('no piece in slot ' + slot + ' to colour'); return Promise.resolve(); }
     colour[slot] = col || null; return setOutfit(pieceKey());
+  }
+  function getState() { return { piece: { ...piece }, colour: { ...colour }, busy }; }       // for wardrobe.js: what is chosen right now
+  function clearAll() { piece = emptyPieces(); colour = emptyPieces(); return setOutfit(null); }   // back to the character's own clothes
+  function setLook(look) {                                                                  // put a whole saved look on at once (as returned by getState); anything unknown is ignored
+    const p = emptyPieces(), c = emptyPieces(), L = look || {};
+    for (const s of SLOTS) {
+      const id = L.piece && L.piece[s];
+      if (!id || !PIECES[id] || PIECES[id].slot !== s) continue;
+      p[s] = id;
+      const t = L.colour && L.colour[s];
+      if (t && (/^#[0-9a-f]{6}$/i.test(t) ? PIECES[id].custom : (PIECES[id].colors || []).some(x => x.id === t))) c[s] = t;
+    }
+    if (p.dress) { p.top = null; p.bottom = null; c.top = c.bottom = null; }
+    piece = p; colour = c; return setOutfit(pieceKey());
   }
   function cyclePiece(slot) {
     const options = [null, ...Object.keys(PIECES).filter(n => PIECES[n].slot === slot)];
@@ -561,7 +580,7 @@ export function initClothing(opts) {
       if (info) info.insertBefore(x, before); else document.body.appendChild(x);
     });
   }
-  const ready = loadWardrobe().then(makeButtons);
+  const ready = loadWardrobe().then(() => { if (!opts.noButtons) makeButtons(); });          // noButtons: the character-creation preview has its own screen (creator.js)
 
   // ----- every frame: a new model (character change, reload) gets the chosen outfit put on again -----
   let tick = 0;
@@ -571,7 +590,5 @@ export function initClothing(opts) {
     if (u.model && (!dressed || dressed.model !== u.model)) sync();
   }
 
-  return { update, setOutfit, setPiece, setColour, PIECES, OUTFITS, ready };
+  return { update, setOutfit, setPiece, setColour, getState, clearAll, setLook, PIECES, OUTFITS, ready };
 }
-
-
