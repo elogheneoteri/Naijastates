@@ -26,13 +26,13 @@ const SLOT_ORDER = ['top', 'bottom', 'dress', 'shoes', 'necklace', 'earrings'];
 
 // where the preview camera looks for each tab: y = height on the body, d = distance (both as a share of the body height)
 const FOCUS = {
-  all:      { y: 0.53, d: 1.30 },
-  top:      { y: 0.68, d: 0.70 },
-  bottom:   { y: 0.45, d: 0.85 },
-  dress:    { y: 0.58, d: 1.00 },
-  shoes:    { y: 0.14, d: 0.52 },
-  necklace: { y: 0.82, d: 0.42 },
-  earrings: { y: 0.90, d: 0.36 },
+  all:      { y: 0.52, d: 1.32 },
+  top:      { y: 0.68, d: 0.72 },       // head to hips
+  bottom:   { y: 0.50, d: 1.10 },       // the whole figure: head to feet
+  dress:    { y: 0.52, d: 1.15 },
+  shoes:    { y: 0.08, d: 0.42 },       // the feet in the middle of the picture
+  necklace: { y: 0.84, d: 0.42 },
+  earrings: { y: 0.91, d: 0.36 },
 };
 const PREVIEW_FOV_K = 1.041 / 0.536;                 // visible height = 2*dist*tan(fov/2): the main camera (55 deg) numbers above, converted to the preview camera (30 deg)
 
@@ -52,7 +52,7 @@ const ICONS = {
 const svg = name => '<svg class="cr-ic" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || ICONS.top) + '</svg>';
 
 const CSS = `
-#creator { display: none; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
+#creator { display: none; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; flex: 1; }
 #creator.open { display: flex; }
 #creator .cr-ic { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 #creator .cr-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; flex: none; }
@@ -61,13 +61,14 @@ const CSS = `
   color: #fff; background: rgba(16,38,74,.65); border: 2px solid var(--line); border-radius: 14px; -webkit-tap-highlight-color: transparent; }
 #creator .cr-tab .cr-ic { width: 18px; height: 18px; }
 #creator .cr-tab.on { border-color: var(--gold); color: var(--gold); background: var(--navy2); box-shadow: 0 0 12px rgba(255,198,26,.3); }
-#creator .cr-grid { flex: 1; min-height: 84px; max-height: clamp(110px, 34vh, 300px); overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: min-content; gap: 8px; align-content: start; padding: 8px 6px 4px 2px; -webkit-overflow-scrolling: touch; }
+#creator .cr-grid { flex: 0 1 auto; min-height: 84px; max-height: clamp(110px, 34vh, 300px); overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: min-content; gap: 8px; align-content: start; padding: 8px 6px 4px 2px; -webkit-overflow-scrolling: touch; }
 #creator .cr-card { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 84px; padding: 8px 4px; cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 700; line-height: 1.2; text-align: center;
   color: #fff; border: 2px solid var(--line); border-radius: 16px; background: linear-gradient(180deg, rgba(24,56,108,.8), rgba(10,24,52,.9)); -webkit-tap-highlight-color: transparent; }
 #creator .cr-card .cr-ic { width: 32px; height: 32px; fill: var(--sw, rgba(255,255,255,.12)); stroke: rgba(255,255,255,.65); }
 #creator .cr-card.none .cr-ic { fill: none; }
 #creator .cr-card.on { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 16px rgba(255,198,26,.45); }
 #creator .cr-card.on::after { content: "\\2713"; position: absolute; top: -9px; right: -7px; width: 22px; height: 22px; border-radius: 50%; background: var(--gold); color: #111; font-size: 12px; line-height: 22px; }
+#creator .cr-col { flex: none; max-height: 30vh; overflow-y: auto; }
 #creator .cr-sec { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 800; letter-spacing: .1em; color: #fff; flex: none; }
 #creator .cr-hint { font-style: normal; font-size: 11.5px; font-weight: 500; letter-spacing: 0; color: var(--mut); text-align: right; }
 #creator .cr-sws { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; min-height: 38px; }
@@ -79,13 +80,14 @@ const CSS = `
 #creator .cr-dot.wheel { background: conic-gradient(#f44, #fd4, #4d6, #4df, #64f, #f4d, #f44); }
 #creator .cr-dot.wheel input { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); opacity: 0; cursor: pointer; border: 0; padding: 0; }
 #creator .cr-dot.dice { background: rgba(16,38,74,.65); }
-#creator .cr-foot { display: flex; gap: 8px; flex: none; }
+#creator .cr-foot { display: flex; gap: 8px; flex: none; margin-top: auto; }
 #creator .cr-foot .alt { flex: none; padding: 13px 20px; }
 #creator .cr-foot .big { flex: 1; }
 #creator .cr-status { font-size: 12px; color: var(--gold); min-height: 15px; text-align: center; flex: none; }
 @media (orientation:landscape) and (max-height:600px) {
   #creator { gap: 6px; }
-  #creator .cr-grid { max-height: 30vh; }
+  #creator .cr-grid { max-height: none; min-height: 60px; }
+  #creator .cr-col { max-height: 26vh; }
   #creator .cr-card { min-height: 66px; } #creator .cr-card .cr-ic { width: 24px; height: 24px; }
   #creator .cr-tab { min-height: 36px; } #creator .cr-dot { width: 30px; height: 30px; }
   #creator .cr-foot .alt { padding: 10px 16px; }
@@ -97,6 +99,7 @@ export async function restoreSavedLook(world, clothing) {
   try {
     await clothing.ready;
     const raw = localStorage.getItem(STORE_KEY); if (!raw) return;
+    if (!Object.keys(clothing.PIECES).length) { world.say3d('Your outfit could not be put on: the outfit list (wardrobe.json) did not load.'); return; }
     const look = JSON.parse(raw);
     if (!look || !look.piece || !Object.values(look.piece).some(Boolean)) return;
     if (!/^female_/.test(String(world.player.userData.characterId || ''))) return;     // the pieces are female for now
@@ -118,7 +121,7 @@ export function initCreator(opts) {
   root.innerHTML =
     '<div class="cr-tabs"></div>' +
     '<div class="cr-grid"></div>' +
-    '<div><div class="cr-sec"><span>COLOUR</span><em class="cr-hint"></em></div><div class="cr-sws"></div></div>' +
+    '<div class="cr-col"><div class="cr-sec"><span>COLOUR</span><em class="cr-hint"></em></div><div class="cr-sws"></div></div>' +
     '<div class="cr-status"></div>' +
     '<div class="cr-foot"><button type="button" class="alt" data-act="back">Back</button><button type="button" class="alt" data-act="reset">' + svg('reset') + '</button><button type="button" class="big" data-act="play">Play</button></div>';
   side.appendChild(root);
@@ -126,7 +129,7 @@ export function initCreator(opts) {
   const tabsEl = q('.cr-tabs'), gridEl = q('.cr-grid'), swEl = q('.cr-sws'), hintEl = q('.cr-hint'), statusEl = q('.cr-status');
 
   let slot = null, open = false, poll = 0, lastSig = '', lastBusy = false, pickTimer = 0, oldTitle = '';
-  const hidden = [];
+  const hidden = []; let sideStyle = ['', '', ''];
   const slotsWithPieces = () => SLOT_ORDER.filter(s => Object.values(PIECES).some(p => p.slot === s));
 
   // does this character get a customize step? (female pieces only for now)
@@ -135,16 +138,19 @@ export function initCreator(opts) {
   function save() { try { const s = clothing.getState(); localStorage.setItem(STORE_KEY, JSON.stringify({ piece: s.piece, colour: s.colour })); } catch (e) { /* storage blocked: fine */ } }
 
   // ---------- the camera of the preview ----------
-  function bodyHeight() {
-    const m = holder.userData && holder.userData.model; if (!m) return 1.7;
-    if (m.userData.creatorH) return m.userData.creatorH;
+  function bodyBox() {                                                             // { H: body height, base: height of the feet }, measured from the skeleton
+    const m = holder.userData && holder.userData.model; if (!m) return { H: 1.7, base: 0 };
+    if (m.userData.creatorBox) return m.userData.creatorBox;
     m.updateMatrixWorld(true);
-    const b = new THREE.Box3().setFromObject(m), h = b.max.y - b.min.y, H = h > 0.5 && h < 3 ? h : 1.7;
-    m.userData.creatorH = H; return H;
+    let lo = Infinity, hi = -Infinity; const v = new THREE.Vector3();
+    m.traverse(o => { if (o.isBone) { o.getWorldPosition(v); if (v.y < lo) lo = v.y; if (v.y > hi) hi = v.y; } });
+    const h = (hi - lo) * 1.05;
+    const box = h > 0.5 && h < 3 ? { H: h, base: lo } : { H: 1.7, base: 0 };
+    m.userData.creatorBox = box; return box;
   }
   function focus() {
-    const f = FOCUS[slot] || FOCUS.all, H = bodyHeight();
-    setView(f.y * H, f.d * H * PREVIEW_FOV_K);
+    const f = FOCUS[slot] || FOCUS.all, b = bodyBox();
+    setView(b.base + f.y * b.H, f.d * b.H * PREVIEW_FOV_K);
   }
 
   // ---------- drawing ----------
@@ -155,7 +161,7 @@ export function initCreator(opts) {
     slots.forEach(s => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'cr-tab' + (s === slot ? ' on' : '');
       b.innerHTML = svg(s) + '<span>' + SLOT_TABS[s].label + '</span>';
-      b.addEventListener('click', () => { slot = s; renderTabs(); renderGrid(); renderColours(); focus(); });
+      b.addEventListener('click', () => { slot = s; holder.rotation.y = Math.round(holder.rotation.y / (Math.PI * 2)) * Math.PI * 2; renderTabs(); renderGrid(); renderColours(); focus(); });
       tabsEl.appendChild(b);
     });
   }
@@ -219,7 +225,8 @@ export function initCreator(opts) {
   function begin() {
     if (open) return;
     open = true;
-    hidden.length = 0;
+    hidden.length = 0; sideStyle = [side.style.minHeight, side.style.justifyContent, side.style.minWidth];
+    side.style.minHeight = '0'; side.style.minWidth = '0'; side.style.justifyContent = 'flex-start';              // the column may shrink to the screen; its buttons stay in view
     [...side.children].forEach(c => { if (c !== root) { hidden.push([c, c.style.display]); c.style.display = 'none'; } });
     root.classList.add('open');
     if (title) { oldTitle = title.innerHTML; title.innerHTML = 'Customize Your <b>Look</b>'; }
@@ -232,9 +239,10 @@ export function initCreator(opts) {
     open = false; clearInterval(poll); clearTimeout(pickTimer);
     root.classList.remove('open');
     hidden.forEach(([c, d]) => { c.style.display = d; });
+    side.style.minHeight = sideStyle[0]; side.style.justifyContent = sideStyle[1]; side.style.minWidth = sideStyle[2];
     if (title) title.innerHTML = oldTitle;
     setSpin(true);
-    const H = bodyHeight(); setView(0.53 * H, FOCUS.all.d * H * PREVIEW_FOV_K);
+    const b = bodyBox(); setView(b.base + FOCUS.all.y * b.H, FOCUS.all.d * b.H * PREVIEW_FOV_K);
   }
   q('[data-act="back"]').addEventListener('click', () => { end(); onBack(); });
   q('[data-act="reset"]').addEventListener('click', () => { clothing.clearAll(); save(); refresh(false); });

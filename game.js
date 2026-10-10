@@ -12,8 +12,8 @@ import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.
 import { buildHighSchoolExterior, HS_EXTERIOR_BOXES } from './high_school_exterior.js';
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
 import { initNin, IVORY_FILE } from './nin.js';
-import { initClothing } from './clothing.js';   // clothing test: wear another character's outfit
-import { initCreator, restoreSavedLook } from './creator.js';   // step 2 of character creation: choose the outfit (first-time players only)
+import { initClothing } from './clothing.js?v=5';   // clothing test: wear another character's outfit
+import { initCreator, restoreSavedLook } from './creator.js?v=5';   // step 2 of character creation: choose the outfit (first-time players only)
 import { loadProp } from './props_library.js';
 import { HS_STAIRS, STAIR_SPEED_FACTOR, STAIR_ANIM_SPEED, addStairs, groundHeight, onStairs } from './stairs.js';   // Step 2: the school steps
 import { buildCity, cityClearRects, JUNCTION_GAPS_X, CITY, plotAt } from './city.js';
@@ -237,7 +237,7 @@ $('btnLogin').addEventListener('click', async () => {
 
 async function boot() {
   // small build tag in the corner, so you can see at once whether the newest game.js is the one running
-  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-10 creator-1';
+  const tag = document.createElement('div'); tag.textContent = 'build 2026-10-10 creator-3';
   tag.style.cssText = 'position:fixed;left:8px;bottom:4px;z-index:99;font:11px sans-serif;color:#7f8c8d;pointer-events:none';
   document.body.appendChild(tag); window.__buildTag = tag;
   authBox.style.display = 'flex'; showPanel('pLanding');
@@ -771,7 +771,7 @@ function updatePlayLabel() {
   if (pv && pv.clothing && !pv.labelHooked) { pv.labelHooked = true; pv.clothing.ready.then(() => {
       if (!pv) return;
       updatePlayLabel();
-      if (/^female_/.test(pick.id || '') && !Object.keys(pv.clothing.PIECES).length) say('Outfit step skipped: wardrobe.json was not found (it should be in the main folder or in clothing/female/).');
+      if (/^female_/.test(pick.id || '') && !Object.keys(pv.clothing.PIECES).length) say('Outfit step skipped: wardrobe.json could not be loaded' + (pv.clothing.wardrobeInfo() ? ' (' + pv.clothing.wardrobeInfo() + ')' : '') + '. Reload the page to try again.');
     }); }     // the wardrobe list loads a moment after the screen opens
 }
 function showGender(gender) {

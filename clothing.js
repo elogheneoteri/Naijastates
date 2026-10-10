@@ -222,17 +222,31 @@ function smoothPush(pts, disp, radius, passes) {
 // ---- end of fit core ----
 
 // ---- wardrobe.json and the piece files ----
+let wardrobeInfo = '';                                            // why the list could not be loaded (shown on the choose screen)
 async function loadWardrobe() {
-  for (const url of [WARDROBE_URL, 'wardrobe.json']) {          // the main folder is tried too (that is where wardrobe.json sits in the repo); piece files are always relative to clothing/female/
-    try {
-      const res = await fetch(url); if (!res.ok) continue;
-      const list = await res.json();
-      for (const p of (Array.isArray(list) ? list : list.pieces || [])) if (p.id && p.slot && p.file) PIECES[p.id] = { slot: p.slot, label: p.label || p.id, file: p.file, colors: p.colors || [], custom: p.custom || null };
-      log('wardrobe: ' + Object.keys(PIECES).length + ' pieces (from ' + url + ')');
-      return;
-    } catch (e) { /* try the next place */ }
+  const take = list => { for (const p of (Array.isArray(list) ? list : list.pieces || [])) if (p.id && p.slot && p.file) PIECES[p.id] = { slot: p.slot, label: p.label || p.id, file: p.file, colors: p.colors || [], custom: p.custom || null }; return Object.keys(PIECES).length; };
+  const tried = [];
+  for (let attempt = 0; attempt < 3; attempt++) {                  // a slow server gets three tries
+    if (attempt) await new Promise(r => setTimeout(r, 1500 * attempt));
+    for (const url of [WARDROBE_URL, 'wardrobe.json']) {           // the main folder is tried too (that is where wardrobe.json sits in the repo); piece files are always relative to clothing/female/
+      try {
+        const res = await fetch(url, { cache: 'no-cache' });
+        if (!res.ok) { tried.push(url + ' = ' + res.status); continue; }
+        const text = await res.text();
+        if (take(JSON.parse(text))) {
+          try { localStorage.setItem('wardrobeJson', text); } catch (e) { /* storage blocked: fine */ }
+          wardrobeInfo = ''; log('wardrobe: ' + Object.keys(PIECES).length + ' pieces (from ' + url + ')'); return;
+        }
+        tried.push(url + ' = no pieces in it');
+      } catch (e) { tried.push(url + ' = ' + ((e && e.message) || e)); }
+    }
   }
-  warn('wardrobe.json was not found (tried ' + WARDROBE_URL + ' and wardrobe.json)');
+  try {                                                            // the server never answered: use the copy kept on this device from the last good load
+    const saved = localStorage.getItem('wardrobeJson');
+    if (saved && take(JSON.parse(saved))) { wardrobeInfo = 'the server was slow, so the copy saved on this device is used'; log('wardrobe: ' + Object.keys(PIECES).length + ' pieces (saved copy)'); return; }
+  } catch (e) { /* no usable copy */ }
+  wardrobeInfo = tried.slice(-2).join(', ');
+  warn('wardrobe.json could not be loaded:', tried.join(', '));
 }
 const pieceLoads = new Map();     // piece id -> promise of its loaded .glb (each file is read once)
 function loadPiece(id) {
@@ -317,10 +331,14 @@ export function initClothing(opts) {
     const colliders = [];
     model.traverse(o => { if (o.isSkinnedMesh && !o.userData.outfitPart && COLLIDERS.test(plain(o.material))) colliders.push(o); });
     if (!colliders.length) return 'fit skipped: no skin parts found';
-    if (copies.every(c => fitCache.has(characterId + '|' + outfitId + '|' + c.userData.outfitPart))) {
-      copies.forEach(c => { const a = c.geometry.attributes.position; a.array.set(fitCache.get(characterId + '|' + outfitId + '|' + c.userData.outfitPart)); a.needsUpdate = true; c.geometry.computeBoundingSphere(); });
-      return 'fit reused';
-    }
+    const keyOf = c => characterId + '|' + outfitId + '|' + c.userData.outfitPart;          // outfitId is '*' for wardrobe pieces: a piece fits the same whatever else is worn
+    const todo = [];
+    copies.forEach(c => {
+      const k = keyOf(c);
+      if (fitCache.has(k)) { const a = c.geometry.attributes.position; a.array.set(fitCache.get(k)); a.needsUpdate = true; c.geometry.computeBoundingSphere(); }
+      else todo.push(c);
+    });
+    if (!todo.length) return 'fit reused';
     // the wearer's skin as triangles, at its current pose
     const tri = []; let y0 = Infinity, y1 = -Infinity;
     colliders.forEach(m => {
@@ -337,7 +355,7 @@ export function initClothing(opts) {
     const clear = FIT_CLEAR_M * U, reach = FIT_REACH_M * U, maxPush = FIT_MAX_M * U;
     let totalPushed = 0, totalPoints = 0, worst = 0;
     const m3 = new THREE.Matrix3(), full = new THREE.Matrix4(), mv = new THREE.Matrix4(), d = new THREE.Vector3();
-    copies.forEach(c => {
+    todo.forEach(c => {
       c.updateMatrixWorld(true);
       const P = skinnedWorld(c), np = P.length / 3;
       const res = pushOut(tv, P, clear, reach, maxPush);
@@ -361,7 +379,7 @@ export function initClothing(opts) {
         pos.setXYZ(i, pos.getX(i) + d.x, pos.getY(i) + d.y, pos.getZ(i) + d.z);
       }
       pos.needsUpdate = true; g.computeBoundingSphere(); g.computeBoundingBox();
-      fitCache.set(characterId + '|' + outfitId + '|' + c.userData.outfitPart, new Float32Array(pos.array));
+      fitCache.set(keyOf(c), new Float32Array(pos.array));
     });
     return 'fitted: ' + totalPushed + ' of ' + totalPoints + ' points moved out of the skin, the most by ' + (worst * 1000).toFixed(0) + ' mm';
   }
@@ -468,7 +486,7 @@ export function initClothing(opts) {
       copy.bind(new THREE.Skeleton(p.bones, p.inverses), p.bind);                     // the part now follows the wearer's bones
     });
     let fitInfo = 'fit off';
-    if (FIT) { try { fitInfo = fitCopies(model, copies, characterId, String(outfitId).replace(/:[^;]+/g, '')); } catch (e) { fitInfo = 'fit failed'; warn('fitting failed, the outfit keeps the shape it was made with:', e); } }
+    if (FIT) { try { fitInfo = fitCopies(model, copies, characterId, outfit.pieces ? '*' : String(outfitId).replace(/:[^;]+/g, '')); } catch (e) { fitInfo = 'fit failed'; warn('fitting failed, the outfit keeps the shape it was made with:', e); } }
     const skinSwaps = [];
     if (MASK) model.traverse(o => { if (o.isSkinnedMesh && !o.userData.outfitPart && !hidden.includes(o) && SKIN_MASKED.test(plain(o.material))) skinSwaps.push({ mesh: o, material: o.material, order: o.renderOrder }); });
     skinSwaps.forEach(s => { s.mesh.material = withStencil(s.material, 'skin'); s.mesh.renderOrder = 1; });
@@ -502,6 +520,7 @@ export function initClothing(opts) {
           const f = (model.userData.outfitParts && model.userData.outfitParts.fit) || '';          // shown on screen, so you can see it without the console
           world.say3d(resolveOutfit(wanted).label + ' is on' + (/^fit(ted| reused)/.test(f) ? ' (fitted)' : f === 'fit failed' ? ' (fit FAILED)' : '') + '.');
         }
+        else if (world.player.userData.model !== model) { dressed = null; }                   // the character was swapped while the pieces loaded (the server sends the saved character): keep the choice, update() dresses the new model
         else { world.say3d('Could not put that outfit on this character (see the browser console).'); wanted = null; dressed = { model, outfit: null }; }
       } else { dressed = { model, outfit: null }; world.say3d('Own clothes.'); }
     } catch (e) { console.error('[clothing] failed:', e); wanted = null; failed = true; } finally { busy = false; }
@@ -595,5 +614,5 @@ export function initClothing(opts) {
     if (u.model && (!dressed || dressed.model !== u.model)) sync();
   }
 
-  return { update, setOutfit, setPiece, setColour, getState, clearAll, setLook, PIECES, OUTFITS, ready };
+  return { update, setOutfit, setPiece, setColour, getState, clearAll, setLook, PIECES, OUTFITS, ready, wardrobeInfo: () => wardrobeInfo };
 }
