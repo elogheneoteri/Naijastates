@@ -1,0 +1,170 @@
+{
+  "_note": "Every piece is its own .glb in a category folder. slot = top | bottom | dress | shoes | necklace | earrings. To add a piece: put the .glb in its folder and add one entry here. 'file' is relative to clothing/female/.",
+  "pieces": [
+    {
+      "id": "top_khustup",
+      "slot": "top",
+      "label": "Sport top (blue)",
+      "file": "tops/top_khustup.glb",
+      "colors": [
+        {
+          "id": "blue",
+          "label": "Blue",
+          "swatch": "#6190a6",
+          "file": "colors/top_khustup/blue.jpg"
+        },
+        {
+          "id": "brown",
+          "label": "Brown",
+          "swatch": "#2b1900",
+          "file": "colors/top_khustup/brown.jpg"
+        },
+        {
+          "id": "black",
+          "label": "Black",
+          "swatch": "#000000",
+          "file": "colors/top_khustup/black.jpg"
+        }
+      ],
+      "custom": "colors/top_khustup/custom.jpg"
+    },
+    {
+      "id": "tshirt_arpi",
+      "slot": "top",
+      "label": "T-shirt",
+      "file": "tops/tshirt_arpi.glb",
+      "colors": [
+        {
+          "id": "default",
+          "label": "Original",
+          "swatch": "#a2aeb9",
+          "file": "colors/tshirt_arpi/default.jpg"
+        }
+      ],
+      "custom": "colors/tshirt_arpi/custom.jpg"
+    },
+    {
+      "id": "hoodie_aras",
+      "slot": "top",
+      "label": "Hoodie",
+      "file": "tops/hoodie_aras.glb",
+      "colors": [
+        {
+          "id": "default",
+          "label": "Original",
+          "swatch": "#9b7072",
+          "file": "colors/hoodie_aras/default.jpg"
+        }
+      ],
+      "custom": "colors/hoodie_aras/custom.jpg"
+    },
+    {
+      "id": "shorts_vedi",
+      "slot": "bottom",
+      "label": "Shorts",
+      "file": "bottoms/shorts_vedi.glb",
+      "colors": [
+        {
+          "id": "beige",
+          "label": "Beige",
+          "swatch": "#938b82",
+          "file": "colors/shorts_vedi/beige.jpg"
+        },
+        {
+          "id": "brown",
+          "label": "Brown",
+          "swatch": "#512c01",
+          "file": "colors/shorts_vedi/brown.jpg"
+        },
+        {
+          "id": "teal",
+          "label": "Teal",
+          "swatch": "#038393",
+          "file": "colors/shorts_vedi/teal.jpg"
+        },
+        {
+          "id": "black",
+          "label": "Black",
+          "swatch": "#000000",
+          "file": "colors/shorts_vedi/black.jpg"
+        }
+      ],
+      "custom": "colors/shorts_vedi/custom.jpg"
+    },
+    {
+      "id": "jeans_ayger",
+      "slot": "bottom",
+      "label": "Jeans",
+      "file": "bottoms/jeans_ayger.glb",
+      "colors": [
+        {
+          "id": "default",
+          "label": "Original",
+          "swatch": "#47535d",
+          "file": "colors/jeans_ayger/default.jpg"
+        }
+      ],
+      "custom": "colors/jeans_ayger/custom.jpg"
+    },
+    {
+      "id": "sneakers_azat",
+      "slot": "shoes",
+      "label": "Sneakers (low)",
+      "file": "shoes/sneakers_azat.glb",
+      "colors": [
+        {
+          "id": "default",
+          "label": "Original",
+          "swatch": "#87827d",
+          "file": "colors/sneakers_azat/default.jpg"
+        }
+      ],
+      "custom": "colors/sneakers_azat/custom.jpg"
+    },
+    {
+      "id": "sneakers_arpi",
+      "slot": "shoes",
+      "label": "Sneakers (high-top)",
+      "file": "shoes/sneakers_arpi.glb",
+      "colors": [
+        {
+          "id": "default",
+          "label": "Original",
+          "swatch": "#9e9d9b",
+          "file": "colors/sneakers_arpi/default.jpg"
+        }
+      ],
+      "custom": "colors/sneakers_arpi/custom.jpg"
+    },
+    {
+      "id": "necklace_pendant_03",
+      "slot": "necklace",
+      "label": "Pendant necklace 1",
+      "file": "jewelry/necklace_pendant_03.glb"
+    },
+    {
+      "id": "necklace_pendant_05",
+      "slot": "necklace",
+      "label": "Pendant necklace 2",
+      "file": "jewelry/necklace_pendant_05.glb"
+    },
+    {
+      "id": "necklace_chain",
+      "slot": "necklace",
+      "label": "Chain necklace",
+      "file": "jewelry/necklace_chain.glb"
+    },
+    {
+      "id": "earrings_01",
+      "slot": "earrings",
+      "label": "Earrings 1",
+      "file": "jewelry/earrings_01.glb"
+    },
+    {
+      "id": "earrings_03",
+      "slot": "earrings",
+      "label": "Earrings 2",
+      "file": "jewelry/earrings_03.glb"
+    }
+  ]
+}

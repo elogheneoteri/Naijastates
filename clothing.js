@@ -15,7 +15,8 @@
 // If anything is missing or goes wrong, the character is left exactly as it was and the reason is written in the browser console
 // (look for lines starting with [clothing]).
 //
-// Test buttons under the minimap:  "Test: next character" (cycles through the free characters)  and  "Test: next outfit".
+// Test buttons under the minimap:  "Test: next character" (cycles through the free characters) and one "Test: next ..." button per slot
+// that has pieces in wardrobe.json (top, bottom, shoes, necklace, earrings), plus "Test: own clothes".
 //
 // ADDING A CHARACTER
 //   1. Put its entry in characters.json (free, premium or clothing).
@@ -32,9 +33,13 @@
 //   ?clear=3         the gap kept between skin and outfit, in millimetres (default 3)
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // each character's own clothing parts: hidden while it wears another outfit, copied when somebody else wears them
 const CLOTHES = {
+  female_char1:     ['singlet', 'shorts', 'shoes'],                                   // the three playable characters: singlet, shorts, shoes
+  female_char2:     ['singlet', 'shorts', 'shoes'],
+  female_char3:     ['singlet', 'shorts', 'shoes'],
   female_elizabeth: ['blinn1', 'blinn2', 'blinn3'],                                   // top, skirt, shoes
   female_emma:      ['Vest', 'Logo', 'Full_Body', 'Sneakers1'],                       // vest, its logo, tight body suit, sneakers
   female_jeans:     ['Female_T_Shirt', 'Denim_shorts', 'Canvas_shoes'],               // t-shirt, shorts, shoes
@@ -49,6 +54,32 @@ const OUTFIT_LABELS = {
   female_rocker: 'Rocker outfit',
   female_sammie: 'Sammie outfit',
 };
+
+// ---- WARDROBE: single pieces that can be mixed freely ----
+// Every piece is its own small .glb file, listed in clothing/female/wardrobe.json (id, slot, label, file).
+// Folders: clothing/female/tops, bottoms, dresses, shoes, jewelry (hair comes later).
+// ADDING A PIECE: put the .glb in the matching folder and add one entry to wardrobe.json. Nothing in this file changes.
+const WARDROBE_URL = 'clothing/female/wardrobe.json';
+const WARDROBE_BASE = 'clothing/female/';
+const WARDROBE_SOURCE = 'female_wardrobe';                       // only used to tell the gender of a piece outfit
+const PIECES = {};                                               // filled from wardrobe.json: id -> { slot, label, file }
+const SLOTS = ['top', 'bottom', 'dress', 'shoes', 'necklace', 'earrings'];
+const OWN_SLOT = { singlet: 'top', shorts: 'bottom', shoes: 'shoes' };      // which slot each of the playable characters' own parts fills
+const slotsHidden = slots => slots.flatMap(s => s === 'dress' ? ['top', 'bottom'] : [s]);   // a dress covers the top and the bottom
+
+// a selection like 'top=hoodie_aras;shoes=sneakers_azat' -> an outfit made of those pieces (own parts of the other slots stay)
+function resolveOutfit(id) {
+  if (!id) return null;
+  if (OUTFITS[id]) return OUTFITS[id];
+  if (!String(id).includes('=')) return null;
+  const sel = {}, colors = {};
+  String(id).split(';').forEach(p => {
+    const [slot, rest = ''] = p.split('='), [name, colour] = rest.split(':');          // 'top=hoodie_aras:#ff0000' or 'top=top_khustup:teal'
+    if (PIECES[name] && PIECES[name].slot === slot) { sel[slot] = name; if (colour) colors[name] = colour; }
+  });
+  const names = Object.values(sel); if (!names.length) return null;
+  return { label: names.map(n => PIECES[n].label).join(' + '), source: WARDROBE_SOURCE, pieces: names, take: names, slots: Object.keys(sel), colors };
+}
 
 // The clothes are cut for another body, so a little of the wearer's skin can poke through. Each outfit part is grown by this
 // much (millimetres) along its surface to cover it. 0 = off.
@@ -67,8 +98,8 @@ const SKIP_MASK = /necklace|earring|logo|lace|eaglet/i;
 const FIT = params.get('fit') !== '0';
 const FIT_CLEAR_M = (params.has('clear') ? parseFloat(params.get('clear')) || 0 : 3) / 1000;   // metres on a 1.38 m tall body, scaled for other sizes
 const FIT_REACH_M = 0.05, FIT_MAX_M = 0.05;                   // how far from the skin a point is looked at, and the most it can be moved
-const COLLIDERS = /^(std_skin_)?(body|arms?|legs?)\d*$/i;      // the wearer's skin parts that outfits must stay outside of (not the head)
-const SKIN_MASKED = /^(std_skin_)?(body|legs?)\d*$/i;
+const COLLIDERS = /^(std_skin_|skin_)?(body|arms?|legs?)\d*$/i;      // the wearer's skin parts that outfits must stay outside of (not the head)
+const SKIN_MASKED = /^(std_skin_|skin_)?(body|legs?)\d*$/i;
 
 // outfits: one for every character in CLOTHES. The outfit id is the character id without male_ / female_
 const idOf = c => c.replace(/^(fe)?male_/, '');
@@ -189,6 +220,41 @@ function smoothPush(pts, disp, radius, passes) {
   return cur;
 }
 // ---- end of fit core ----
+
+// ---- wardrobe.json and the piece files ----
+async function loadWardrobe() {
+  try {
+    const list = await (await fetch(WARDROBE_URL)).json();
+    for (const p of (Array.isArray(list) ? list : list.pieces || [])) if (p.id && p.slot && p.file) PIECES[p.id] = { slot: p.slot, label: p.label || p.id, file: p.file, colors: p.colors || [], custom: p.custom || null };
+    log('wardrobe: ' + Object.keys(PIECES).length + ' pieces');
+  } catch (e) { warn('wardrobe.json could not be read (' + WARDROBE_URL + '):', e); }
+}
+const pieceLoads = new Map();     // piece id -> promise of its loaded .glb (each file is read once)
+function loadPiece(id) {
+  if (!pieceLoads.has(id)) pieceLoads.set(id, new GLTFLoader().loadAsync(WARDROBE_BASE + PIECES[id].file));
+  return pieceLoads.get(id);
+}
+// ---- colours: a piece can have ready-made colour textures (wardrobe.json "colors") and/or take any colour ("#rrggbb") ----
+// A ready-made colour swaps the texture. Any other colour uses the piece's grey texture ("custom") multiplied by that colour,
+// so the fabric detail stays and the colour can be anything (light colours look best).
+const textureLoads = new Map();
+function loadTexture(url) {
+  if (!textureLoads.has(url)) textureLoads.set(url, new THREE.TextureLoader().loadAsync(url).then(t => {
+    t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t;
+  }));
+  return textureLoads.get(url);
+}
+async function applyColour(copy, pieceId, token) {
+  const p = PIECES[pieceId]; if (!p || !token) return;
+  let file = null, tint = null;
+  if (/^#[0-9a-f]{6}$/i.test(token)) { file = p.custom; tint = token; }
+  else { const c = (p.colors || []).find(c => c.id === token); if (c) file = c.file; }
+  if (!file) { warn('colour not available for ' + pieceId + ': ' + token); return; }
+  const tex = await loadTexture(WARDROBE_BASE + file);
+  const m = (Array.isArray(copy.material) ? copy.material[0] : copy.material).clone();      // a private copy, the shared material is untouched
+  m.map = tex; m.color.set(tint || 0xffffff); m.needsUpdate = true;
+  copy.material = m;
+}
 
 export function initClothing(opts) {
   const { world, applyCharacter, loadSource } = opts;
@@ -322,9 +388,11 @@ export function initClothing(opts) {
 
   // ----- put an outfit on a model. Returns true when it worked. Nothing changes unless everything is ready. -----
   async function dress(model, characterId, outfitId) {
-    const outfit = OUTFITS[outfitId];
+    const outfit = resolveOutfit(outfitId);
     if (!outfit) { warn('unknown outfit', outfitId); return false; }
-    const hideNames = CLOTHES[characterId];
+    const ownNames = CLOTHES[characterId];
+    const hideSlots = outfit.slots ? slotsHidden(outfit.slots) : null;
+    const hideNames = ownNames && hideSlots ? ownNames.filter(n => hideSlots.includes(OWN_SLOT[n])) : ownNames;   // a piece only hides the own part of its slot
     if (!hideNames) {
       const names = new Set(); model.traverse(o => { if (o.isSkinnedMesh) names.add(plain(o.material)); });
       warn(characterId + ' cannot wear outfits yet. Add it to CLOTHES in clothing.js. Its parts are: ' + [...names].join(', '));
@@ -333,7 +401,8 @@ export function initClothing(opts) {
     if (genderOf(characterId) !== genderOf(outfit.source)) { warn('an outfit only fits the same gender: ' + characterId + ' / ' + outfit.source); return false; }
     if (outfit.source === characterId) { strip(model); return true; }                 // the character's own outfit is simply its own clothes
     let src;
-    try { src = await loadSource(outfit.source); } catch (e) { warn('could not load the outfit source', outfit.source, e); return false; }
+    try { src = outfit.pieces ? { scenes: (await Promise.all(outfit.pieces.map(loadPiece))).map(g => g.scene) } : { scenes: [(await loadSource(outfit.source)).scene] }; }
+    catch (e) { warn('could not load the outfit source', outfit.source || outfit.pieces, e); return false; }
     if (model !== world.player.userData.model) return false;                          // the character changed while we waited
 
     strip(model);
@@ -346,22 +415,22 @@ export function initClothing(opts) {
       if (o.isSkinnedMesh) { baseMesh = baseMesh || o; if (hideNames.includes(plain(o.material))) hidden.push(o); }
     });
     if (!baseMesh) { warn('the wearer has no body parts'); return false; }
-    if (!hidden.length) warn('none of the wearer\'s own clothing parts were found (' + hideNames.join(', ') + '): the outfit will be added on top');
-    else if (hidden.length < hideNames.length) warn('some of the wearer\'s own clothing parts were not found. Found: ' + hidden.map(m => plain(m.material)).join(', '));
+    if (!hidden.length && hideNames.length) warn('none of the wearer\'s own clothing parts were found (' + hideNames.join(', ') + '): the outfit will be added on top');
+    else if (hidden.length && hidden.length < hideNames.length) warn('some of the wearer\'s own clothing parts were not found. Found: ' + hidden.map(m => plain(m.material)).join(', '));
 
     // the size of one metre in the source file's units (the files are either in metres or in centimetres)
     let tall = 0;
-    src.scene.traverse(sm => {
+    src.scenes.forEach(sc => sc.traverse(sm => {
       if (!sm.isSkinnedMesh) return;
       if (!sm.geometry.boundingBox) sm.geometry.computeBoundingBox();
       tall = Math.max(tall, sm.geometry.boundingBox.max.y - sm.geometry.boundingBox.min.y);
-    });
+    }));
     const amount = (inflateMM / 1000) * (tall > 10 ? 100 : 1);
 
     // build every copy first; only add them if all of them are fine
     const parent = baseMesh.parent;
     const copies = [], missing = new Set(), found = new Set();
-    src.scene.traverse(sm => {
+    src.scenes.forEach(sc => sc.traverse(sm => {
       if (!sm.isSkinnedMesh) return;
       const name = plain(sm.material);
       if (!outfit.take.includes(name)) return;
@@ -376,11 +445,13 @@ export function initClothing(opts) {
       copy.castShadow = true; copy.receiveShadow = true; copy.frustumCulled = false;
       copy.userData = { outfitPart: name, ownGeometry: FIT, pending: { bones, inverses: sm.skeleton.boneInverses.map(m => m.clone()), bind: sm.bindMatrix.clone() } };
       copies.push(copy);
-    });
+    }));
     const lost = outfit.take.filter(n => !found.has(n));
     if (missing.size) { warn('bones missing on the wearer, outfit not put on:', [...missing].join(', ')); return false; }
     if (lost.length) { warn('parts not found in the outfit source:', lost.join(', ')); if (!copies.length) return false; }
 
+    if (outfit.colors) { try { await Promise.all(copies.map(c => applyColour(c, c.userData.outfitPart, outfit.colors[c.userData.outfitPart]))); } catch (e) { warn('colour failed, the piece keeps its own colour:', e); } }
+    if (model !== world.player.userData.model) return false;
     hidden.forEach(m => { m.visible = false; });
     copies.forEach(copy => {
       const p = copy.userData.pending; delete copy.userData.pending;
@@ -388,7 +459,7 @@ export function initClothing(opts) {
       copy.bind(new THREE.Skeleton(p.bones, p.inverses), p.bind);                     // the part now follows the wearer's bones
     });
     let fitInfo = 'fit off';
-    if (FIT) { try { fitInfo = fitCopies(model, copies, characterId, outfitId); } catch (e) { fitInfo = 'fit failed'; warn('fitting failed, the outfit keeps the shape it was made with:', e); } }
+    if (FIT) { try { fitInfo = fitCopies(model, copies, characterId, String(outfitId).replace(/:[^;]+/g, '')); } catch (e) { fitInfo = 'fit failed'; warn('fitting failed, the outfit keeps the shape it was made with:', e); } }
     const skinSwaps = [];
     if (MASK) model.traverse(o => { if (o.isSkinnedMesh && !o.userData.outfitPart && !hidden.includes(o) && SKIN_MASKED.test(plain(o.material))) skinSwaps.push({ mesh: o, material: o.material, order: o.renderOrder }); });
     skinSwaps.forEach(s => { s.mesh.material = withStencil(s.material, 'skin'); s.mesh.renderOrder = 1; });
@@ -420,7 +491,7 @@ export function initClothing(opts) {
         if (ok) {
           dressed = { model, outfit: wanted };
           const f = (model.userData.outfitParts && model.userData.outfitParts.fit) || '';          // shown on screen, so you can see it without the console
-          world.say3d(OUTFITS[wanted].label + ' is on' + (/^fit(ted| reused)/.test(f) ? ' (fitted)' : f === 'fit failed' ? ' (fit FAILED)' : '') + '.');
+          world.say3d(resolveOutfit(wanted).label + ' is on' + (/^fit(ted| reused)/.test(f) ? ' (fitted)' : f === 'fit failed' ? ' (fit FAILED)' : '') + '.');
         }
         else { world.say3d('Could not put that outfit on this character (see the browser console).'); wanted = null; dressed = { model, outfit: null }; }
       } else { dressed = { model, outfit: null }; world.say3d('Own clothes.'); }
@@ -438,18 +509,51 @@ export function initClothing(opts) {
     world.say3d('Skin hidden: ' + parts.map(m => plain(m.material)).join(', '));
   }
 
-  // ----- test buttons -----
-  if (TEST_BUTTONS) {
+  // ----- wardrobe: the pieces chosen for each slot -----
+  const emptyPieces = () => Object.fromEntries(SLOTS.map(s => [s, null]));
+  let piece = emptyPieces(), colour = emptyPieces();
+  const pieceKey = () => SLOTS.filter(s => piece[s]).map(s => s + '=' + piece[s] + (colour[s] ? ':' + colour[s] : '')).join(';') || null;
+  function setPiece(slot, name, col) {                  // name = a piece id, or null for the character's own part; col = optional colour (see below)
+    if (!SLOTS.includes(slot) || (name && (!PIECES[name] || PIECES[name].slot !== slot))) { warn('unknown piece', slot, name); return Promise.resolve(); }
+    piece[slot] = name || null; colour[slot] = name && col ? col : null;
+    if (name && slot === 'dress') { piece.top = null; piece.bottom = null; colour.top = colour.bottom = null; }          // a dress replaces the top and the bottom
+    if (name && (slot === 'top' || slot === 'bottom')) { piece.dress = null; colour.dress = null; }
+    return setOutfit(pieceKey());
+  }
+  // colour of the piece worn in a slot: a colour id from wardrobe.json (e.g. 'teal'), any '#rrggbb', or null for the piece's own colour
+  function setColour(slot, col) {
+    if (!piece[slot]) { warn('no piece in slot ' + slot + ' to colour'); return Promise.resolve(); }
+    colour[slot] = col || null; return setOutfit(pieceKey());
+  }
+  function cyclePiece(slot) {
+    const options = [null, ...Object.keys(PIECES).filter(n => PIECES[n].slot === slot)];
+    setPiece(slot, options[(options.indexOf(piece[slot]) + 1) % options.length]);
+  }
+  function cycleColour(slot) {
+    const p = PIECES[piece[slot]]; if (!p) { world.say3d('Put a ' + slot + ' piece on first.'); return; }
+    const ids = [null, ...(p.colors || []).map(c => c.id)];
+    if (ids.length < 3 && !p.custom) { world.say3d(p.label + ' has only one colour.'); return; }
+    setColour(slot, ids[(ids.indexOf(colour[slot]) + 1) % ids.length]);
+  }
+  function randomColour(slot) {
+    const p = PIECES[piece[slot]]; if (!p) { world.say3d('Put a ' + slot + ' piece on first.'); return; }
+    if (!p.custom) { world.say3d(p.label + ' cannot take any colour.'); return; }
+    setColour(slot, '#' + new THREE.Color().setHSL(Math.random(), 0.65, 0.6).getHexString());
+  }
+
+  // ----- test buttons (made once wardrobe.json has been read, so only slots that have pieces get a button) -----
+  function makeButtons() {
+    if (!TEST_BUTTONS) return;
     const info = document.getElementById('info'), before = document.getElementById('logoutButton');
     const buttons = [
       ['Test: next character', () => {
         const cur = world.player.userData.characterId, i = testWearers.indexOf(cur), next = testWearers[(i + 1) % testWearers.length];
-        wanted = null; applyCharacter(next); world.say3d('Loading ' + next + '...');
+        wanted = null; piece = emptyPieces(); colour = emptyPieces(); applyCharacter(next); world.say3d('Loading ' + next + '...');
       }],
-      ['Test: next outfit', () => {
-        const cycle = [null, ...outfitsFor(world.player.userData.characterId)];
-        const i = cycle.indexOf(wanted); setOutfit(cycle[(i + 1) % cycle.length]);
-      }],
+      ...SLOTS.filter(slot => Object.values(PIECES).some(p => p.slot === slot)).map(slot => ['Test: next ' + slot, () => cyclePiece(slot)]),
+      ...['top', 'bottom', 'shoes'].filter(slot => Object.values(PIECES).some(p => p.slot === slot && (p.colors.length > 1 || p.custom))).flatMap(slot =>
+        [['Test: ' + slot + ' colour', () => cycleColour(slot)], ['Test: ' + slot + ' random colour', () => randomColour(slot)]]),
+      ['Test: own clothes', () => { piece = emptyPieces(); colour = emptyPieces(); setOutfit(null); }],
     ];
     if (DEBUG) buttons.push(['Test: skin on/off', toggleSkin]);
     buttons.forEach(([label, fn]) => {
@@ -457,6 +561,7 @@ export function initClothing(opts) {
       if (info) info.insertBefore(x, before); else document.body.appendChild(x);
     });
   }
+  const ready = loadWardrobe().then(makeButtons);
 
   // ----- every frame: a new model (character change, reload) gets the chosen outfit put on again -----
   let tick = 0;
@@ -466,5 +571,7 @@ export function initClothing(opts) {
     if (u.model && (!dressed || dressed.model !== u.model)) sync();
   }
 
-  return { update, setOutfit, OUTFITS };
+  return { update, setOutfit, setPiece, setColour, PIECES, OUTFITS, ready };
 }
+
+
