@@ -28,7 +28,7 @@
 //   ?outfitdebug=1   writes the size and place of every part to the console and adds a "Test: skin on/off" button
 //                    (hides the wearer's skin, so you can see if the outfit parts are really there)
 //   ?inflate=0       turns off the small growth of the outfit (see INFLATE_MM). ?inflate=8 grows it by 8 mm.
-//   ?mask=0          turns off the skin mask, to compare with and without it
+//   ?mask=1          turns ON the old screen mask (off by default; it made hands see-through from the side)
 //   ?fit=1           turns ON the live fitting (off by default: the pieces are fitted to the body when they are made)
 //   ?clear=3         the gap kept between skin and outfit, in millimetres (default 3)
 
@@ -82,7 +82,7 @@ const inflateMM = params.has('inflate') ? parseFloat(params.get('inflate')) || 0
 
 // Skin mask: outfit parts are drawn first and mark their pixels in the stencil buffer. The wearer's body and legs are then not drawn
 // on those pixels. Jewellery, logos and laces do not mark pixels (hiding skin under them would leave a hole).
-const MASK = params.get('mask') !== '0';
+const MASK = params.get('mask') === '1';     // OFF by default: the stencil mask hid the character's hands whenever clothes were behind them. Skin under clothes is now hidden by triangles (see applyHide). ?mask=1 turns the old mask on
 const SKIP_MASK = /necklace|earring|hair|logo|lace|eaglet/i;
 const FIT = params.get('fit') === '1';          // OFF by default: the wardrobe pieces are already fitted to the body when they are made. ?fit=1 turns the live fitting back on
 const FIT_CLEAR_M = (params.has('clear') ? parseFloat(params.get('clear')) || 0 : 3) / 1000;   // metres on a 1.38 m tall body, scaled for other sizes
@@ -97,8 +97,9 @@ for (const c of Object.keys(CLOTHES)) OUTFITS[idOf(c)] = { label: OUTFIT_LABELS[
 const genderOf = c => String(c).split('_')[0];
 
 const plain = m => { const x = Array.isArray(m) ? m[0] : m; return ((x && x.name) || '').replace(/^m\d+_/i, '').replace(/mat$/i, ''); };
+let lastFail = '';
 const log = (...a) => console.log('[clothing]', ...a);
-const warn = (...a) => console.warn('[clothing]', ...a);
+const warn = (...a) => { lastFail = a.map(x => (x && x.message) || String(x)).join(' ').slice(0, 140); console.warn('[clothing]', ...a); };
 
 // ---- fit core: plain maths on number arrays (no three.js) ----
 // closest point on triangle abc to point p (Ericson, Real-Time Collision Detection 5.1.5); writes it to out[0..2]
@@ -213,7 +214,7 @@ function smoothPush(pts, disp, radius, passes) {
 // ---- wardrobe.json and the piece files ----
 let wardrobeInfo = '';                                            // why the list could not be loaded (shown on the choose screen)
 async function loadWardrobe() {
-  const take = list => { for (const p of (Array.isArray(list) ? list : list.pieces || [])) if (p.id && p.slot && p.file) PIECES[p.id] = { slot: p.slot, label: p.label || p.id, file: p.file, colors: p.colors || [], custom: p.custom || null }; return Object.keys(PIECES).length; };
+  const take = list => { for (const p of (Array.isArray(list) ? list : list.pieces || [])) if (p.id && p.slot && p.file) PIECES[p.id] = { slot: p.slot, label: p.label || p.id, file: p.file, colors: p.colors || [], custom: p.custom || null, gain: p.gain || 1.3, hide: p.hide || null }; return Object.keys(PIECES).length; };
   const tried = [];
   for (let attempt = 0; attempt < 3; attempt++) {                  // a slow server gets three tries
     if (attempt) await new Promise(r => setTimeout(r, 1500 * attempt));
@@ -254,16 +255,27 @@ function loadTexture(url) {
 }
 function colourFile(pieceId, token) {              // which texture file (and tint) a colour token means for a piece
   const p = PIECES[pieceId]; if (!p || !token) return {};
-  if (/^#[0-9a-f]{6}$/i.test(token)) return { file: p.custom, tint: token };
+  if (/^#[0-9a-f]{6}$/i.test(token)) return { file: null, tint: token };          // any colour: the piece's own texture is turned grey in the shader and multiplied by the colour (no extra file needed)
   const c = (p.colors || []).find(c => c.id === token); return { file: c ? c.file : null, tint: null };
 }
 async function applyColour(copy, pieceId, token) {
   const p = PIECES[pieceId]; if (!p || !token) return;
   const { file, tint } = colourFile(pieceId, token);
+  const m = (Array.isArray(copy.material) ? copy.material[0] : copy.material).clone();      // a private copy, the shared material is untouched
+  if (tint) {
+    const col = new THREE.Color(tint), gain = p.gain || 1.3;
+    m.color.set(0xffffff);
+    m.onBeforeCompile = sh => {
+      sh.uniforms.uTint = { value: col }; sh.uniforms.uGain = { value: gain };
+      sh.fragmentShader = 'uniform vec3 uTint;\nuniform float uGain;\n' + sh.fragmentShader.replace('#include <map_fragment>',
+        '#include <map_fragment>\n  float tl = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));\n  float ts = pow(clamp(pow(max(tl, 0.0), 0.4545) * uGain, 0.0, 1.0), 0.85);\n  diffuseColor.rgb = uTint * pow(ts, 2.2);');
+    };
+    m.customProgramCacheKey = () => 'tint';
+    m.needsUpdate = true; copy.material = m; return;
+  }
   if (!file) { warn('colour not available for ' + pieceId + ': ' + token); return; }
   const tex = await loadTexture(WARDROBE_BASE + file);
-  const m = (Array.isArray(copy.material) ? copy.material[0] : copy.material).clone();      // a private copy, the shared material is untouched
-  m.map = tex; m.color.set(tint || 0xffffff); m.needsUpdate = true;
+  m.map = tex; m.color.set(0xffffff); m.needsUpdate = true;
   copy.material = m;
 }
 
@@ -398,6 +410,7 @@ export function initClothing(opts) {
     model.userData.outfitParts.added.forEach(m => { if (m.parent) m.parent.remove(m); if (m.skeleton) m.skeleton.dispose(); if (m.userData.ownGeometry) m.geometry.dispose(); });
     model.userData.outfitParts.hidden.forEach(m => { m.visible = true; });
     (model.userData.outfitParts.skinSwaps || []).forEach(s => { s.mesh.material = s.material; s.mesh.renderOrder = s.order; });
+    (model.userData.outfitParts.hideSwaps || []).forEach(h => { const g = h.mesh.geometry; h.mesh.geometry = h.geometry; g.dispose(); });          // the body gets its hidden triangles back
     model.userData.outfitParts = null;
   }
 
@@ -458,7 +471,12 @@ export function initClothing(opts) {
       const masks = MASK && !SKIP_MASK.test(name);
       copy.material = masks ? withStencil(grow(sm.material, amount), 'outfit') : grow(sm.material, amount);
       if (masks) copy.renderOrder = -1;                                               // drawn before the skin, so the mask is ready
-      copy.castShadow = true; copy.receiveShadow = true; copy.frustumCulled = false;
+      const pslot = PIECES[name] && PIECES[name].slot;
+      copy.castShadow = pslot === 'hair' || pslot === 'necklace' || pslot === 'earrings';    // clothes do not cast shadows on the body (it looked like a cut across the stomach)
+      copy.receiveShadow = false;                                                            // and do not receive them (tight clothes next to skin got dark patches)
+      copy.frustumCulled = false;
+      const off = { top: -2, dress: -2, bottom: -1 }[pslot];                                  // when two layers touch, the top is drawn over the bottom (no flicker)
+      if (off) (Array.isArray(copy.material) ? copy.material : [copy.material]).forEach(mm => { mm.polygonOffset = true; mm.polygonOffsetFactor = off; mm.polygonOffsetUnits = off; });
       copy.userData = { outfitPart: name, ownGeometry: FIT, pending: { bones, inverses: sm.skeleton.boneInverses.map(m => m.clone()), bind: sm.bindMatrix.clone() } };
       copies.push(copy);
     }));
@@ -479,7 +497,24 @@ export function initClothing(opts) {
     const skinSwaps = [];
     if (MASK) model.traverse(o => { if (o.isSkinnedMesh && !o.userData.outfitPart && !hidden.includes(o) && SKIN_MASKED.test(plain(o.material))) skinSwaps.push({ mesh: o, material: o.material, order: o.renderOrder }); });
     skinSwaps.forEach(s => { s.mesh.material = withStencil(s.material, 'skin'); s.mesh.renderOrder = 1; });
-    model.userData.outfitParts = { added: copies, hidden, skinSwaps, fit: fitInfo };
+    const hideSwaps = [];
+    try {                                   // hide the body triangles that are completely under the worn pieces (lists made with each piece, see wardrobe.json 'hide')
+      const lists = copies.map(c => PIECES[c.userData.outfitPart] && PIECES[c.userData.outfitPart].hide).filter(Boolean);
+      if (lists.length) model.traverse(o => {
+        if (!o.isSkinnedMesh || o.userData.outfitPart || !SKIN_MASKED.test(plain(o.material)) || !o.geometry.index) return;
+        const idx = o.geometry.index, n = idx.count / 3, gone = new Uint8Array(n); let any = false;
+        lists.forEach(h => {
+          if (h.n !== n) return;
+          const bin = atob(h.bits);
+          for (let t = 0; t < n; t++) if ((bin.charCodeAt(t >> 3) >> (7 - (t & 7))) & 1) { gone[t] = 1; any = true; }
+        });
+        if (!any) return;
+        const keep = []; for (let t = 0; t < n; t++) if (!gone[t]) keep.push(idx.getX(t * 3), idx.getX(t * 3 + 1), idx.getX(t * 3 + 2));
+        const g2 = o.geometry.clone(); g2.setIndex(keep);
+        hideSwaps.push({ mesh: o, geometry: o.geometry }); o.geometry = g2;
+      });
+    } catch (e) { warn('hiding skin under clothes failed (not important):', e); }
+    model.userData.outfitParts = { added: copies, hidden, skinSwaps, hideSwaps, fit: fitInfo };
     log(outfit.label + ' put on ' + characterId + ': ' + copies.length + ' parts added (' + copies.map(c => c.userData.outfitPart).join(', ') + '), ' + hidden.length + ' own parts hidden, grown ' + (amount ? inflateMM + ' mm' : 'not at all') + ', ' + fitInfo + ', skin masked on ' + skinSwaps.length + ' parts (' + skinSwaps.map(s => plain(s.material)).join(', ') + ').');
     if (DEBUG) {
       const box = o => { const b = new THREE.Box3().setFromObject(o), s = b.getSize(new THREE.Vector3()); return 'y ' + b.min.y.toFixed(2) + ' to ' + b.max.y.toFixed(2) + ', width ' + s.x.toFixed(2) + ', depth ' + s.z.toFixed(2); };
@@ -510,9 +545,9 @@ export function initClothing(opts) {
           world.say3d(resolveOutfit(wanted).label + ' is on' + (/^fit(ted| reused)/.test(f) ? ' (fitted)' : f === 'fit failed' ? ' (fit FAILED)' : '') + '.');
         }
         else if (world.player.userData.model !== model) { dressed = null; }                   // the character was swapped while the pieces loaded (the server sends the saved character): keep the choice, update() dresses the new model
-        else { world.say3d('Could not put that outfit on this character (see the browser console).'); wanted = null; dressed = { model, outfit: null }; }
+        else { world.say3d('Could not put that outfit on this character: ' + (lastFail || 'unknown reason') + ' (' + String(wanted) + ')'); wanted = null; dressed = { model, outfit: null }; }
       } else { dressed = { model, outfit: null }; world.say3d('Own clothes.'); }
-    } catch (e) { console.error('[clothing] failed:', e); wanted = null; failed = true; } finally { busy = false; }
+    } catch (e) { console.error('[clothing] failed:', e); world.say3d('Outfit error: ' + ((e && e.message) || e)); wanted = null; failed = true; } finally { busy = false; }
     if (!failed && dressed && dressed.model === world.player.userData.model && dressed.outfit !== wanted) sync();       // the choice changed while we were busy: catch up
   }
 

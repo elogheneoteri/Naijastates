@@ -1,342 +1,381 @@
 {
-  "_note": "Every piece is its own small .glb in a category folder (tops, bottoms, shoes, hair, jewelry). slot = top | bottom | dress | shoes | hair | necklace | earrings. 'file' and every colour 'file' are relative to clothing/female/. 'colors' = ready-made colours (swatch is the dot shown in the creator); 'custom' = grey texture that any colour is multiplied with. tier = free now; use \"premium\" later for shop items. To add a piece: put the .glb in its folder and add one entry here.",
-  "pieces": [
+ "_note": "Every piece is its own small .glb in a category folder (tops, bottoms, shoes, hair, jewelry). slot = top | bottom | dress | shoes | hair | necklace | earrings. 'file' and every colour 'file' are relative to clothing/female/. 'colors' = ready-made colours (swatch is the dot shown in the creator); 'custom' = grey texture that any colour is multiplied with. tier = free now; use \"premium\" later for shop items. To add a piece: put the .glb in its folder and add one entry here. 'gain' = brightness boost used when any colour is tinted onto the piece's own texture. 'hide' = body triangles hidden under the piece.",
+ "pieces": [
+  {
+   "id": "top_khustup",
+   "slot": "top",
+   "label": "Sport top",
+   "file": "tops/top_khustup.glb",
+   "tier": "free",
+   "colors": [
     {
-      "id": "top_khustup",
-      "slot": "top",
-      "label": "Sport top",
-      "file": "tops/top_khustup.glb",
-      "tier": "free",
-      "colors": [
-        {
-          "id": "blue",
-          "label": "Blue",
-          "swatch": "#6190a6",
-          "file": "colors/top_khustup_blue.jpg"
-        },
-        {
-          "id": "brown",
-          "label": "Brown",
-          "swatch": "#2b1900",
-          "file": "colors/top_khustup_brown.jpg"
-        },
-        {
-          "id": "black",
-          "label": "Black",
-          "swatch": "#000000",
-          "file": "colors/top_khustup_black.jpg"
-        }
-      ],
-      "custom": "colors/top_khustup_custom.jpg"
+     "id": "blue",
+     "label": "Blue",
+     "swatch": "#6190a6",
+     "file": "colors/top_khustup_blue.jpg"
     },
     {
-      "id": "tshirt_arpi",
-      "slot": "top",
-      "label": "T-shirt",
-      "file": "tops/tshirt_arpi.glb",
-      "tier": "free",
-      "colors": [
-        {
-          "id": "default",
-          "label": "Original",
-          "swatch": "#a2aeb9",
-          "file": "colors/tshirt_arpi_default.jpg"
-        }
-      ],
-      "custom": "colors/tshirt_arpi_custom.jpg"
+     "id": "brown",
+     "label": "Brown",
+     "swatch": "#2b1900",
+     "file": "colors/top_khustup_brown.jpg"
     },
     {
-      "id": "hoodie_aras",
-      "slot": "top",
-      "label": "Hoodie",
-      "file": "tops/hoodie_aras.glb",
-      "tier": "free",
-      "colors": [
-        {
-          "id": "default",
-          "label": "Original",
-          "swatch": "#9b7072",
-          "file": "colors/hoodie_aras_default.jpg"
-        }
-      ],
-      "custom": "colors/hoodie_aras_custom.jpg"
-    },
-    {
-      "id": "shorts_vedi",
-      "slot": "bottom",
-      "label": "Shorts",
-      "file": "bottoms/shorts_vedi.glb",
-      "tier": "free",
-      "colors": [
-        {
-          "id": "beige",
-          "label": "Beige",
-          "swatch": "#938b82",
-          "file": "colors/shorts_vedi_beige.jpg"
-        },
-        {
-          "id": "brown",
-          "label": "Brown",
-          "swatch": "#522c01",
-          "file": "colors/shorts_vedi_brown.jpg"
-        },
-        {
-          "id": "teal",
-          "label": "Teal",
-          "swatch": "#038393",
-          "file": "colors/shorts_vedi_teal.jpg"
-        },
-        {
-          "id": "black",
-          "label": "Black",
-          "swatch": "#000000",
-          "file": "colors/shorts_vedi_black.jpg"
-        }
-      ],
-      "custom": "colors/shorts_vedi_custom.jpg"
-    },
-    {
-      "id": "jeans_ayger",
-      "slot": "bottom",
-      "label": "Jeans",
-      "file": "bottoms/jeans_ayger.glb",
-      "tier": "free",
-      "colors": [
-        {
-          "id": "default",
-          "label": "Original",
-          "swatch": "#47535d",
-          "file": "colors/jeans_ayger_default.jpg"
-        }
-      ],
-      "custom": "colors/jeans_ayger_custom.jpg"
-    },
-    {
-      "id": "sneakers_azat",
-      "slot": "shoes",
-      "label": "Sneakers (low)",
-      "file": "shoes/sneakers_azat.glb",
-      "tier": "free",
-      "colors": [
-        {
-          "id": "default",
-          "label": "Original",
-          "swatch": "#87827d",
-          "file": "colors/sneakers_azat_default.jpg"
-        }
-      ],
-      "custom": "colors/sneakers_azat_custom.jpg"
-    },
-    {
-      "id": "sneakers_arpi",
-      "slot": "shoes",
-      "label": "Sneakers (high-top)",
-      "file": "shoes/sneakers_arpi.glb",
-      "tier": "free",
-      "colors": [
-        {
-          "id": "default",
-          "label": "Original",
-          "swatch": "#9e9d9b",
-          "file": "colors/sneakers_arpi_default.jpg"
-        }
-      ],
-      "custom": "colors/sneakers_arpi_custom.jpg"
-    },
-    {
-      "id": "hair_1",
-      "slot": "hair",
-      "label": "Hairstyle 1",
-      "file": "hair/hair_1.glb",
-      "tier": "free",
-      "colors": [
-        {
-          "id": "default",
-          "label": "Dark brown",
-          "swatch": "#3b2a20",
-          "file": "colors/hair_default.png"
-        },
-        {
-          "id": "black",
-          "label": "Black",
-          "swatch": "#151212",
-          "file": "colors/hair_black.png"
-        },
-        {
-          "id": "auburn",
-          "label": "Auburn",
-          "swatch": "#522312",
-          "file": "colors/hair_auburn.png"
-        },
-        {
-          "id": "blonde",
-          "label": "Blonde",
-          "swatch": "#8e7645",
-          "file": "colors/hair_blonde.png"
-        },
-        {
-          "id": "grey",
-          "label": "Grey",
-          "swatch": "#717175",
-          "file": "colors/hair_grey.png"
-        }
-      ],
-      "custom": "colors/hair_custom.png"
-    },
-    {
-      "id": "hair_2",
-      "slot": "hair",
-      "label": "Hairstyle 2",
-      "file": "hair/hair_2.glb",
-      "tier": "free",
-      "colors": [
-        {
-          "id": "default",
-          "label": "Dark brown",
-          "swatch": "#3b2a20",
-          "file": "colors/hair_default.png"
-        },
-        {
-          "id": "black",
-          "label": "Black",
-          "swatch": "#151212",
-          "file": "colors/hair_black.png"
-        },
-        {
-          "id": "auburn",
-          "label": "Auburn",
-          "swatch": "#522312",
-          "file": "colors/hair_auburn.png"
-        },
-        {
-          "id": "blonde",
-          "label": "Blonde",
-          "swatch": "#8e7645",
-          "file": "colors/hair_blonde.png"
-        },
-        {
-          "id": "grey",
-          "label": "Grey",
-          "swatch": "#717175",
-          "file": "colors/hair_grey.png"
-        }
-      ],
-      "custom": "colors/hair_custom.png"
-    },
-    {
-      "id": "hair_3",
-      "slot": "hair",
-      "label": "Hairstyle 3",
-      "file": "hair/hair_3.glb",
-      "tier": "free",
-      "colors": [
-        {
-          "id": "default",
-          "label": "Dark brown",
-          "swatch": "#3b2a20",
-          "file": "colors/hair_default.png"
-        },
-        {
-          "id": "black",
-          "label": "Black",
-          "swatch": "#151212",
-          "file": "colors/hair_black.png"
-        },
-        {
-          "id": "auburn",
-          "label": "Auburn",
-          "swatch": "#522312",
-          "file": "colors/hair_auburn.png"
-        },
-        {
-          "id": "blonde",
-          "label": "Blonde",
-          "swatch": "#8e7645",
-          "file": "colors/hair_blonde.png"
-        },
-        {
-          "id": "grey",
-          "label": "Grey",
-          "swatch": "#717175",
-          "file": "colors/hair_grey.png"
-        }
-      ],
-      "custom": "colors/hair_custom.png"
-    },
-    {
-      "id": "hair_4",
-      "slot": "hair",
-      "label": "Hairstyle 4",
-      "file": "hair/hair_4.glb",
-      "tier": "free",
-      "colors": [
-        {
-          "id": "default",
-          "label": "Dark brown",
-          "swatch": "#3b2a20",
-          "file": "colors/hair_default.png"
-        },
-        {
-          "id": "black",
-          "label": "Black",
-          "swatch": "#151212",
-          "file": "colors/hair_black.png"
-        },
-        {
-          "id": "auburn",
-          "label": "Auburn",
-          "swatch": "#522312",
-          "file": "colors/hair_auburn.png"
-        },
-        {
-          "id": "blonde",
-          "label": "Blonde",
-          "swatch": "#8e7645",
-          "file": "colors/hair_blonde.png"
-        },
-        {
-          "id": "grey",
-          "label": "Grey",
-          "swatch": "#717175",
-          "file": "colors/hair_grey.png"
-        }
-      ],
-      "custom": "colors/hair_custom.png"
-    },
-    {
-      "id": "necklace_pendant_03",
-      "slot": "necklace",
-      "label": "Pendant necklace 1",
-      "file": "jewelry/necklace_pendant_03.glb",
-      "tier": "free"
-    },
-    {
-      "id": "necklace_pendant_05",
-      "slot": "necklace",
-      "label": "Pendant necklace 2",
-      "file": "jewelry/necklace_pendant_05.glb",
-      "tier": "free"
-    },
-    {
-      "id": "necklace_chain",
-      "slot": "necklace",
-      "label": "Chain necklace",
-      "file": "jewelry/necklace_chain.glb",
-      "tier": "free"
-    },
-    {
-      "id": "earrings_01",
-      "slot": "earrings",
-      "label": "Earrings 1",
-      "file": "jewelry/earrings_01.glb",
-      "tier": "free"
-    },
-    {
-      "id": "earrings_03",
-      "slot": "earrings",
-      "label": "Earrings 2",
-      "file": "jewelry/earrings_03.glb",
-      "tier": "free"
+     "id": "black",
+     "label": "Black",
+     "swatch": "#000000",
+     "file": "colors/top_khustup_black.jpg"
     }
-  ]
+   ],
+   "gain": 1.21,
+   "hide": {
+    "n": 5000,
+    "bits": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAQAAAQAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+   },
+   "custom": "colors/top_khustup_custom.jpg"
+  },
+  {
+   "id": "tshirt_arpi",
+   "slot": "top",
+   "label": "T-shirt",
+   "file": "tops/tshirt_arpi.glb",
+   "tier": "free",
+   "colors": [
+    {
+     "id": "default",
+     "label": "Original",
+     "swatch": "#a2aeb9",
+     "file": "colors/tshirt_arpi_default.jpg"
+    }
+   ],
+   "gain": 1.1,
+   "hide": {
+    "n": 5000,
+    "bits": "/////////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////////////////wAAP///////////////////////////////////////////////////4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/AAAAAEAAAAAAAAAAAAAAQAAAAAAAAAACAAAAAAAAIceLY4AAAAAAAAAAKAAAAAAABQHAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAguWwgAAAAAAAAAAAAAAAAAAABCYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB////////4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH///////////////////gAD//////////////////////////////////////////////////gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfgAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAhHvgcAAAAAAAAgAAAAAAABAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAACPHDgAAAAAAAAAAAAAAACCgIgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAA=="
+   },
+   "custom": "colors/tshirt_arpi_custom.jpg"
+  },
+  {
+   "id": "hoodie_aras",
+   "slot": "top",
+   "label": "Hoodie",
+   "file": "tops/hoodie_aras.glb",
+   "tier": "free",
+   "colors": [
+    {
+     "id": "default",
+     "label": "Original",
+     "swatch": "#9b7072",
+     "file": "colors/hoodie_aras_default.jpg"
+    }
+   ],
+   "gain": 1.66,
+   "hide": {
+    "n": 5000,
+    "bits": "AYMBDTQAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD0ON97UoAtc9ii576wAAKtcEAQAAAgrrswYYDDTxAP4OA4x9eiBkZ+HQ821NSmAAAAAAQV99oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADuAAAAAOcAAAAAAAAAAAABNAJ9AAAAHwAF+/7f/3z/yfD1n///9nYAEd//7f3/+/3++//v7uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB8AA/PwAAAAAAAAAAAAAAAAAAc4AAAAAAAAAAAAFoBPoAAAAXAAX//t//H9/D6T7P///r/QAId+37f//+v9f/3/7+7wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPgAH6eAAAAAAAAAAAAAAAAAAAUEsXhMh/4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFBuOHv/unkFAA3XjxZNMgAAKDAAAAAK+/0cjQtDkf/QZxw2xf6cAJA5V/xszhAUCAAAAAX7wzgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWAAAAABwAAAAAAAAAAGaABfwAAA+AG/8zn//+fd/Dw+ft/+5vgAz39/7/39+3+//vvXwAAAAAAAAAAAAAAAAAAAAAAAAAAAAFwAG5r8AAAAAAAAAAAAAAAAAAA4AAAAAAAAAABmgAX8AAADgB+/88//2fZ+Ok+/v/93XAAz3b///3tzf9P/vvXgAAAAAAAAAAAAAAAAAAAAAAAAAAAAB+AA3o/AAAAAAAAAAAAAAAAAAAA=="
+   },
+   "custom": "colors/hoodie_aras_custom.jpg"
+  },
+  {
+   "id": "shorts_vedi",
+   "slot": "bottom",
+   "label": "Shorts",
+   "file": "bottoms/shorts_vedi.glb",
+   "tier": "free",
+   "colors": [
+    {
+     "id": "beige",
+     "label": "Beige",
+     "swatch": "#938b82",
+     "file": "colors/shorts_vedi_beige.jpg"
+    },
+    {
+     "id": "brown",
+     "label": "Brown",
+     "swatch": "#522c01",
+     "file": "colors/shorts_vedi_brown.jpg"
+    },
+    {
+     "id": "teal",
+     "label": "Teal",
+     "swatch": "#038393",
+     "file": "colors/shorts_vedi_teal.jpg"
+    },
+    {
+     "id": "black",
+     "label": "Black",
+     "swatch": "#000000",
+     "file": "colors/shorts_vedi_black.jpg"
+    }
+   ],
+   "gain": 1.61,
+   "hide": {
+    "n": 5000,
+    "bits": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIwQ=="
+   },
+   "custom": "colors/shorts_vedi_custom.jpg"
+  },
+  {
+   "id": "jeans_ayger",
+   "slot": "bottom",
+   "label": "Jeans",
+   "file": "bottoms/jeans_ayger.glb",
+   "tier": "free",
+   "colors": [
+    {
+     "id": "default",
+     "label": "Original",
+     "swatch": "#47535d",
+     "file": "colors/jeans_ayger_default.jpg"
+    }
+   ],
+   "gain": 2.18,
+   "hide": {
+    "n": 5000,
+    "bits": "AAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD////////+D3/+i/gC///yQP+4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//////7uAAAAAAAAAAAAAAAP///9//8D/AAAAB///////////+PO///gH////////QHf/6X8AX//+pA/7gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH//////7wAAAAAAAAAAAAAAB////f//Af4AAAAP///////////9/7//+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP//////8D+/5l/8AP//JB+4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP///////6AAAAAAAAAAAAAAB///73gP4AAAAB////////////7+Pf//H//////9A/P+Zf/AD//yQfuAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAf///////0AAAAAAAAAAAAAAA///+94B/AAAAAf///////////7fz3//w=="
+   },
+   "custom": "colors/jeans_ayger_custom.jpg"
+  },
+  {
+   "id": "sneakers_azat",
+   "slot": "shoes",
+   "label": "Sneakers (stripes)",
+   "file": "shoes/sneakers_azat.glb",
+   "tier": "free",
+   "colors": [
+    {
+     "id": "default",
+     "label": "Original",
+     "swatch": "#87827d",
+     "file": "colors/sneakers_azat_default.jpg"
+    }
+   ],
+   "gain": 1.5,
+   "hide": {
+    "n": 5000,
+    "bits": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB//5//A54AAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP//P/4HPAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB//z/+BzwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD//5//A54AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+   },
+   "custom": "colors/sneakers_azat_custom.jpg"
+  },
+  {
+   "id": "sneakers_arpi",
+   "slot": "shoes",
+   "label": "Sneakers (plain)",
+   "file": "shoes/sneakers_arpi.glb",
+   "tier": "free",
+   "colors": [
+    {
+     "id": "default",
+     "label": "Original",
+     "swatch": "#9e9d9b",
+     "file": "colors/sneakers_arpi_default.jpg"
+    }
+   ],
+   "gain": 1.54,
+   "hide": {
+    "n": 5000,
+    "bits": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+   },
+   "custom": "colors/sneakers_arpi_custom.jpg"
+  },
+  {
+   "id": "hair_1",
+   "slot": "hair",
+   "label": "Hairstyle 1",
+   "file": "hair/hair_1.glb",
+   "tier": "free",
+   "colors": [
+    {
+     "id": "default",
+     "label": "Dark brown",
+     "swatch": "#3b2a20",
+     "file": "colors/hair_default.png"
+    },
+    {
+     "id": "black",
+     "label": "Black",
+     "swatch": "#151212",
+     "file": "colors/hair_black.png"
+    },
+    {
+     "id": "auburn",
+     "label": "Auburn",
+     "swatch": "#522312",
+     "file": "colors/hair_auburn.png"
+    },
+    {
+     "id": "blonde",
+     "label": "Blonde",
+     "swatch": "#8e7645",
+     "file": "colors/hair_blonde.png"
+    },
+    {
+     "id": "grey",
+     "label": "Grey",
+     "swatch": "#717175",
+     "file": "colors/hair_grey.png"
+    }
+   ],
+   "custom": "colors/hair_custom.png",
+   "gain": 2.47
+  },
+  {
+   "id": "hair_2",
+   "slot": "hair",
+   "label": "Hairstyle 2",
+   "file": "hair/hair_2.glb",
+   "tier": "free",
+   "colors": [
+    {
+     "id": "default",
+     "label": "Dark brown",
+     "swatch": "#3b2a20",
+     "file": "colors/hair_default.png"
+    },
+    {
+     "id": "black",
+     "label": "Black",
+     "swatch": "#151212",
+     "file": "colors/hair_black.png"
+    },
+    {
+     "id": "auburn",
+     "label": "Auburn",
+     "swatch": "#522312",
+     "file": "colors/hair_auburn.png"
+    },
+    {
+     "id": "blonde",
+     "label": "Blonde",
+     "swatch": "#8e7645",
+     "file": "colors/hair_blonde.png"
+    },
+    {
+     "id": "grey",
+     "label": "Grey",
+     "swatch": "#717175",
+     "file": "colors/hair_grey.png"
+    }
+   ],
+   "custom": "colors/hair_custom.png",
+   "gain": 2.47
+  },
+  {
+   "id": "hair_3",
+   "slot": "hair",
+   "label": "Hairstyle 3",
+   "file": "hair/hair_3.glb",
+   "tier": "free",
+   "colors": [
+    {
+     "id": "default",
+     "label": "Dark brown",
+     "swatch": "#3b2a20",
+     "file": "colors/hair_default.png"
+    },
+    {
+     "id": "black",
+     "label": "Black",
+     "swatch": "#151212",
+     "file": "colors/hair_black.png"
+    },
+    {
+     "id": "auburn",
+     "label": "Auburn",
+     "swatch": "#522312",
+     "file": "colors/hair_auburn.png"
+    },
+    {
+     "id": "blonde",
+     "label": "Blonde",
+     "swatch": "#8e7645",
+     "file": "colors/hair_blonde.png"
+    },
+    {
+     "id": "grey",
+     "label": "Grey",
+     "swatch": "#717175",
+     "file": "colors/hair_grey.png"
+    }
+   ],
+   "custom": "colors/hair_custom.png",
+   "gain": 2.47
+  },
+  {
+   "id": "hair_4",
+   "slot": "hair",
+   "label": "Hairstyle 4",
+   "file": "hair/hair_4.glb",
+   "tier": "free",
+   "colors": [
+    {
+     "id": "default",
+     "label": "Dark brown",
+     "swatch": "#3b2a20",
+     "file": "colors/hair_default.png"
+    },
+    {
+     "id": "black",
+     "label": "Black",
+     "swatch": "#151212",
+     "file": "colors/hair_black.png"
+    },
+    {
+     "id": "auburn",
+     "label": "Auburn",
+     "swatch": "#522312",
+     "file": "colors/hair_auburn.png"
+    },
+    {
+     "id": "blonde",
+     "label": "Blonde",
+     "swatch": "#8e7645",
+     "file": "colors/hair_blonde.png"
+    },
+    {
+     "id": "grey",
+     "label": "Grey",
+     "swatch": "#717175",
+     "file": "colors/hair_grey.png"
+    }
+   ],
+   "custom": "colors/hair_custom.png",
+   "gain": 2.47
+  },
+  {
+   "id": "necklace_pendant_03",
+   "slot": "necklace",
+   "label": "Pendant necklace 1",
+   "file": "jewelry/necklace_pendant_03.glb",
+   "tier": "free"
+  },
+  {
+   "id": "necklace_pendant_05",
+   "slot": "necklace",
+   "label": "Pendant necklace 2",
+   "file": "jewelry/necklace_pendant_05.glb",
+   "tier": "free"
+  },
+  {
+   "id": "necklace_chain",
+   "slot": "necklace",
+   "label": "Chain necklace",
+   "file": "jewelry/necklace_chain.glb",
+   "tier": "free"
+  },
+  {
+   "id": "earrings_01",
+   "slot": "earrings",
+   "label": "Earrings 1",
+   "file": "jewelry/earrings_01.glb",
+   "tier": "free"
+  },
+  {
+   "id": "earrings_03",
+   "slot": "earrings",
+   "label": "Earrings 2",
+   "file": "jewelry/earrings_03.glb",
+   "tier": "free"
+  }
+ ]
 }
