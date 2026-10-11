@@ -1,11 +1,12 @@
 {
-  "_note": "Every piece is its own .glb in a category folder. slot = top | bottom | dress | shoes | necklace | earrings. To add a piece: put the .glb in its folder and add one entry here. 'file' is relative to clothing/female/.",
+  "_note": "Every piece is its own small .glb in a category folder (tops, bottoms, shoes, hair, jewelry). slot = top | bottom | dress | shoes | hair | necklace | earrings. 'file' and every colour 'file' are relative to clothing/female/. 'colors' = ready-made colours (swatch is the dot shown in the creator); 'custom' = grey texture that any colour is multiplied with. tier = free now; use \"premium\" later for shop items. To add a piece: put the .glb in its folder and add one entry here.",
   "pieces": [
     {
       "id": "top_khustup",
       "slot": "top",
-      "label": "Sport top (blue)",
+      "label": "Sport top",
       "file": "tops/top_khustup.glb",
+      "tier": "free",
       "colors": [
         {
           "id": "blue",
@@ -33,6 +34,7 @@
       "slot": "top",
       "label": "T-shirt",
       "file": "tops/tshirt_arpi.glb",
+      "tier": "free",
       "colors": [
         {
           "id": "default",
@@ -48,6 +50,7 @@
       "slot": "top",
       "label": "Hoodie",
       "file": "tops/hoodie_aras.glb",
+      "tier": "free",
       "colors": [
         {
           "id": "default",
@@ -63,6 +66,7 @@
       "slot": "bottom",
       "label": "Shorts",
       "file": "bottoms/shorts_vedi.glb",
+      "tier": "free",
       "colors": [
         {
           "id": "beige",
@@ -73,7 +77,7 @@
         {
           "id": "brown",
           "label": "Brown",
-          "swatch": "#512c01",
+          "swatch": "#522c01",
           "file": "colors/shorts_vedi_brown.jpg"
         },
         {
@@ -96,6 +100,7 @@
       "slot": "bottom",
       "label": "Jeans",
       "file": "bottoms/jeans_ayger.glb",
+      "tier": "free",
       "colors": [
         {
           "id": "default",
@@ -111,6 +116,7 @@
       "slot": "shoes",
       "label": "Sneakers (low)",
       "file": "shoes/sneakers_azat.glb",
+      "tier": "free",
       "colors": [
         {
           "id": "default",
@@ -126,6 +132,7 @@
       "slot": "shoes",
       "label": "Sneakers (high-top)",
       "file": "shoes/sneakers_arpi.glb",
+      "tier": "free",
       "colors": [
         {
           "id": "default",
@@ -137,34 +144,199 @@
       "custom": "colors/sneakers_arpi_custom.jpg"
     },
     {
+      "id": "hair_1",
+      "slot": "hair",
+      "label": "Hairstyle 1",
+      "file": "hair/hair_1.glb",
+      "tier": "free",
+      "colors": [
+        {
+          "id": "default",
+          "label": "Dark brown",
+          "swatch": "#3b2a20",
+          "file": "colors/hair_default.png"
+        },
+        {
+          "id": "black",
+          "label": "Black",
+          "swatch": "#151212",
+          "file": "colors/hair_black.png"
+        },
+        {
+          "id": "auburn",
+          "label": "Auburn",
+          "swatch": "#522312",
+          "file": "colors/hair_auburn.png"
+        },
+        {
+          "id": "blonde",
+          "label": "Blonde",
+          "swatch": "#8e7645",
+          "file": "colors/hair_blonde.png"
+        },
+        {
+          "id": "grey",
+          "label": "Grey",
+          "swatch": "#717175",
+          "file": "colors/hair_grey.png"
+        }
+      ],
+      "custom": "colors/hair_custom.png"
+    },
+    {
+      "id": "hair_2",
+      "slot": "hair",
+      "label": "Hairstyle 2",
+      "file": "hair/hair_2.glb",
+      "tier": "free",
+      "colors": [
+        {
+          "id": "default",
+          "label": "Dark brown",
+          "swatch": "#3b2a20",
+          "file": "colors/hair_default.png"
+        },
+        {
+          "id": "black",
+          "label": "Black",
+          "swatch": "#151212",
+          "file": "colors/hair_black.png"
+        },
+        {
+          "id": "auburn",
+          "label": "Auburn",
+          "swatch": "#522312",
+          "file": "colors/hair_auburn.png"
+        },
+        {
+          "id": "blonde",
+          "label": "Blonde",
+          "swatch": "#8e7645",
+          "file": "colors/hair_blonde.png"
+        },
+        {
+          "id": "grey",
+          "label": "Grey",
+          "swatch": "#717175",
+          "file": "colors/hair_grey.png"
+        }
+      ],
+      "custom": "colors/hair_custom.png"
+    },
+    {
+      "id": "hair_3",
+      "slot": "hair",
+      "label": "Hairstyle 3",
+      "file": "hair/hair_3.glb",
+      "tier": "free",
+      "colors": [
+        {
+          "id": "default",
+          "label": "Dark brown",
+          "swatch": "#3b2a20",
+          "file": "colors/hair_default.png"
+        },
+        {
+          "id": "black",
+          "label": "Black",
+          "swatch": "#151212",
+          "file": "colors/hair_black.png"
+        },
+        {
+          "id": "auburn",
+          "label": "Auburn",
+          "swatch": "#522312",
+          "file": "colors/hair_auburn.png"
+        },
+        {
+          "id": "blonde",
+          "label": "Blonde",
+          "swatch": "#8e7645",
+          "file": "colors/hair_blonde.png"
+        },
+        {
+          "id": "grey",
+          "label": "Grey",
+          "swatch": "#717175",
+          "file": "colors/hair_grey.png"
+        }
+      ],
+      "custom": "colors/hair_custom.png"
+    },
+    {
+      "id": "hair_4",
+      "slot": "hair",
+      "label": "Hairstyle 4",
+      "file": "hair/hair_4.glb",
+      "tier": "free",
+      "colors": [
+        {
+          "id": "default",
+          "label": "Dark brown",
+          "swatch": "#3b2a20",
+          "file": "colors/hair_default.png"
+        },
+        {
+          "id": "black",
+          "label": "Black",
+          "swatch": "#151212",
+          "file": "colors/hair_black.png"
+        },
+        {
+          "id": "auburn",
+          "label": "Auburn",
+          "swatch": "#522312",
+          "file": "colors/hair_auburn.png"
+        },
+        {
+          "id": "blonde",
+          "label": "Blonde",
+          "swatch": "#8e7645",
+          "file": "colors/hair_blonde.png"
+        },
+        {
+          "id": "grey",
+          "label": "Grey",
+          "swatch": "#717175",
+          "file": "colors/hair_grey.png"
+        }
+      ],
+      "custom": "colors/hair_custom.png"
+    },
+    {
       "id": "necklace_pendant_03",
       "slot": "necklace",
       "label": "Pendant necklace 1",
-      "file": "jewelry/necklace_pendant_03.glb"
+      "file": "jewelry/necklace_pendant_03.glb",
+      "tier": "free"
     },
     {
       "id": "necklace_pendant_05",
       "slot": "necklace",
       "label": "Pendant necklace 2",
-      "file": "jewelry/necklace_pendant_05.glb"
+      "file": "jewelry/necklace_pendant_05.glb",
+      "tier": "free"
     },
     {
       "id": "necklace_chain",
       "slot": "necklace",
       "label": "Chain necklace",
-      "file": "jewelry/necklace_chain.glb"
+      "file": "jewelry/necklace_chain.glb",
+      "tier": "free"
     },
     {
       "id": "earrings_01",
       "slot": "earrings",
       "label": "Earrings 1",
-      "file": "jewelry/earrings_01.glb"
+      "file": "jewelry/earrings_01.glb",
+      "tier": "free"
     },
     {
       "id": "earrings_03",
       "slot": "earrings",
       "label": "Earrings 2",
-      "file": "jewelry/earrings_03.glb"
+      "file": "jewelry/earrings_03.glb",
+      "tier": "free"
     }
   ]
 }
