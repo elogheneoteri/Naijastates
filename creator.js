@@ -15,6 +15,7 @@ import * as THREE from 'three';
 const STORE_KEY = 'wardrobeLook';
 
 const SLOT_TABS = {
+  hair:     { label: 'Hair',     none: 'None' },
   top:      { label: 'Tops',     none: 'Default' },
   bottom:   { label: 'Bottoms',  none: 'Default' },
   dress:    { label: 'Dresses',  none: 'None' },
@@ -22,11 +23,12 @@ const SLOT_TABS = {
   necklace: { label: 'Necklace', none: 'None' },
   earrings: { label: 'Earrings', none: 'None' },
 };
-const SLOT_ORDER = ['top', 'bottom', 'dress', 'shoes', 'necklace', 'earrings'];
+const SLOT_ORDER = ['hair', 'top', 'bottom', 'dress', 'shoes', 'necklace', 'earrings'];
 
 // where the preview camera looks for each tab: y = height on the body, d = distance (both as a share of the body height)
 const FOCUS = {
   all:      { y: 0.52, d: 1.32 },
+  hair:     { y: 0.90, d: 0.40 },       // head and shoulders
   top:      { y: 0.68, d: 0.72 },       // head to hips
   bottom:   { y: 0.50, d: 1.10 },       // the whole figure: head to feet
   dress:    { y: 0.52, d: 1.15 },
@@ -39,6 +41,7 @@ const PREVIEW_FOV_K = 1.041 / 0.536;                 // visible height = 2*dist*
 const PRESETS = ['#ffffff', '#111111', '#e53935', '#fb8c00', '#fdd835', '#43a047', '#00acc1', '#1e88e5', '#8e24aa', '#ec407a', '#795548', '#9e9e9e'];
 
 const ICONS = {
+  hair: '<path d="M5 20c-1-9 0-16 7-16s8 7 7 16"/><path d="M8 20c-.5-5 .5-9 4-9s4.5 4 4 9"/>',
   top: '<path d="M20.4 5.4 16 3a4 4 0 0 1-8 0L3.6 5.4a2 2 0 0 0-1.1 2.2l.9 3.3a1 1 0 0 0 1 .8H6v9h12v-9h1.6a1 1 0 0 0 1-.8l.9-3.3a2 2 0 0 0-1.1-2.2z"/>',
   bottom: '<path d="M7 3h10l1.2 18h-5l-1.2-10-1.2 10H5.8z"/><path d="M7 7h10"/>',
   dress: '<path d="M9 3h6l.8 6L19 21H5l3.2-12z"/><path d="M9 3c0 2 1.3 3 3 3s3-1 3-3"/>',

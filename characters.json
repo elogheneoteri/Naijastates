@@ -1,5 +1,5 @@
 {
-  "_note": "tier decides where a character appears. 'free' = playable, shown on the choose-your-character screen. 'premium' = shop characters (empty for now). 'clothing' = not playable, only used as an outfit source for clothing.js. 'npc' = staff and officers. Every character is a Mixamo .fbx body; every 'free' and 'premium' character can also give its clothes to others once it has a line in CLOTHES in clothing.js. To move a character, move its file into the matching folder and change its entry here.",
+  "_note": "tier decides where a character appears. 'free' = playable, shown on the choose-your-character screen. 'premium' = shop characters (empty for now). 'npc' = staff and officers. The three playable characters are Mixamo-rigged .glb files (names end in _mixamo.glb): same body and flat feet, three different faces. Their clothes, hair and jewelry come from clothing/female/wardrobe.json. To move a character, move its file into the matching folder and change its entry here.",
   "free": [
     {
       "id": "female_char1",
@@ -21,38 +21,7 @@
     }
   ],
   "premium": [],
-  "clothing": [
-    {
-      "id": "female_jeans",
-      "name": "Denim Shorts",
-      "gender": "female",
-      "file": "characters/free/female_jeans_for_mixamo.fbx"
-    },
-    {
-      "id": "female_emma",
-      "name": "Sport Vest",
-      "gender": "female",
-      "file": "characters/free/female_emma_for_mixamo.fbx"
-    },
-    {
-      "id": "female_elizabeth",
-      "name": "Striped Top",
-      "gender": "female",
-      "file": "characters/free/female_elizabeth_for_mixamo.fbx"
-    },
-    {
-      "id": "female_sammie",
-      "name": "Sammie outfit",
-      "gender": "female",
-      "file": "clothing/female/female_sammie_for_mixamo.fbx"
-    },
-    {
-      "id": "female_rocker",
-      "name": "Rocker outfit",
-      "gender": "female",
-      "file": "clothing/female/female_rocker_for_mixamo.fbx"
-    }
-  ],
+  "clothing": [],
   "npc": [
     {
       "id": "female_sophia",
@@ -66,6 +35,5 @@
       "gender": "female",
       "file": "characters/npc/female_ivory.glb"
     }
-  ],
-  "_temp_swap": "The three playable characters are Mixamo-rigged .glb files (names end in _mixamo.glb): same body, singlet and shorts, three different faces, no hair or jewelry yet. The old Denim Shorts / Sport Vest / Striped Top stay parked under 'clothing' as outfit sources."
+  ]
 }

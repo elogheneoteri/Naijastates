@@ -16,7 +16,7 @@
 // (look for lines starting with [clothing]).
 //
 // Test buttons under the minimap:  "Test: next character" (cycles through the free characters) and one "Test: next ..." button per slot
-// that has pieces in wardrobe.json (top, bottom, shoes, necklace, earrings), plus "Test: own clothes".
+// that has pieces in wardrobe.json (top, bottom, shoes, hair, necklace, earrings), plus "Test: own clothes".
 //
 // ADDING A CHARACTER
 //   1. Put its entry in characters.json (free, premium or clothing).
@@ -29,7 +29,7 @@
 //                    (hides the wearer's skin, so you can see if the outfit parts are really there)
 //   ?inflate=0       turns off the small growth of the outfit (see INFLATE_MM). ?inflate=8 grows it by 8 mm.
 //   ?mask=0          turns off the skin mask, to compare with and without it
-//   ?fit=0           turns off the fitting (the outfit keeps the shape it was made with)
+//   ?fit=1           turns ON the live fitting (off by default: the pieces are fitted to the body when they are made)
 //   ?clear=3         the gap kept between skin and outfit, in millimetres (default 3)
 
 import * as THREE from 'three';
@@ -40,30 +40,19 @@ const CLOTHES = {
   female_char1:     ['singlet', 'shorts', 'shoes'],                                   // the three playable characters: singlet, shorts, shoes
   female_char2:     ['singlet', 'shorts', 'shoes'],
   female_char3:     ['singlet', 'shorts', 'shoes'],
-  female_elizabeth: ['blinn1', 'blinn2', 'blinn3'],                                   // top, skirt, shoes
-  female_emma:      ['Vest', 'Logo', 'Full_Body', 'Sneakers1'],                       // vest, its logo, tight body suit, sneakers
-  female_jeans:     ['Female_T_Shirt', 'Denim_shorts', 'Canvas_shoes'],               // t-shirt, shorts, shoes
-  female_rocker:    ['outfit_top', 'outfit_bottom', 'outfit_shoes', 'necklace', 'earring'],
-  female_sammie:    ['Cloth', 'Leggings', 'sneaker_right', 'sneaker_front', 'eaglet', 'laces'],
 };
 
-const OUTFIT_LABELS = {
-  female_elizabeth: 'Elizabeth striped outfit',
-  female_emma: 'Emma sport outfit',
-  female_jeans: 'Jeans outfit',
-  female_rocker: 'Rocker outfit',
-  female_sammie: 'Sammie outfit',
-};
+const OUTFIT_LABELS = {};
 
 // ---- WARDROBE: single pieces that can be mixed freely ----
 // Every piece is its own small .glb file, listed in clothing/female/wardrobe.json (id, slot, label, file).
-// Folders: clothing/female/tops, bottoms, dresses, shoes, jewelry (hair comes later).
+// Folders: clothing/female/tops, bottoms, dresses, shoes, hair, jewelry.
 // ADDING A PIECE: put the .glb in the matching folder and add one entry to wardrobe.json. Nothing in this file changes.
 const WARDROBE_URL = 'clothing/female/wardrobe.json';
 const WARDROBE_BASE = 'clothing/female/';
 const WARDROBE_SOURCE = 'female_wardrobe';                       // only used to tell the gender of a piece outfit
 const PIECES = {};                                               // filled from wardrobe.json: id -> { slot, label, file }
-const SLOTS = ['top', 'bottom', 'dress', 'shoes', 'necklace', 'earrings'];
+const SLOTS = ['top', 'bottom', 'dress', 'shoes', 'hair', 'necklace', 'earrings'];
 const OWN_SLOT = { singlet: 'top', shorts: 'bottom', shoes: 'shoes' };      // which slot each of the playable characters' own parts fills
 const slotsHidden = slots => slots.flatMap(s => s === 'dress' ? ['top', 'bottom'] : [s]);   // a dress covers the top and the bottom
 
@@ -94,8 +83,8 @@ const inflateMM = params.has('inflate') ? parseFloat(params.get('inflate')) || 0
 // Skin mask: outfit parts are drawn first and mark their pixels in the stencil buffer. The wearer's body and legs are then not drawn
 // on those pixels. Jewellery, logos and laces do not mark pixels (hiding skin under them would leave a hole).
 const MASK = params.get('mask') !== '0';
-const SKIP_MASK = /necklace|earring|logo|lace|eaglet/i;
-const FIT = params.get('fit') !== '0';
+const SKIP_MASK = /necklace|earring|hair|logo|lace|eaglet/i;
+const FIT = params.get('fit') === '1';          // OFF by default: the wardrobe pieces are already fitted to the body when they are made. ?fit=1 turns the live fitting back on
 const FIT_CLEAR_M = (params.has('clear') ? parseFloat(params.get('clear')) || 0 : 3) / 1000;   // metres on a 1.38 m tall body, scaled for other sizes
 const FIT_REACH_M = 0.05, FIT_MAX_M = 0.05;                   // how far from the skin a point is looked at, and the most it can be moved
 const COLLIDERS = /^(std_skin_|skin_)?(body|arms?|legs?)\d*$/i;      // the wearer's skin parts that outfits must stay outside of (not the head)
@@ -594,7 +583,7 @@ export function initClothing(opts) {
         wanted = null; piece = emptyPieces(); colour = emptyPieces(); applyCharacter(next); world.say3d('Loading ' + next + '...');
       }],
       ...SLOTS.filter(slot => Object.values(PIECES).some(p => p.slot === slot)).map(slot => ['Test: next ' + slot, () => cyclePiece(slot)]),
-      ...['top', 'bottom', 'shoes'].filter(slot => Object.values(PIECES).some(p => p.slot === slot && (p.colors.length > 1 || p.custom))).flatMap(slot =>
+      ...['top', 'bottom', 'shoes', 'hair'].filter(slot => Object.values(PIECES).some(p => p.slot === slot && (p.colors.length > 1 || p.custom))).flatMap(slot =>
         [['Test: ' + slot + ' colour', () => cycleColour(slot)], ['Test: ' + slot + ' random colour', () => randomColour(slot)]]),
       ['Test: own clothes', () => { piece = emptyPieces(); colour = emptyPieces(); setOutfit(null); }],
     ];
