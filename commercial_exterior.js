@@ -9,29 +9,30 @@
 // WHAT IS HERE (every part has an on/off switch in SHOW below, and every position is a number you can change)
 //   Mall:        mall_exterior_optimised.glb (already in metres: 35.7 wide, 25 deep, 32.6 tall), at the back of the plot.
 //                You can walk in through the doorway under the canopy (mall_interior.js); game.js hides this model while you are inside (the `exterior` returned below).
-//   Front:       paved plaza, entrance canopy on two columns, mall name sign, five shop signs (one per floor, from FLOORS in mall_interior.js), CCTV cameras
+//   Front:       paved plaza, entrance canopy on two columns, mall name sign, five shop signs (your sign-board model with new lettering), CCTV cameras
 //   Parking:     asphalt lot with painted bay lines, kerbs with an entrance/exit gap, two speed bumps per lane,
 //                security booth on the island between the two lanes, shopping-cart corral (no vehicles)
 //   Boundary:    NO wall fence. Bollards along the front kerb (gold ones mark the entrance and the two walkways), hedges along the two sides and the back
-//   Street side: pylon sign (the mall directory, one line per floor, faces along the road), two animated advertising light-boxes, bus stop
+//   Street side: the mall directory (your mall_directories model, five rows, back to back so one side faces each way along the road), two animated advertising light-boxes, bus stop
 //   Back:        one big roadside billboard
 //
 // FILES NEEDED in props/ :  mall_exterior_optimised.glb, security_room_optimised.glb, surveillance_cam_optimised.glb,
 //   billboard_optimised.glb, billboard_stand_optimised.glb, speed_bump_optimised.glb, shopping_cart.glb,
-//   bollard_steel_optimised.glb, bollard_gold_optimised.glb, shop_sign_optimised.glb, hedge.glb (yours),
+//   bollard_steel_optimised.glb, bollard_gold_optimised.glb, shop_sign_optimised.glb (the sign-board with its 5 name variants),
+//   mall_directory_optimised.glb (your directory board with the five floors written on it), hedge.glb (yours),
 //   and the bus stop from props_library.js ('bus_stop' = your bus_stop_shelter.glb).
 // If a file fails to load the game keeps running and the item is skipped (see the browser console).
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { loadProp, PROPS_DIR } from './props_library.js';
-import { MALL_SHELL, FLOORS } from './mall_interior.js';        // wall numbers of the inside (so the doorway lines up) and the shops on each floor (the directory)
+import { MALL_SHELL } from './mall_interior.js';        // wall numbers of the inside, so the doorway here lines up with the doorway there
 
 // ---------- things you may want to change ----------
 const MALL_NAME = 'DELTA CITY MALL';
-const SIGN_COLOURS = ['#2e7d32', '#8d5524', '#1f8a8a', '#8e3b8e', '#1d5fa8'];   // shop-sign colour for each floor, in the order of FLOORS
+const SIGN_NAMES = ['SUPERMARKET', 'CAFE & RESTAURANT', 'SPA & GYM', 'FASHION', 'FURNITURE & ELECTRONICS'];   // the five wall signs. They are painted into shop_sign_optimised.glb in this order; to change a name, ask for a new sign file
 const SHOW = { plaza: true, parking: true, kerbs: true, canopy: true, nameSign: true, shopSigns: true, cameras: true, booth: true,
-               bumps: true, carts: true, pylon: true, stands: true, busStop: true, billboard: true, bollards: true, hedges: true };
+               bumps: true, carts: true, directory: true, stands: true, busStop: true, billboard: true, bollards: true, hedges: true };
 
 // ---------- layout (local metres) ----------
 const MALL_W = 35.66, MALL_D = 24.96, MALL_H = 32.6;          // size of mall_exterior_optimised.glb
@@ -47,10 +48,11 @@ const BUMPS = [[-4.9, 16.2], [-2.9, 16.2], [2.9, 16.2], [4.9, 16.2]];   // x, z 
 const CANOPY = { x: ENTRANCE_X, w: 9, d: 3.4, y: 5.1, t: 0.3 };  // canopy slab over the entrance
 const BILLBOARD = { x: 28.5, z: -17.5, rotY: -Math.PI / 2 };      // the poster side faces the road (use Math.PI / 2 to turn it round)
 const STANDS = [{ x: 30, z: 22.0 }, { x: -31, z: 22.0 }];        // animated advertising light-boxes (face the street)
-const PYLON = { x: -24, z: 21.5, w: 2.6, h: 5.6, d: 0.5 };       // w = width of the two faces (along z), d = thickness (along x). The faces look along the road.
+const STAND_SCALE = 3.6 / 32.41;                                 // the light-box file is in its own big units; this makes it 3.6 m tall (the animation is not affected)
+const DIRECTORY_BOARD = { x: -24, z: 21.5 };                     // the mall directory: two boards back to back, one facing each way along the road (each is 2.85 m wide, 5.1 m tall)
 const BUS_STOP = { x: 18, z: 25.4 };                             // on the strip between the plot and the pavement; it turns its open side to the road by itself
 const CARTS = [[-3.4, 3.7], [-3.4, 4.1], [-3.4, 4.5], [-3.4, 4.9]];   // nested trolleys beside the entrance
-const SIGNS_FRONT = [-14.0, -9.8, -5.6, 11.0, 15.2];             // x of the five shop signs on the front wall (one per floor, in the order of FLOORS)
+const SIGNS_FRONT = [-14.0, -9.8, -5.6, 11.0, 15.2];             // x of the five shop signs on the front wall (same order as SIGN_NAMES)
 const CAMERAS = [                                                // x, y (bottom of the arm), z, rotY (lens points +Z at rotY 0)
   [-15.5, 5.3, FRONT_Z, 0], [ENTRANCE_X - 4.2, 4.5, FRONT_Z, 0], [ENTRANCE_X + 4.2, 4.5, FRONT_Z, 0], [15.5, 5.3, FRONT_Z, 0],
   [MALL_W / 2, 4.6, MALL.z + 4, Math.PI / 2], [-MALL_W / 2, 4.6, MALL.z + 4, -Math.PI / 2]
@@ -80,9 +82,9 @@ export const COMM_BOXES = [
   [-WX, ENTRANCE_X - MALL_SHELL.doorHalf, ZFIN, FRONT_Z],                         // front part, left of the doorway
   [ENTRANCE_X + MALL_SHELL.doorHalf, WX, ZFIN, FRONT_Z],                          // front part, right of the doorway
   R(BOOTH.x, BOOTH.z, 1.5, 3.3),
-  R(PYLON.x, PYLON.z, PYLON.d / 2 + 0.1, PYLON.w / 2),
+  R(DIRECTORY_BOARD.x, DIRECTORY_BOARD.z, 0.75, 1.5),
   R(BILLBOARD.x, BILLBOARD.z, 1.2, 1.2),
-  ...STANDS.map(s => R(s.x, s.z, 0.7, 0.7)),
+  ...STANDS.map(s => R(s.x, s.z, 0.75, 0.75)),                                   // the round foot of each light-box (1.3 m across)
   R(CANOPY.x - CANOPY.w / 2 + 0.4, FRONT_Z + CANOPY.d - 0.4, 0.3, 0.3), R(CANOPY.x + CANOPY.w / 2 - 0.4, FRONT_Z + CANOPY.d - 0.4, 0.3, 0.3),
   ...STEEL_PTS.map(([x, z]) => R(x, z, 0.16, 0.16)), ...GOLD_PTS.map(([x, z]) => R(x, z, 0.12, 0.12)),
   [-HEDGE_X - 0.7, -HEDGE_X + 0.7, HEDGE_BACK_Z - 0.75, 23.4], [HEDGE_X - 0.7, HEDGE_X + 0.7, HEDGE_BACK_Z - 0.75, 23.4],   // hedge sides
@@ -194,47 +196,15 @@ function nameTexture() {
     ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `bold ${fitText(ctx, MALL_NAME, w - 80, 110)}px "Segoe UI", Arial, sans-serif`; ctx.fillText(MALL_NAME, w / 2, h / 2 + 4);
   });
 }
-function splitTitle(t) { const i = t.indexOf(' & '); return t.length > 16 && i > 0 ? [t.slice(0, i), '& ' + t.slice(i + 3)] : [t]; }   // long names go on two lines
-function signTexture(floor, i) {                                   // the face of one shop sign (drawn over the sign-board model)
-  return canvasTex(1024, 416, (ctx, w, h) => {
-    ctx.fillStyle = SIGN_COLOURS[i % SIGN_COLOURS.length]; ctx.fillRect(0, 0, w, h);
-    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 10; ctx.strokeRect(26, 26, w - 52, h - 52);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffe08a'; ctx.font = `bold 52px "Segoe UI", Arial, sans-serif`; ctx.fillText(floor.name, w / 2, 96);
-    const lines = splitTitle(floor.title); ctx.fillStyle = '#fff';
-    lines.forEach((ln, k) => { ctx.font = `bold ${fitText(ctx, ln, w - 120, lines.length > 1 ? 104 : 140)}px "Segoe UI", Arial, sans-serif`; ctx.fillText(ln, w / 2, lines.length > 1 ? 218 + k * 100 : 262); });
-  });
-}
-function pylonTexture() {                                          // the mall directory: one block per floor
-  return canvasTex(384, 960, (ctx, w, h) => {
-    ctx.fillStyle = '#0f2a52'; ctx.fillRect(0, 0, w, h); ctx.fillStyle = '#f2b705'; ctx.fillRect(0, 176, w, 8);
-    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = `bold ${fitText(ctx, 'DELTA CITY', w - 36, 66)}px Arial`; ctx.fillText('DELTA CITY', w / 2, 60);
-    ctx.font = `bold ${fitText(ctx, 'MALL', w - 36, 84)}px Arial`; ctx.fillText('MALL', w / 2, 135);
-    FLOORS.forEach((f, i) => {
-      const y0 = 205 + i * 150;
-      ctx.fillStyle = '#ffd24d'; ctx.font = 'bold 28px Arial'; ctx.fillText(f.name, w / 2, y0 + 16);
-      const lines = splitTitle(f.title); ctx.fillStyle = '#fff';
-      lines.forEach((ln, k) => { ctx.font = `bold ${fitText(ctx, ln, w - 40, lines.length > 1 ? 40 : 46)}px Arial`; ctx.fillText(ln, w / 2, y0 + 62 + k * 46); });
-      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(28, y0 + 128, w - 56, 3);
-    });
-  });
-}
-
-// ---------- the shop sign boards (your sign-board model; its old Indian bank lettering is replaced with the shop name) ----------
-async function shopSign(group, floor, i, x, y, z, rotY) {
+// ---------- the shop sign boards (your sign-board model; shop_sign_optimised.glb holds five name variants side by side in one picture) ----------
+async function shopSign(group, i, x, y, z, rotY) {
   try {
     const src = firstMesh((await getModel('shop_sign_optimised.glb')).scene);
-    const geo = src.geometry.clone(); geo.computeBoundingBox();
-    const bb = geo.boundingBox, w = bb.max.x - bb.min.x, h = bb.max.y - bb.min.y;
-    const pos = geo.attributes.position, nor = geo.attributes.normal, uv = geo.attributes.uv;
-    for (let k = 0; k < pos.count; k++) {                          // the two big faces get the whole picture; the thin edges get the frame colour
-      const nz = nor.getZ(k);
-      if (Math.abs(nz) > 0.9) { let u = (pos.getX(k) - bb.min.x) / w; if (nz < 0) u = 1 - u; uv.setXY(k, u, (pos.getY(k) - bb.min.y) / h); }
-      else uv.setXY(k, 0.004, 0.004);
-    }
+    const geo = src.geometry.clone(), uv = geo.attributes.uv, col = i % 3, row = Math.floor(i / 3);      // the picture is a grid of 3 x 2 variants
+    for (let k = 0; k < uv.count; k++) uv.setXY(k, (uv.getX(k) + col) / 3, (uv.getY(k) + row) / 2);
     uv.needsUpdate = true;
-    const m = new THREE.Mesh(geo, signMat(signTexture(floor, i))); m.castShadow = true; m.position.set(x, y, z); m.rotation.y = rotY; group.add(m);
+    const mat = src.material.clone(); mat.emissive = new THREE.Color(0xffffff); mat.emissiveMap = mat.map; mat.emissiveIntensity = 0.3;
+    const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.position.set(x, y, z); m.rotation.y = rotY; group.add(m);
   } catch (e) { console.warn('commercial_exterior: shop sign', e); }
 }
 
@@ -301,8 +271,8 @@ export function buildCommercialExterior() {
     const back = new THREE.Mesh(new THREE.BoxGeometry(14.3, 2.5, 0.2), new THREE.MeshStandardMaterial({ color: 0x0a1c3a })); back.position.set(ENTRANCE_X, 7.6, FRONT_Z + 0.38); group.add(back);
   }
 
-  // shop signs on the front wall: one per floor, hung on your sign-board model (3.6 m wide)
-  if (SHOW.shopSigns) FLOORS.forEach((f, i) => { if (SIGNS_FRONT[i] !== undefined) shopSign(group, f, i, SIGNS_FRONT[i], 3.6, FRONT_Z + 0.06, 0); });
+  // shop signs on the front wall, hung on your sign-board model (3.6 m wide)
+  if (SHOW.shopSigns) SIGN_NAMES.forEach((n, i) => { if (SIGNS_FRONT[i] !== undefined) shopSign(group, i, SIGNS_FRONT[i], 3.6, FRONT_Z + 0.06, 0); });
 
   // CCTV cameras on the walls
   if (SHOW.cameras) CAMERAS.forEach(([x, y, z, ry]) => put(group, 'surveillance_cam_optimised.glb', x, y, z, ry));
@@ -316,20 +286,15 @@ export function buildCommercialExterior() {
   // shopping carts
   if (SHOW.carts) CARTS.forEach(([x, z], i) => put(group, 'shopping_cart.glb', x, 0.02, z, Math.PI / 2 + i * 0.03));
 
-  // pylon sign = the mall directory (both faces look along the road, so people walking past read it)
-  if (SHOW.pylon) {
-    const body = new THREE.Mesh(new THREE.BoxGeometry(PYLON.d, PYLON.h, PYLON.w), new THREE.MeshStandardMaterial({ color: 0x0f2a52, roughness: 0.6 }));
-    body.position.set(PYLON.x, PYLON.h / 2, PYLON.z); body.castShadow = true; group.add(body);
-    const mat = signMat(pylonTexture());
-    [1, -1].forEach(s => { const f = new THREE.Mesh(new THREE.PlaneGeometry(PYLON.w - 0.2, PYLON.h - 0.3), mat); f.position.set(PYLON.x + s * (PYLON.d / 2 + 0.01), PYLON.h / 2, PYLON.z); f.rotation.y = s * Math.PI / 2; group.add(f); });
-  }
+  // the mall directory: your directory board, two of them back to back so people walking either way along the road can read it
+  if (SHOW.directory) { put(group, 'mall_directory_optimised.glb', DIRECTORY_BOARD.x, 0, DIRECTORY_BOARD.z, Math.PI / 2); put(group, 'mall_directory_optimised.glb', DIRECTORY_BOARD.x, 0, DIRECTORY_BOARD.z, -Math.PI / 2); }
 
   // animated advertising light-boxes (the panels turn; the model's own animation plays on a loop)
   if (SHOW.stands) STANDS.forEach(async (s, i) => {
     try {
       const gltf = await getModel('billboard_stand_optimised.glb'), m = gltf.scene.clone(true);
       m.traverse(o => { if (/^ground/i.test(o.name)) o.visible = false; if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });   // hides the flat ground plate that comes with the model
-      m.position.set(s.x, 0, s.z); group.add(m);
+      m.position.set(s.x, 0, s.z); m.scale.setScalar(STAND_SCALE); group.add(m);
       if (gltf.animations.length) { const mx = new THREE.AnimationMixer(m); mx.clipAction(gltf.animations[0]).play(); mx.setTime(i * 2.5); mixers.push(mx); }
     } catch (e) { console.warn('commercial_exterior: light-box', e); }
   });
