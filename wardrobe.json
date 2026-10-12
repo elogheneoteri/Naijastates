@@ -51,7 +51,7 @@
    "gain": 1.1,
    "hide": {
     "n": 5000,
-    "bits": "/////////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////////////////wAAP///////////////////////////////////////////////////4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/AAAAAEAAAAAAAAAAAAAAQAAAAAAAAAACAAAAAAAAIceLY4AAAAAAAAAAKAAAAAAABQHAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAguWwgAAAAAAAAAAAAAAAAAAABCYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB////////4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH///////////////////gAD//////////////////////////////////////////////////gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfgAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAhHvgcAAAAAAAAgAAAAAAABAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAACPHDgAAAAAAAAAAAAAAACCgIgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAA=="
+    "bits": "/////////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////////////////wAAP///////////////////////////////////////////////////4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/AAAAAEAAAAAAAAAAAAAAQAAAAAAAAAACAAAAAAAAIceLY4AAAAAAAAAAAAAAAAAAByHAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAQAAIAAAAAAAAAguWwgAAAAAAAAAAAAAAAAAAAlSYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB////////4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH///////////////////gAD////////////////////////////////////////////////37gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfgAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAhHvgcAAAAAAAAAAAAAAAABBAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAACPHDgAAAAAAAAQAAAAAADChKgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAA=="
    },
    "custom": "colors/tshirt_arpi_custom.jpg"
   },
@@ -179,6 +179,41 @@
    "custom": "colors/sneakers_arpi_custom.jpg"
   },
   {
+   "id": "necklace_pendant_03",
+   "slot": "necklace",
+   "label": "Pendant necklace 1",
+   "file": "jewelry/necklace_pendant_03.glb",
+   "tier": "free"
+  },
+  {
+   "id": "necklace_pendant_05",
+   "slot": "necklace",
+   "label": "Pendant necklace 2",
+   "file": "jewelry/necklace_pendant_05.glb",
+   "tier": "free"
+  },
+  {
+   "id": "necklace_chain",
+   "slot": "necklace",
+   "label": "Chain necklace",
+   "file": "jewelry/necklace_chain.glb",
+   "tier": "free"
+  },
+  {
+   "id": "earrings_01",
+   "slot": "earrings",
+   "label": "Earrings 1",
+   "file": "jewelry/earrings_01.glb",
+   "tier": "free"
+  },
+  {
+   "id": "earrings_03",
+   "slot": "earrings",
+   "label": "Earrings 2",
+   "file": "jewelry/earrings_03.glb",
+   "tier": "free"
+  },
+  {
    "id": "hair_1",
    "slot": "hair",
    "label": "Hairstyle 1",
@@ -258,6 +293,9 @@
     }
    ],
    "custom": "colors/hair_custom.png",
+   "only": [
+    "female_char2"
+   ],
    "gain": 2.47
   },
   {
@@ -299,83 +337,10 @@
     }
    ],
    "custom": "colors/hair_custom.png",
-   "gain": 2.47
-  },
-  {
-   "id": "hair_4",
-   "slot": "hair",
-   "label": "Hairstyle 4",
-   "file": "hair/hair_4.glb",
-   "tier": "free",
-   "colors": [
-    {
-     "id": "default",
-     "label": "Dark brown",
-     "swatch": "#3b2a20",
-     "file": "colors/hair_default.png"
-    },
-    {
-     "id": "black",
-     "label": "Black",
-     "swatch": "#151212",
-     "file": "colors/hair_black.png"
-    },
-    {
-     "id": "auburn",
-     "label": "Auburn",
-     "swatch": "#522312",
-     "file": "colors/hair_auburn.png"
-    },
-    {
-     "id": "blonde",
-     "label": "Blonde",
-     "swatch": "#8e7645",
-     "file": "colors/hair_blonde.png"
-    },
-    {
-     "id": "grey",
-     "label": "Grey",
-     "swatch": "#717175",
-     "file": "colors/hair_grey.png"
-    }
+   "only": [
+    "female_char2"
    ],
-   "custom": "colors/hair_custom.png",
    "gain": 2.47
-  },
-  {
-   "id": "necklace_pendant_03",
-   "slot": "necklace",
-   "label": "Pendant necklace 1",
-   "file": "jewelry/necklace_pendant_03.glb",
-   "tier": "free"
-  },
-  {
-   "id": "necklace_pendant_05",
-   "slot": "necklace",
-   "label": "Pendant necklace 2",
-   "file": "jewelry/necklace_pendant_05.glb",
-   "tier": "free"
-  },
-  {
-   "id": "necklace_chain",
-   "slot": "necklace",
-   "label": "Chain necklace",
-   "file": "jewelry/necklace_chain.glb",
-   "tier": "free"
-  },
-  {
-   "id": "earrings_01",
-   "slot": "earrings",
-   "label": "Earrings 1",
-   "file": "jewelry/earrings_01.glb",
-   "tier": "free"
-  },
-  {
-   "id": "earrings_03",
-   "slot": "earrings",
-   "label": "Earrings 2",
-   "file": "jewelry/earrings_03.glb",
-   "tier": "free"
   }
  ]
 }

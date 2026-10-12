@@ -214,7 +214,7 @@ function smoothPush(pts, disp, radius, passes) {
 // ---- wardrobe.json and the piece files ----
 let wardrobeInfo = '';                                            // why the list could not be loaded (shown on the choose screen)
 async function loadWardrobe() {
-  const take = list => { for (const p of (Array.isArray(list) ? list : list.pieces || [])) if (p.id && p.slot && p.file) PIECES[p.id] = { slot: p.slot, label: p.label || p.id, file: p.file, colors: p.colors || [], custom: p.custom || null, gain: p.gain || 1.3, hide: p.hide || null }; return Object.keys(PIECES).length; };
+  const take = list => { for (const p of (Array.isArray(list) ? list : list.pieces || [])) if (p.id && p.slot && p.file) PIECES[p.id] = { slot: p.slot, label: p.label || p.id, file: p.file, colors: p.colors || [], custom: p.custom || null, gain: p.gain || 1.3, hide: p.hide || null, only: p.only || null }; return Object.keys(PIECES).length; };
   const tried = [];
   for (let attempt = 0; attempt < 3; attempt++) {                  // a slow server gets three tries
     if (attempt) await new Promise(r => setTimeout(r, 1500 * attempt));
@@ -385,6 +385,47 @@ export function initClothing(opts) {
     return 'fitted: ' + totalPushed + ' of ' + totalPoints + ' points moved out of the skin, the most by ' + (worst * 1000).toFixed(0) + ' mm';
   }
 
+  // a necklace is made to sit on the bare skin; when a top or dress is worn, move it out so it lies on top of the cloth instead of inside it
+  function liftNecklaces(copies) {
+    const neck = copies.filter(c => (PIECES[c.userData.outfitPart] || {}).slot === 'necklace');
+    const cloth = copies.filter(c => ['top', 'dress'].includes((PIECES[c.userData.outfitPart] || {}).slot));
+    if (!neck.length || !cloth.length) return;
+    const tri = [];
+    cloth.forEach(m => {
+      m.updateMatrixWorld(true);
+      const P = skinnedWorld(m), ix = m.geometry.index, n = ix ? ix.count : m.geometry.attributes.position.count;
+      for (let i = 0; i + 2 < n; i += 3) {
+        const a = ix ? ix.getX(i) : i, b = ix ? ix.getX(i + 1) : i + 1, d = ix ? ix.getX(i + 2) : i + 2;
+        tri.push(P[a * 3], P[a * 3 + 1], P[a * 3 + 2], P[b * 3], P[b * 3 + 1], P[b * 3 + 2], P[d * 3], P[d * 3 + 1], P[d * 3 + 2]);
+      }
+    });
+    const tv = Float32Array.from(tri);
+    const m3 = new THREE.Matrix3(), full = new THREE.Matrix4(), mv = new THREE.Matrix4(), dv = new THREE.Vector3();
+    neck.forEach(c => {
+      c.updateMatrixWorld(true);
+      const P = skinnedWorld(c), np = P.length / 3;
+      const res = pushOut(tv, P, 0.006, 0.08, 0.06);
+      if (!res.pushed) return;
+      const disp = res.disp;
+      const g = c.geometry, pos = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
+      const bm = c.skeleton.bones.map((b, i) => new THREE.Matrix4().multiplyMatrices(b.matrixWorld, c.skeleton.boneInverses[i]).elements);
+      const c1 = new THREE.Matrix4().multiplyMatrices(c.matrixWorld, c.bindMatrixInverse);
+      for (let i = 0; i < np; i++) {
+        const dx = disp[i * 3], dy = disp[i * 3 + 1], dz = disp[i * 3 + 2];
+        if (!dx && !dy && !dz) continue;
+        const w = [sw.getX(i), sw.getY(i), sw.getZ(i), sw.getW(i)], s = [si.getX(i), si.getY(i), si.getZ(i), si.getW(i)];
+        mv.elements.fill(0);
+        for (let k = 0; k < 4; k++) if (w[k]) { const e = bm[s[k]]; for (let q = 0; q < 16; q++) mv.elements[q] += w[k] * e[q]; }
+        full.multiplyMatrices(c1, mv).multiply(c.bindMatrix);
+        m3.setFromMatrix4(full);
+        if (Math.abs(m3.determinant()) < 1e-12) continue;
+        m3.invert(); dv.set(dx, dy, dz).applyMatrix3(m3);
+        pos.setXYZ(i, pos.getX(i) + dv.x, pos.getY(i) + dv.y, pos.getZ(i) + dv.z);
+      }
+      pos.needsUpdate = true; g.computeBoundingSphere(); g.computeBoundingBox();
+    });
+  }
+
   // a copy of a material that takes part in the skin mask ('outfit' marks pixels, 'skin' is not drawn on marked pixels)
   const stenciled = new Map();
   function withStencil(mat, kind) {
@@ -467,7 +508,7 @@ export function initClothing(opts) {
       const bones = sm.skeleton.bones.map(b => { const nb = baseBones[b.name]; if (!nb) missing.add(b.name); return nb; });
       if (bones.some(b => !b)) return;
       const copy = sm.clone();
-      if (FIT) copy.geometry = sm.geometry.clone();                                    // the fitting changes the copy's own shape, never the shared original
+      if (FIT || (PIECES[name] && PIECES[name].slot === 'necklace')) copy.geometry = sm.geometry.clone();   // a necklace is moved over the worn top, so it needs its own shape                                    // the fitting changes the copy's own shape, never the shared original
       const masks = MASK && !SKIP_MASK.test(name);
       copy.material = masks ? withStencil(grow(sm.material, amount), 'outfit') : grow(sm.material, amount);
       if (masks) copy.renderOrder = -1;                                               // drawn before the skin, so the mask is ready
@@ -494,6 +535,7 @@ export function initClothing(opts) {
     });
     let fitInfo = 'fit off';
     if (FIT) { try { fitInfo = fitCopies(model, copies, characterId, outfit.pieces ? '*' : String(outfitId).replace(/:[^;]+/g, '')); } catch (e) { fitInfo = 'fit failed'; warn('fitting failed, the outfit keeps the shape it was made with:', e); } }
+    try { liftNecklaces(copies); } catch (e) { warn('necklace lift failed (not important):', e); }
     const skinSwaps = [];
     if (MASK) model.traverse(o => { if (o.isSkinnedMesh && !o.userData.outfitPart && !hidden.includes(o) && SKIN_MASKED.test(plain(o.material))) skinSwaps.push({ mesh: o, material: o.material, order: o.renderOrder }); });
     skinSwaps.forEach(s => { s.mesh.material = withStencil(s.material, 'skin'); s.mesh.renderOrder = 1; });

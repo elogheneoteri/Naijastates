@@ -98,6 +98,11 @@ const CSS = `
 `;
 
 // put the look saved by the creation screen on the player in the game world (call once, after initClothing)
+// hair: every character starts with its own hairstyle; a piece with an "only" list in wardrobe.json is offered to those characters only
+const DEFAULT_HAIR = { female_char1: 'hair_1', female_char2: 'hair_2', female_char3: 'hair_1' };
+const fits = (p, charId) => !!p && (!p.only || p.only.includes(charId));
+const defaultHair = (PIECES, charId) => { const d = DEFAULT_HAIR[charId] || 'hair_1'; return fits(PIECES[d], charId) ? d : (Object.keys(PIECES).find(id => PIECES[id].slot === 'hair' && fits(PIECES[id], charId)) || null); };
+
 export async function restoreSavedLook(world, clothing) {
   try {
     await clothing.ready;
@@ -106,6 +111,10 @@ export async function restoreSavedLook(world, clothing) {
     const look = JSON.parse(raw);
     if (!look || !look.piece || !Object.values(look.piece).some(Boolean)) return;
     if (!/^female_/.test(String(world.player.userData.characterId || ''))) return;     // the pieces are female for now
+    const cid = world.player.userData.characterId, P = clothing.PIECES;
+    const h = look.piece.hair;
+    if (h && !fits(P[h], cid)) look.piece.hair = defaultHair(P, cid);          // a hairstyle that belongs to another character
+    if (look.colour && look.piece.hair !== h) look.colour.hair = null;
     clothing.setLook(look);
   } catch (e) { console.warn('[creator] could not restore the saved look:', e); }
 }
@@ -133,7 +142,8 @@ export function initCreator(opts) {
 
   let slot = null, open = false, poll = 0, lastSig = '', lastBusy = false, pickTimer = 0, oldTitle = '';
   const hidden = []; let sideStyle = ['', '', ''];
-  const slotsWithPieces = () => SLOT_ORDER.filter(s => Object.values(PIECES).some(p => p.slot === s));
+  const charId = () => String((holder.userData && holder.userData.characterId) || '');
+  const slotsWithPieces = () => SLOT_ORDER.filter(s => Object.values(PIECES).some(p => p.slot === s && fits(p, charId())));
 
   // does this character get a customize step? (female pieces only for now)
   const available = id => /^female_/.test(String(id || '')) && slotsWithPieces().length > 0;
@@ -181,7 +191,7 @@ export function initCreator(opts) {
       gridEl.appendChild(b);
     };
     add(null, SLOT_TABS[slot].none, 'none', null, true);
-    Object.keys(PIECES).filter(id => PIECES[id].slot === slot).forEach(id => {
+    Object.keys(PIECES).filter(id => PIECES[id].slot === slot && fits(PIECES[id], charId())).forEach(id => {
       const first = (PIECES[id].colors || [])[0];
       add(id, PIECES[id].label, slot, first ? first.swatch : '#ffc61a', false);
     });
@@ -225,6 +235,10 @@ export function initCreator(opts) {
   }
 
   // ---------- show / hide (inside the choose-your-character panel) ----------
+  function putDefaultHair() {                                                        // the character keeps its own hair unless the player changes it
+    const st = clothing.getState(), cur = st.piece.hair, d = defaultHair(PIECES, charId());
+    if (d && (!cur || !fits(PIECES[cur], charId()))) clothing.setPiece('hair', d);
+  }
   function begin() {
     if (open) return;
     open = true;
@@ -234,6 +248,7 @@ export function initCreator(opts) {
     root.classList.add('open');
     if (title) { oldTitle = title.innerHTML; title.innerHTML = 'Customize Your <b>Look</b>'; }
     setSpin(false); holder.rotation.y = 0;                                           // the character faces you while you choose
+    putDefaultHair();
     refresh(true); focus();
     poll = setInterval(() => { if (signature() !== lastSig) refresh(false); else if (clothing.getState().busy !== lastBusy) status(); }, 250);
   }
@@ -248,7 +263,7 @@ export function initCreator(opts) {
     const b = bodyBox(); setView(b.base + FOCUS.all.y * b.H, FOCUS.all.d * b.H * PREVIEW_FOV_K);
   }
   q('[data-act="back"]').addEventListener('click', () => { end(); onBack(); });
-  q('[data-act="reset"]').addEventListener('click', () => { clothing.clearAll(); save(); refresh(false); });
+  q('[data-act="reset"]').addEventListener('click', () => { clothing.clearAll(); putDefaultHair(); save(); refresh(false); });
   q('[data-act="play"]').addEventListener('click', () => { save(); end(); onPlay(); });
 
   // ---------- drag on the preview to turn the character ----------

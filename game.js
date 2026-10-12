@@ -14,8 +14,8 @@ import { buildCommercialExterior, COMM_BOXES } from './commercial_exterior.js';
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
 import { buildMallInterior, MALL_INTERIOR_BOXES, MALL_STAIRS } from './mall_interior.js';        // the mall: 5 floors, escalators, lift
 import { initNin, IVORY_FILE } from './nin.js';
-import { initClothing } from './clothing.js?v=5';   // clothing test: wear another character's outfit
-import { initCreator, restoreSavedLook } from './creator.js?v=5';   // step 2 of character creation: choose the outfit (first-time players only)
+import { initClothing } from './clothing.js?v=6';   // clothing test: wear another character's outfit
+import { initCreator, restoreSavedLook } from './creator.js?v=6';   // step 2 of character creation: choose the outfit (first-time players only)
 import { loadProp } from './props_library.js';
 import { HS_STAIRS, STAIR_SPEED_FACTOR, STAIR_ANIM_SPEED, addStairs, groundHeight, onStairs, escalatorDrift } from './stairs.js';   // Step 2: the school steps
 import { buildCity, cityClearRects, JUNCTION_GAPS_X, CITY, plotAt } from './city.js';
@@ -1344,7 +1344,12 @@ class World {
       this.player.position.set(data.x / PX_PER_M, 0, data.y / PX_PER_M);
       this.setLabel(this.player, data.name);
       // the server is the authority on which character this account uses
-      if (data.character && data.character !== this.player.userData.characterId) {
+      // the player's own pick (made on the choose screen) wins and is sent to the server;
+      // a new device with nothing picked yet takes the character saved on the account
+      const mine = localStorage.getItem('characterId');
+      if (FREE_IDS.includes(mine)) {
+        if (mine !== data.character) this.chooseCharacter(mine);
+      } else if (data.character && data.character !== this.player.userData.characterId) {
         localStorage.setItem('characterId', data.character);
         applyCharacter(this.player, 0x2c6e9b, data.character);
       }
@@ -1366,7 +1371,10 @@ class World {
     this.socket.on('character', d => {
       const av = d.id === this.myId ? this.player : (this.others.get(d.id) || {}).av;
       if (!av) return;
-      if (d.id === this.myId) localStorage.setItem('characterId', d.character);
+      if (d.id === this.myId) {
+        if (d.character === av.userData.characterId) return;       // already wearing it: keep the chosen outfit
+        localStorage.setItem('characterId', d.character);
+      }
       applyCharacter(av, d.id === this.myId ? 0x2c6e9b : 0xd9822b, d.character);
     });
     this.socket.on('left', id => { this.removeOther(id); this.updateStatus(); });
