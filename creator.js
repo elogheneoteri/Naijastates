@@ -99,7 +99,7 @@ const CSS = `
 
 // put the look saved by the creation screen on the player in the game world (call once, after initClothing)
 // hair: every character starts with its own hairstyle; a piece with an "only" list in wardrobe.json is offered to those characters only
-const DEFAULT_HAIR = { female_char1: 'hair_1', female_char2: 'hair_2', female_char3: 'hair_1' };
+const DEFAULT_HAIR = { female_char1: 'hair_1', female_char2: 'hair_2', female_char3: 'hair_1c' };
 const fits = (p, charId) => !!p && (!p.only || p.only.includes(charId));
 const defaultHair = (PIECES, charId) => { const d = DEFAULT_HAIR[charId] || 'hair_1'; return fits(PIECES[d], charId) ? d : (Object.keys(PIECES).find(id => PIECES[id].slot === 'hair' && fits(PIECES[id], charId)) || null); };
 

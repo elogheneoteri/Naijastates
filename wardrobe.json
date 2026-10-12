@@ -252,7 +252,55 @@
     }
    ],
    "custom": "colors/hair_custom.png",
-   "gain": 2.47
+   "gain": 2.47,
+   "only": [
+    "female_char1",
+    "female_char2"
+   ]
+  },
+  {
+   "id": "hair_1c",
+   "slot": "hair",
+   "label": "Hairstyle 1",
+   "file": "hair/hair_1c.glb",
+   "tier": "free",
+   "colors": [
+    {
+     "id": "default",
+     "label": "Dark brown",
+     "swatch": "#3b2a20",
+     "file": "colors/hair_default.png"
+    },
+    {
+     "id": "black",
+     "label": "Black",
+     "swatch": "#151212",
+     "file": "colors/hair_black.png"
+    },
+    {
+     "id": "auburn",
+     "label": "Auburn",
+     "swatch": "#522312",
+     "file": "colors/hair_auburn.png"
+    },
+    {
+     "id": "blonde",
+     "label": "Blonde",
+     "swatch": "#8e7645",
+     "file": "colors/hair_blonde.png"
+    },
+    {
+     "id": "grey",
+     "label": "Grey",
+     "swatch": "#717175",
+     "file": "colors/hair_grey.png"
+    }
+   ],
+   "custom": "colors/hair_custom.png",
+   "gain": 2.47,
+   "only": [
+    "female_char3"
+   ]
   },
   {
    "id": "hair_2",
