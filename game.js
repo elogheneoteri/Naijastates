@@ -10,6 +10,7 @@ import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { buildRefugeeCamp, CAMP_BOXES } from './refugee_camp.js';
 import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.js';
 import { buildHighSchoolExterior, HS_EXTERIOR_BOXES } from './high_school_exterior.js';
+import { buildCommercialExterior, COMM_BOXES } from './commercial_exterior.js';
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
 import { initNin, IVORY_FILE } from './nin.js';
 import { initClothing } from './clothing.js?v=5';   // clothing test: wear another character's outfit
@@ -41,6 +42,7 @@ const ROAD_Z0 = 27.0, ROAD_Z1 = 30.5;      // main road (runs west to east, thro
 // to face north, towards the road.
 // boxes = solid parts you cannot walk through: [minX, maxX, minZ, maxZ] relative to the centre,
 // measured BEFORE rotation (the code rotates them for you).
+const COMM_PLOT = plotAt('commercial');     // the Commercial District plot from city.js
 const HS_PLOT = plotAt('high_school');       // the High School plot from city.js (centre and which way it faces)
 const BUILDINGS = [
   {
@@ -83,6 +85,14 @@ const BUILDINGS = [
     extras: buildHighSchoolExterior,       // Step 2: the props around the school
     stairs: HS_STAIRS,                     // Step 2: the front steps (stairs.js): the floor rises towards the door and the stairs animation plays
     fallback: [29.2, 11.1, 21.4]
+  },
+  {
+    key: 'commercial', name: 'Commercial District',
+    // Mall exterior only (commercial_exterior.js builds everything: the mall model, parking, signs, props). No way in yet.
+    build: buildCommercialExterior,
+    x: COMM_PLOT.x, z: COMM_PLOT.z, rotY: COMM_PLOT.rotY,
+    boxes: COMM_BOXES,
+    fallback: [74, 33, 48]
   }
 ];
 
@@ -1526,3 +1536,5 @@ class World {
 
 // start only after everything above has been defined
 boot();
+
+

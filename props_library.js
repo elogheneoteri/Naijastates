@@ -119,6 +119,9 @@ export const PROPS = {
   bush_flowers:   { file: 'Bush_Flowers.fbx',    height: 1.0, tags: ['plant'] },
   flower_1:       { file: 'Flower_1.fbx',        height: 0.45, tags: ['plant'] },
   flower_clump:   { file: 'Flower_2_Clump.fbx',  height: 0.45, tags: ['plant'] },
+
+  // ----- street -----
+  bus_stop:       { file: 'bus_stop_shelter.glb', height: 2.7, tags: ['street'] },     // used by commercial_exterior.js; set rotY if it faces the wrong way
 };
 
 // Textures that came with the stylized pack. FBX files often lose their texture links,
@@ -270,3 +273,5 @@ export async function scatterProp(name, parent, spots, area, keepClear) {
 export function listProps(tag) {
   return Object.keys(PROPS).filter(k => !tag || PROPS[k].tags?.includes(tag));
 }
+
+

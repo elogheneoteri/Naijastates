@@ -161,7 +161,7 @@ export function buildCity(loadProp) {
 
   // ----- empty building plots -----
 // Plots that already have a building: they keep their plain ground pad, but lose the yellow border, front strip and floating sign.
-const BUILT_PLOTS = ['high_school'];
+const BUILT_PLOTS = ['high_school', 'commercial'];
   const padMat = new THREE.MeshStandardMaterial({ color: 0xb4ae9f, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const edgeMat = new THREE.MeshStandardMaterial({ color: 0xf2c200, roughness: 0.7, emissive: 0x5a4600, emissiveIntensity: 0.4 });
   PLOTS.forEach(p => {
@@ -213,3 +213,5 @@ const BUILT_PLOTS = ['high_school'];
 
   return { group };
 }
+
+
