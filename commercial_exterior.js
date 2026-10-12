@@ -1,4 +1,4 @@
-// commercial_exterior.js  (the OUTSIDE of the Commercial District mall; no interior yet)
+// commercial_exterior.js  (the OUTSIDE of the Commercial District mall; the inside is in mall_interior.js)
 //
 // Exports:  buildCommercialExterior() -> { group }      COMM_BOXES -> solid parts for collisions
 //
@@ -7,7 +7,8 @@
 // The street pavement is just outside the plot at z = 26.9 .. 28.5.
 //
 // WHAT IS HERE (every part has an on/off switch in SHOW below, and every position is a number you can change)
-//   Mall:        mall_exterior_optimised.glb (already in metres: 35.7 wide, 25 deep, 32.6 tall), at the back of the plot
+//   Mall:        mall_exterior_optimised.glb (already in metres: 35.7 wide, 25 deep, 32.6 tall), at the back of the plot.
+//                You can walk in through the doorway under the canopy (mall_interior.js); game.js hides this model while you are inside (the `exterior` returned below).
 //   Front:       paved plaza, entrance canopy on two columns, mall name sign, shop signs, CCTV cameras
 //   Parking:     asphalt lot with painted bay lines, kerbs with an entrance/exit gap, two speed bumps per lane,
 //                security booth on the island between the two lanes, shopping-cart corral (no vehicles)
@@ -22,6 +23,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { loadProp, PROPS_DIR } from './props_library.js';
+import { MALL_SHELL } from './mall_interior.js';        // wall numbers of the inside, so the doorway here lines up with the doorway there
 
 // ---------- things you may want to change ----------
 const MALL_NAME = 'DELTA CITY MALL';
@@ -33,7 +35,7 @@ const SHOW = { plaza: true, parking: true, kerbs: true, canopy: true, nameSign: 
 const MALL_W = 35.66, MALL_D = 24.96, MALL_H = 32.6;          // size of mall_exterior_optimised.glb
 const MALL = { x: 0, z: -22 + MALL_D / 2 };                      // back of the mall 2 m from the back edge of the plot
 const FRONT_Z = MALL.z + MALL_D / 2;                             // the shop-front wall (z = 2.96)
-const ENTRANCE_X = 3.3;                                          // middle of the storefront (move it if the real doors are elsewhere)
+const ENTRANCE_X = 3.3;                                          // middle of the doorway (must equal DOOR_X in mall_interior.js; move both if the real doors are elsewhere)
 const LOT = { x0: -34, x1: 34, z0: 6.2, z1: 23.6 };              // parking lot rectangle
 const DRIVE = { x0: -6.4, x1: 6.4 };                             // the entrance / exit gap in the kerb (two lanes, booth island between)
 const BOOTH = { x: 0, z: 20.5 };                                 // security booth, long side runs along z
@@ -53,8 +55,14 @@ const CAMERAS = [                                                // x, y (bottom
 
 // ---------- collision boxes: [minX, maxX, minZ, maxZ] ----------
 const R = (x, z, hw, hd) => [x - hw, x + hw, z - hd, z + hd];
+// The mall is NOT one solid block any more: only the shell round the inside is solid here (the inside walls, the floors and the lifts are in mall_interior.js).
+const WX = MALL_SHELL.hw + MALL_SHELL.t, ZFIN = MALL.z + MALL_SHELL.hd + MALL_SHELL.t, ZBIN = MALL.z - MALL_SHELL.hd - MALL_SHELL.t;   // outer face of the inside walls
 export const COMM_BOXES = [
-  [MALL.x - MALL_W / 2, MALL.x + MALL_W / 2, MALL.z - MALL_D / 2, FRONT_Z],      // the whole mall (no way in yet)
+  [MALL.x - MALL_W / 2, -WX, MALL.z - MALL_D / 2, FRONT_Z],                       // west part of the model's wall
+  [WX, MALL.x + MALL_W / 2, MALL.z - MALL_D / 2, FRONT_Z],                        // east part
+  [-WX, WX, MALL.z - MALL_D / 2, ZBIN],                                           // back part
+  [-WX, ENTRANCE_X - MALL_SHELL.doorHalf, ZFIN, FRONT_Z],                         // front part, left of the doorway
+  [ENTRANCE_X + MALL_SHELL.doorHalf, WX, ZFIN, FRONT_Z],                          // front part, right of the doorway
   R(BOOTH.x, BOOTH.z, 1.5, 3.3),
   R(PYLON.x, PYLON.z, PYLON.w / 2, PYLON.d / 2 + 0.1),
   R(BILLBOARD.x, BILLBOARD.z, 1.2, 1.2),
@@ -159,8 +167,9 @@ export function buildCommercialExterior() {
   const group = new THREE.Group();
   const ready = [];                                                // promises, so nothing blocks the game
 
-  // the mall itself
-  ready.push(put(group, 'mall_exterior_optimised.glb', MALL.x, 0, MALL.z));
+  // the mall itself (in its own pivot, so game.js can hide it while the player is inside)
+  const mallPivot = new THREE.Group(); group.add(mallPivot);
+  ready.push(put(mallPivot, 'mall_exterior_optimised.glb', MALL.x, 0, MALL.z));
 
   // paved plaza in front of the shops
   if (SHOW.plaza) flat(group, LOT.x1 - LOT.x0, LOT.z0 - FRONT_Z, 0, 0.025, (FRONT_Z + LOT.z0) / 2, offsetMat(paverTexture(), -5));
@@ -235,5 +244,5 @@ export function buildCommercialExterior() {
   if (SHOW.busStop) loadProp('bus_stop').then(p => { p.position.set(BUS_STOP.x, 0, BUS_STOP.z); p.rotation.y = BUS_STOP.rotY; group.add(p); }).catch(e => console.warn('commercial_exterior: bus stop', e));
 
   Promise.all(ready).catch(() => {});
-  return { group };
+  return { group, exterior: mallPivot };
 }

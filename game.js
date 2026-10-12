@@ -12,11 +12,12 @@ import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.
 import { buildHighSchoolExterior, HS_EXTERIOR_BOXES } from './high_school_exterior.js';
 import { buildCommercialExterior, COMM_BOXES } from './commercial_exterior.js';
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
+import { buildMallInterior, MALL_INTERIOR_BOXES, MALL_STAIRS } from './mall_interior.js';        // the mall: 5 floors, escalators, lift
 import { initNin, IVORY_FILE } from './nin.js';
 import { initClothing } from './clothing.js?v=5';   // clothing test: wear another character's outfit
 import { initCreator, restoreSavedLook } from './creator.js?v=5';   // step 2 of character creation: choose the outfit (first-time players only)
 import { loadProp } from './props_library.js';
-import { HS_STAIRS, STAIR_SPEED_FACTOR, STAIR_ANIM_SPEED, addStairs, groundHeight, onStairs } from './stairs.js';   // Step 2: the school steps
+import { HS_STAIRS, STAIR_SPEED_FACTOR, STAIR_ANIM_SPEED, addStairs, groundHeight, onStairs, escalatorDrift } from './stairs.js';   // Step 2: the school steps
 import { buildCity, cityClearRects, JUNCTION_GAPS_X, CITY, plotAt } from './city.js';
 
 // >>> Your three values (same as before). <<<
@@ -88,10 +89,13 @@ const BUILDINGS = [
   },
   {
     key: 'commercial', name: 'Commercial District',
-    // Mall exterior only (commercial_exterior.js builds everything: the mall model, parking, signs, props). No way in yet.
+    // commercial_exterior.js builds the outside (the mall model, parking, signs, props); mall_interior.js builds the inside:
+    // five floors, the doorway under the canopy, two escalator lanes and a lift. The mall model hides while you are inside.
     build: buildCommercialExterior,
+    interior: buildMallInterior,
+    stairs: MALL_STAIRS,                   // the five floor heights and the escalator lanes (stairs.js lifts the characters)
     x: COMM_PLOT.x, z: COMM_PLOT.z, rotY: COMM_PLOT.rotY,
-    boxes: COMM_BOXES,
+    boxes: [...COMM_BOXES, ...MALL_INTERIOR_BOXES],
     fallback: [74, 33, 48]
   }
 ];
@@ -1138,7 +1142,7 @@ class World {
       b.room = b.interior();
       b.inside = false;
       root.add(b.room.group, b.room.marker);
-      if (b.stairs) b.room.group.position.y = b.stairs.rise;     // Step 2: the school floor sits on top of the steps (the marker outside stays on the pavement)
+      if (b.stairs && b.stairs.rise !== undefined) b.room.group.position.y = b.stairs.rise;     // Step 2: the school floor sits on top of the steps (the marker outside stays on the pavement; the mall has no steps)
     }
     if (b.stairs) addStairs(b.stairs, b.x, b.z, b.rotY);          // Step 2: the steps (stairs.js)
 
@@ -1151,6 +1155,7 @@ class World {
     if (b.build) {                       // building made in code instead of a .glb file
       const built = b.build();
       root.add(built.group);
+      if (built.exterior) { b.exterior = built.exterior; b.exterior.visible = !b.inside; }     // the outside model, hidden while the player is inside (the mall)
       if (built.update) this.animators.push(built.update);
       return;
     }
@@ -1415,6 +1420,14 @@ class World {
     this.socket.emit('dev_progress', this.progress === 'indigene' ? 'arrived' : 'indigene');
   }
 
+  // The lift: put the player on another floor of the mall, on the same x and z (the height follows from the level)
+  gotoLevel(lv) {
+    const u = this.player.userData, p = this.player.position;
+    u.level = lv; u.escLane = null;
+    const y = groundHeight(p.x, p.z, u);
+    p.y = y; u.lastY = y; u.stairDir = 0;
+  }
+
   // ----- walking and collisions -----
   collide(pos) {
     const all = this.gateClosed ? this.boxes.concat([this.gateBox]) : this.boxes;
@@ -1459,6 +1472,8 @@ class World {
     const vz = (fz * iy + rz * ix) * sp;
 
     p.x += vx * dt; p.z += vz * dt;
+    const drift = escalatorDrift(p.x, p.z);                                  // the mall escalator belts carry you
+    p.x += drift.x * dt; p.z += drift.z * dt;
     p.x = THREE.MathUtils.clamp(p.x, PLAYER_RADIUS, WORLD_W - PLAYER_RADIUS);
     p.z = THREE.MathUtils.clamp(p.z, PLAYER_RADIUS, WORLD_H - PLAYER_RADIUS);
     this.collide(p);
@@ -1509,15 +1524,21 @@ class World {
     // buildings with an interior: show the room (and hide the outside model) while the player is inside it
     BUILDINGS.forEach(b => {
       if (!b.room) return;
-      const inside = Math.abs(p.x - b.x) < b.room.halfW - 0.1 && Math.abs(p.z - (b.z + (b.room.cz || 0))) < b.room.halfD - 0.1;   // cz = the room's centre is not always the building centre (the school)
+      // the player's place in the building's own space (the building may be turned by rotY, like the mall: its front faces north)
+      const ra = THREE.MathUtils.degToRad(b.rotY || 0), rc = Math.cos(ra), rs = Math.sin(ra), dx = p.x - b.x, dz = p.z - b.z;
+      const lx = dx * rc - dz * rs, lz = dx * rs + dz * rc;
+      const inside = Math.abs(lx) < b.room.halfW - 0.1 && Math.abs(lz - (b.room.cz || 0)) < b.room.halfD - 0.1;   // cz = the room's centre is not always the building centre (the school, the mall)
       if (inside !== b.inside) {
         b.inside = inside;
         b.room.setInside(inside);
         if (b.exterior) b.exterior.visible = !inside;
       }
       if (inside) {
-        b.room.setCamera(this.camera.position.x - b.x, this.camera.position.z - b.z);
-        if (b.room.setLevel) b.room.setLevel((this.player.userData.level) || 0);      // Step 4: show the upstairs floor while you are up there
+        const cx = this.camera.position.x - b.x, cz = this.camera.position.z - b.z;
+        b.room.setCamera(cx * rc - cz * rs, cx * rs + cz * rc);                       // the camera in the building's own space too
+        const level = (this.player.userData.level) || 0;
+        if (b.room.setLevel) b.room.setLevel(level);                                  // Step 4: show the floor you are on
+        if (b.room.update) b.room.update(dt, { x: lx, z: lz, level, goto: lv => this.gotoLevel(lv) });   // the mall: moving belts, lift doors, lift panel, floor name
       }
     });
 
@@ -1536,5 +1557,3 @@ class World {
 
 // start only after everything above has been defined
 boot();
-
-

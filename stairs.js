@@ -46,6 +46,8 @@ export const HS_STAIRS = {
   inner: IN_STAIR, floorH: FLOOR_H,
 };
 
+export const ESC_SPEED = 1.0;            // metres per second the mall escalator belts carry you (east, in the mall's own space)
+
 export const STAIR_SPEED_FACTOR = 0.6;   // you walk at 60% of normal speed on the steps (so the feet look right)
 export const STAIR_ANIM_SPEED = 1.5;     // the stairs animation plays at normal speed when you move this fast (m/s); change it if the feet slide
 
@@ -67,6 +69,27 @@ export function groundHeight(wx, wz, u) {
   let h = 0, inside = false;
   for (const s of placed) {
     const d = s.def, p = toLocal(s, wx, wz), f = d.footprint;
+    if (d.floorsY) {                                                                                       // the MALL: five floors + two escalator lanes (mall_interior.js)
+      if (p.x > f.x0 && p.x < f.x1 && p.z > f.z0 && p.z <= f.z1) {
+        inside = true;
+        const level = u ? (u.level || 0) : 0, Y = d.floorsY;
+        const lane = d.lanes.find(l => p.x >= l.x0 && p.x <= l.x1 && p.z >= l.z0 && p.z < l.z1);
+        if (lane) {
+          const t = (p.x - lane.x0) / (lane.x1 - lane.x0), low = lane.low === 'W' ? t : 1 - t;               // low: 0 at the end on the lower floor, 1 at the end on the upper floor
+          if (u && u.escLane !== lane.id) {                                                                 // just stepped on: which pair of floors is this lane going between?
+            u.escLane = lane.id;
+            u.escK = ((t < 0.5) === (lane.low === 'W')) ? level : level - 1;                                // stepped on at the low end: going up from this floor; at the high end: going down from this floor
+          }
+          const k = Math.min(Y.length - 2, Math.max(0, u ? u.escK : level));
+          h = Math.max(h, Y[k] + (Y[k + 1] - Y[k]) * low);
+          if (u) { if (low > 0.9) u.level = k + 1; else if (low < 0.1) u.level = k; }                       // near an end: you are on that floor now
+        } else {
+          if (u) u.escLane = null;
+          h = Math.max(h, Y[level]);
+        }
+      }
+      continue;
+    }
     if (p.x > f.x0 && p.x < f.x1 && p.z > f.z0 && p.z <= f.z1) {                                           // inside the school
       inside = true;
       let level = u ? (u.level || 0) : 0;
@@ -87,8 +110,19 @@ export function groundHeight(wx, wz, u) {
       h = Math.max(h, d.rise * (d.zBottom - p.z) / (d.zBottom - d.zTop));
     }
   }
-  if (!inside && u) u.level = 0;
+  if (!inside && u) { u.level = 0; u.escLane = null; }
   return h;
+}
+
+// The mall's escalator belts carry you east (the mall's own +x). Returns the push in world metres per second, { x, z }.
+export function escalatorDrift(wx, wz) {
+  for (const s of placed) {
+    const d = s.def;
+    if (!d.floorsY) continue;
+    const p = toLocal(s, wx, wz);
+    if (d.lanes.some(l => p.x >= l.x0 && p.x <= l.x1 && p.z >= l.z0 && p.z < l.z1)) return { x: ESC_SPEED * Math.cos(s.a), z: -ESC_SPEED * Math.sin(s.a) };
+  }
+  return { x: 0, z: 0 };
 }
 
 // Is this world position on the steps (front steps or indoor stairs)?
