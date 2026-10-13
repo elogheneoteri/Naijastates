@@ -1,4 +1,4 @@
-// mall_interior.js  (STEP 1 + 2 + 3 of the mall interior: the five floors, the entrance, the escalators, the lift, and the SUPERMARKET on the ground floor.
+// mall_interior.js  (the five floors, the entrance, the escalators, the lift, and the SUPERMARKET on the ground floor.
 //                    The other floors are still empty: their shops come in the next steps)
 //
 // Exports:  buildMallInterior() -> { group, marker, halfW, halfD, cz, setInside(bool), setCamera(relX, relZ), setLevel(0..4), update(dt, ctx) }
@@ -17,34 +17,54 @@
 //   Level 1   CAFE (west)       |  RESTAURANT (east)           5.64 m
 //   Level 0   SUPERMARKET  (+ the entrance lobby)              0 m
 //
-// The heights come from your mall model: its glass bands start at 5.64, 12.34, 19.05 and 25.76 m and the roof is at 32.46 m,
-// so every floor is about 6.7 m tall (nice and airy for a mall). If the floor lines do not match the windows,
-// test live without editing anything: add  ?floorh=6.5  to the web address (equal floors of that height).
+// The heights come from your mall model: its glass bands start at 5.64, 12.34, 19.05 and 25.76 m and the roof is at 32.46 m.
+// If the floor lines do not match the windows, test live without editing anything: add  ?floorh=6.5  to the web address (equal floors of that height).
 //
 // EVERY FLOOR (same plan, so the next steps are easy):
 //
 //   back wall (north, -Z)
 //   +----------------------------------------------+
 //   |                                              |
-//   |        SHOP AREA (one or two zones,          |      the zones are coloured patches on the floor with their name,
-//   |        painted on the floor)                 |      the shops get built inside them in the next steps
+//   |        SHOP AREA                             |      floors 1-4: coloured patches on the floor with the zone name,
+//   |                                              |      the shops get built inside them in the next steps
 //   |                                              |
 //   +----------------------------------------------+
-//   |  [ESCALATOR VOID]       [door]     [LIFT]    |      LOBBY: the escalators (a hole in the floor above the ground),
-//   +--------------------[front wall]--------------+      the entrance door (ground floor only), the lift shaft
+//   |  [ESCALATORS]           [door]      [LIFT]   |      LOBBY: the escalators (a hole in the floor above the ground),
+//   +--------------------[front wall]--------------+      the entrance door (ground floor only), the lift
 //
-//   ESCALATORS = a hole in floors 1 to 4 (10 m x 3.6 m) with TWO lanes side by side, between every pair of floors.
+//   ESCALATORS = your mall_escalator_lane_optimised.glb, two lanes side by side between every pair of floors.
 //        Lane A (north lane): low end WEST, high end EAST   -> goes UP when you step on at the west end.
 //        Lane B (south lane): high end WEST, low end EAST   -> goes DOWN when you step on at the west end.
-//        Both belts carry you EAST (that is how a real pair of escalators works: one up, one down). You can also walk the other way, against the belt.
-//   LIFT = a lift shaft (3.2 m x 3.2 m) on every floor. Stand on the yellow "CALL LIFT" patch in front of its door: the doors open and a
-//        panel with the five floors appears. Tap a floor and you are taken there (a short fade; the lift is not drawn travelling).
+//   LIFT = your simple_elevator_with_animation.glb (renamed elevator_animated.glb) in a shaft on every floor. Stand on the yellow "CALL LIFT" patch in front of
+//        its door: the real animated doors open and a panel with the five floors appears. Tap a floor and you are taken there (a short fade).
+//
+// THE SUPERMARKET (ground floor, behind the lobby line z = 4.5):
+//
+//   back wall (north)
+//   +--------+-------------------------------------------+---------+
+//   |RESTRMS | drinks wall | FRIDGES (doors open when you | chips   | STAFF   |   restrooms (men | women) in the north-west corner,
+//   |men|wmn |             |  walk up to them)            | wall    | ONLY    |   STAFF ONLY room in the north-east corner (lockers, table, fridge)
+//   +--[ ]-[ ]------------------------------------------------+--[ ]---------+
+//   |  (free)  |  aisle 1 | aisle 2 |  main aisle  | aisle 3 | aisle 4 | snacks |   4 aisles of stocked gondolas
+//   | tables  |          |         |  (the door)  |         |         |        |
+//   |        [CHECKOUT 1] [2] [3] [4]                                          |   4 checkouts, cashier's side faces east, belt starts on the shop side
+//   +---------------------- lobby line z = 4.5 -----------------------------+
+//
+// The shelves are stocked with INSTANCED products (sm_products_optimised.glb): thousands of items cost only a few draw calls.
+// If the game runs slowly on a weak tablet, lower DENSITY below (0.5 = half as many items on the shelves).
 //
 // game.js uses: interior: buildMallInterior, boxes: [...COMM_BOXES, ...MALL_INTERIOR_BOXES], stairs: MALL_STAIRS (see game.js).
+//
+// FILES NEEDED in props/ (new ones from this step are marked *):
+//   mall_escalator_lane_optimised.glb, supermarket_chips_shelf_optimised.glb, supermarket_drinks_shelf_optimised.glb, gta_marker_red.glb   (you already have these)
+//   elevator_animated.glb *   fridge_animated.glb *   register_optimised.glb *   sm_checkout_optimised.glb *   sm_gondola_optimised.glb *
+//   sm_products_optimised.glb *
+//   and from props_library.js: toilet, locker_bank, office_table, plastic_chair, fridge, filing_cabinet (the staff room and restrooms use them if they are registered).
+// If a file is missing the game keeps running and that item is skipped (see the browser console).
 
 import * as THREE from 'three';
-import { ESC_SPEED } from './stairs.js';
-import { PROPS, loadProp } from './props_library.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { PROPS, PROPS_DIR, loadProp } from './props_library.js';
 
 // ---------- size and layout (metres) ----------
 export const MALL_Z = -9.52;                       // z of the mall centre in plot space (MALL.z in commercial_exterior.js)
@@ -87,49 +107,158 @@ export const MALL_STAIRS = {
 };
 
 
-// ---------- STEP 3: the supermarket (ground floor) ----------
+
+// ---------- STEP 3 (rebuilt): the supermarket ----------
 // Everything here is in mall-centre space: x across, z from the middle of the mall (back wall z = -HD, the lobby starts at z = LOBBY_Z).
-// The props are your optimised files in the props folder (already in metres, so unit: 1.0 keeps their size). They are added to the
-// props library from here, so props_library.js does not need to change.
-const SM_PROPS = {
+const SM_PROPS = {                                       // props you already had
   sm_chips_shelf:  { file: 'supermarket_chips_shelf_optimised.glb',  unit: 1.0, tags: ['mall', 'supermarket'] },   // 2.73 m long, 1.33 m tall, front faces +Z
   sm_drinks_shelf: { file: 'supermarket_drinks_shelf_optimised.glb', unit: 1.0, tags: ['mall', 'supermarket'] },   // 1.80 m long, 1.23 m tall, front faces +Z
-  sm_fridge:       { file: 'fridge_double_door_optimised.glb',       unit: 1.0, tags: ['mall', 'supermarket'] },   // 0.91 m wide, 1.87 m tall, doors face +Z
-  sm_gondola:      { file: 'gondola_optimised.glb',                  unit: 1.0, tags: ['mall', 'supermarket'] },   // double-sided island shelf: 1.93 m long (along z), 0.62 m wide, 4 shelves
-  sm_checkout:     { file: 'cash_counter_optimised.glb',             unit: 1.0, tags: ['mall', 'supermarket'] },   // 2.84 m long, the cashier's chair is on the -Z side
-  sm_register:     { file: 'cash_register_optimised.glb',            unit: 1.0, tags: ['mall', 'supermarket'] },   // till, 0.42 m
-  sm_flour:        { file: 'king_arthur_flour_optimised.glb',        unit: 1.0, tags: ['mall', 'supermarket'] },   // two flour bags, 0.36 m wide
-  sm_bread:        { file: 'sandwich_bread_optimised.glb',           unit: 1.0, tags: ['mall', 'supermarket'] },   // two loaves, 0.38 m wide (shown at 60 % so they fit the shelf)
-  gta_marker_red:  { file: 'gta_marker_red.glb', maxXZ: 1.9, glow: true,  tags: ['marker'] },                       // red gradient marker = commercial building (blue = public building)
+  gta_marker_red:  { file: 'gta_marker_red.glb', maxXZ: 1.9, glow: true, tags: ['marker'] },                       // red gradient marker = commercial building
 };
 Object.entries(SM_PROPS).forEach(([k, v]) => { if (!PROPS[k]) PROPS[k] = v; });
 
-const SM_SIZE = {                                        // footprint [along the prop's own x, along its own z], measured from the optimised files
-  sm_chips_shelf: [2.733, 0.586], sm_drinks_shelf: [1.803, 0.379], sm_fridge: [0.909, 0.867], sm_gondola: [0.622, 1.934], sm_checkout: [2.84, 0.86],
+const FILES = {                                          // the new files of this step (all in props/)
+  gondola: 'sm_gondola_optimised.glb',                   // double-sided island shelf: 2.01 m long (along z), 0.65 m wide, 4 shelves   (0.03 MB)
+  checkout: 'sm_checkout_optimised.glb',                 // checkout counter 3.34 m long (belt starts at +x, scanner at -x, drawers + cashier on the +z side)
+  register: 'register_optimised.glb',                    // cash register, 0.40 m wide, its feet are at y = 0, keys face +z
+  products: 'sm_products_optimised.glb',                 // 22 packaged products, one named item each
+  fridge: 'fridge_animated.glb',                         // your double-door fridge with its two door animations (0.9 m wide, 1.87 m tall, doors face +Z)
+  lift: 'elevator_animated.glb',                         // your lift with the sliding doors animation (the doors face +X in the file, we turn it)
+  escalator: 'mall_escalator_lane_optimised.glb',        // one escalator lane (low end at +x in the file)
 };
+
+// ---- knobs ----
+const DENSITY = 0.9;                                     // 0..1: how full the shelves are (1 = every slot has a product). Lower it if the game runs slowly.
+const PRODUCT_SCALE = 1.2;                               // products are real size (a can is 7 cm); 1.2 makes them readable from the game camera
+const PRODUCT_FACE = 0;                                  // if the labels face INTO the shelf, set this to Math.PI
+const CHECKOUT_FLIP = 0;                                 // if a counter faces the wrong way, set this to Math.PI (turns all four round)
+const FRIDGE_OPEN_T = 3.2, LIFT_OPEN_T = 2.4;            // clip time at which the doors are fully open (the animations hold that pose for a while)
 const MARKER_OUT = 2.2;                                  // how far in front of the mall's front face (z = 2.96 in plot space) the entrance marker lies on the plaza
-const SM_ITEMS = (() => {
-  const L = [], put = (prop, x, z, rot = 0, extra = {}) => L.push({ prop, x, z, rot, ...extra });
-  const wallZ = prop => -HD + 0.03 + SM_SIZE[prop][1] / 2;                                  // touching the back wall
-  for (let i = 0; i < 6; i++) put('sm_drinks_shelf', -14.6 + i * 1.9, wallZ('sm_drinks_shelf'));        // back wall, west: drinks
-  for (let i = 0; i < 6; i++) put('sm_fridge', -3.2 + i * 0.95, wallZ('sm_fridge'));                     // back wall, middle: chilled and dairy
-  for (let i = 0; i < 4; i++) put('sm_chips_shelf', 4.1 + i * 2.8, wallZ('sm_chips_shelf'));             // back wall, east: snacks
-  [-7.0, -4.2].forEach(z => {                                                                            // side walls: snack shelves facing into the shop
-    put('sm_chips_shelf', -HW + 0.03 + 0.293, z, Math.PI / 2);
-    put('sm_chips_shelf', HW - 0.03 - 0.293, z, -Math.PI / 2);
-  });
-  // three rows of island gondolas (4 on the west side, 4 on the east side; the middle stays open so you can walk in from the door).
-  // `stock` puts flour or bread on that gondola; the rest are empty racks for now.
-  [-8.2, -5.0, -1.8].forEach((z, r) => {
-    [-11.0, -9.05, -7.1, -5.15, 6.5, 8.45, 10.4, 12.35].forEach((x, i) => {
-      const stock = r < 2 && i % 2 === 0 ? (x < 0 ? 'sm_flour' : 'sm_bread') : null;
-      put('sm_gondola', x, z, Math.PI / 2, { stock });
-    });
-  });
-  // four checkouts along the lobby side of the shop; the cashier stands on the lobby (south) side
-  [-12.0, -8.1, 9.0, 12.9].forEach((x, i) => put('sm_checkout', x, 2.6, Math.PI, { lane: i + 1 }));
-  return L;
-})();
+const FRIDGE_RANGE = 1.7;                                // metres from the fridge front at which its doors open
+
+// ---- products: [width, height, depth] in metres (measured from the file) ----
+const PRODUCT = {
+  bleach: [0.168, 0.300, 0.168], water_bottle: [0.047, 0.187, 0.047], can_b: [0.066, 0.125, 0.065], can_c: [0.065, 0.125, 0.065], can_d: [0.065, 0.082, 0.066],
+  can_e: [0.065, 0.082, 0.065], can_h: [0.072, 0.063, 0.072], can_i: [0.072, 0.063, 0.072], cereal: [0.158, 0.186, 0.069], coffee_box: [0.128, 0.216, 0.042],
+  detergent_liquid: [0.114, 0.227, 0.091], detergent_powder_a: [0.082, 0.225, 0.082], detergent_powder_b: [0.158, 0.186, 0.082], detergent_powder_c: [0.041, 0.134, 0.044],
+  dish_liquid: [0.098, 0.222, 0.059], juice_carton: [0.121, 0.237, 0.109], milk_bottle: [0.089, 0.234, 0.088], olive_oil: [0.062, 0.231, 0.063], pasta: [0.094, 0.252, 0.060],
+  porridge: [0.148, 0.216, 0.039], protein_jar: [0.147, 0.191, 0.147], salt: [0.095, 0.216, 0.079], sauce: [0.076, 0.191, 0.060],
+};
+const AISLES = [                                         // which products each aisle sells (they are repeated in runs of 2-5, like a real shelf)
+  { name: 'AISLE 1', sub: 'CANNED FOOD',          items: ['can_b', 'can_c', 'can_d', 'can_e', 'can_h', 'can_i'] },
+  { name: 'AISLE 2', sub: 'BREAKFAST & PASTA',    items: ['cereal', 'porridge', 'pasta', 'coffee_box', 'salt', 'olive_oil'] },
+  { name: 'AISLE 3', sub: 'HOUSEHOLD',            items: ['detergent_liquid', 'detergent_powder_a', 'detergent_powder_b', 'detergent_powder_c', 'dish_liquid', 'bleach'] },
+  { name: 'AISLE 4', sub: 'DRINKS & SAUCES',      items: ['water_bottle', 'juice_carton', 'milk_bottle', 'protein_jar', 'sauce'] },
+];
+
+// ---- the gondolas (island shelves, stocked on both sides) ----
+const GOND = { len: 2.011, wid: 0.647, tops: [0.091, 0.507, 0.931, 1.362], half: 0.271 };   // shelf board tops (y) and how far a board reaches from the middle post
+const Z4 = [-7.6, -5.67, -3.74, -1.81], Z2 = [-3.74, -1.81];
+const ROWS = [{ x: -6.6, aisle: 0, zs: Z4 }, { x: -3.2, aisle: 1, zs: Z4 }, { x: 7.6, aisle: 2, zs: Z4 }, { x: 11.0, aisle: 3, zs: Z2 }];
+const GONDOLAS = ROWS.flatMap(r => r.zs.map((z, i) => ({ x: r.x, z, aisle: r.aisle, first: i === 0, last: i === r.zs.length - 1 })));
+
+// ---- the walls of the shop: size of each of your wall shelves [along its own x, along its own z] ----
+const SM_SIZE = { sm_chips_shelf: [2.733, 0.586], sm_drinks_shelf: [1.803, 0.379], fridge: [0.909, 0.695] };
+const BACK = {                                           // everything against the back wall, centres in x
+  drinks: [-8.7, -6.9, -5.1],
+  fridges: [0, 1, 2, 3, 4, 5].map(i => -3.6 + i * 0.95),
+  chips: [3.2, 6.0, 8.8],
+};
+const WALL_CHIPS_E = [-3.8, -0.9];                       // chips shelves on the east wall (facing west): their z
+const wallZ = prop => -HD + 0.03 + SM_SIZE[prop][1] / 2; // z of a shelf touching the back wall
+
+// ---- checkouts: along z, the belt starts on the shop side (north), the scanner end and the cashier are on the lobby side (south); cashier on the east side ----
+const CHECKOUT_X = [-9.4, -6.6, -3.8, -1.0], CHECKOUT_Z = 2.55, CHECKOUT_LEN = 3.344, CHECKOUT_WID = 1.008;
+
+// ---- the two rooms in the back corners (walls have a low part that always shows and an upper part that shows when the camera is inside) ----
+const TW = 0.2, GAPW = 1.1, DOORH = 2.1, WALLTOP = 3.0, LOWH = 1.1;
+const RESTROOM = { x0: -HW, x1: -9.8, z0: -HD, z1: -7.4, split: -12.9, doors: [-14.45, -11.35] };   // men (west) | women (east), doors on the shop side
+const STAFF = { x0: 10.4, x1: HW, z0: -HD, z1: -6.8, door: 13.2 };                                  // STAFF ONLY, door on the shop side
+
+const spansOf = (from, to, gaps) => {                    // a wall from..to with doorway gaps cut out -> list of [a, b]
+  const out = []; let a = from;
+  [...gaps].sort((p, q) => p - q).forEach(g => { if (g - GAPW / 2 > a) out.push([a, g - GAPW / 2]); a = g + GAPW / 2; });
+  if (to > a) out.push([a, to]);
+  return out;
+};
+
+// collision boxes of the supermarket, mall-centre space: [minX, maxX, minZ, maxZ]
+function smBoxes() {
+  const out = [], R = (x, z, hw, hd = hw) => [x - hw, x + hw, z - hd, z + hd];
+  GONDOLAS.forEach(g => out.push(R(g.x, g.z, GOND.wid / 2 + 0.02, GOND.len / 2)));
+  BACK.drinks.forEach(x => out.push(R(x, wallZ('sm_drinks_shelf') , SM_SIZE.sm_drinks_shelf[0] / 2, SM_SIZE.sm_drinks_shelf[1] / 2)));
+  BACK.fridges.forEach(x => out.push(R(x, -HD + 0.03 + SM_SIZE.fridge[1] / 2, 0.47, SM_SIZE.fridge[1] / 2)));
+  BACK.chips.forEach(x => out.push(R(x, wallZ('sm_chips_shelf'), SM_SIZE.sm_chips_shelf[0] / 2, SM_SIZE.sm_chips_shelf[1] / 2)));
+  WALL_CHIPS_E.forEach(z => out.push(R(HW - 0.03 - SM_SIZE.sm_chips_shelf[1] / 2, z, SM_SIZE.sm_chips_shelf[1] / 2, SM_SIZE.sm_chips_shelf[0] / 2)));
+  CHECKOUT_X.forEach(x => out.push(R(x, CHECKOUT_Z, CHECKOUT_WID / 2, CHECKOUT_LEN / 2)));
+  // restroom walls
+  spansOf(RESTROOM.x0, RESTROOM.x1, RESTROOM.doors).forEach(([a, b]) => out.push([a, b, RESTROOM.z1 - 0.12, RESTROOM.z1 + 0.12]));
+  out.push([RESTROOM.x1 - 0.12, RESTROOM.x1 + 0.12, RESTROOM.z0, RESTROOM.z1], [RESTROOM.split - 0.1, RESTROOM.split + 0.1, RESTROOM.z0, RESTROOM.z1]);
+  [-15.0, -13.7, -11.9, -10.6].forEach(x => out.push(R(x, -HD + 0.4, 0.32, 0.42)));                       // toilets
+  [-14.35, -11.25].forEach(x => out.push([x - 0.03, x + 0.03, -HD, -HD + 1.25]));                         // stall partitions
+  out.push(R(-13.3, -8.5, 0.28, 0.5), R(-10.2, -8.5, 0.28, 0.5));                                         // basins
+  // staff room walls and furniture
+  spansOf(STAFF.x0, STAFF.x1, [STAFF.door]).forEach(([a, b]) => out.push([a, b, STAFF.z1 - 0.12, STAFF.z1 + 0.12]));
+  out.push([STAFF.x0 - 0.12, STAFF.x0 + 0.12, STAFF.z0, STAFF.z1]);
+  out.push([10.54, 14.46, -HD, -HD + 0.5], R(13.0, -8.7, 0.9, 0.45), R(15.55, -8.6, 0.4, 0.5));        // locker banks, table, fridge
+  return out;
+}
+
+// ---------- loading your .glb files (each file is downloaded once) ----------
+const gltfLoader = new GLTFLoader();
+const glbCache = new Map();
+const loadGLB = file => {
+  if (!glbCache.has(file)) glbCache.set(file, gltfLoader.loadAsync(PROPS_DIR + file).then(g => { g.scene.updateMatrixWorld(true); return g; }));
+  return glbCache.get(file);
+};
+const gameSafeCache = new Map();                         // the game's lights have no reflections, so fully metal materials would look black: cap the metal look
+const gameSafe = (m, fix) => {
+  if (!gameSafeCache.has(m)) { const c = m.clone(); if (c.metalness > 0.3) c.metalness = 0.3; if (fix) fix(c); gameSafeCache.set(m, c); }
+  return gameSafeCache.get(m);
+};
+const safeScene = (scene, fix) => scene.traverse(o => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(m => gameSafe(m, fix)) : gameSafe(o.material, fix); });
+
+// Many copies of small things cost almost nothing when INSTANCED: one draw call per product type, however many are on the shelves.
+class InstanceBatch {
+  constructor(file) { this.file = file; this.spots = new Map(); this.count = 0; }
+  add(name, x, y, z, rotY = 0, scale = 1) { if (!this.spots.has(name)) this.spots.set(name, []); this.spots.get(name).push([x, y, z, rotY, scale]); this.count++; }
+  async build(parent) {
+    let g; try { g = await loadGLB(this.file); } catch (e) { console.warn('mall interior: could not load ' + this.file, e); return; }
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), p = new THREE.Vector3(), s = new THREE.Vector3();
+    for (const [name, list] of this.spots) {
+      const node = g.scene.getObjectByName(name);
+      if (!node) { console.warn('mall interior: ' + this.file + ' has no item called ' + name); continue; }
+      const meshes = []; node.traverse(o => { if (o.isMesh) meshes.push(o); });
+      const inv = new THREE.Matrix4().copy(node.matrixWorld).invert();
+      meshes.forEach(mesh => {
+        const rel = new THREE.Matrix4().multiplyMatrices(inv, mesh.matrixWorld);
+        const im = new THREE.InstancedMesh(mesh.geometry, mesh.material, list.length);
+        list.forEach(([x, y, z, ry, sc], i) => { q.setFromAxisAngle(up, ry); p.set(x, y, z); s.set(sc, sc, sc); m4.compose(p, q, s).multiply(rel); im.setMatrixAt(i, m4); });
+        im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; im.castShadow = false; im.receiveShadow = true; parent.add(im);
+      });
+    }
+  }
+}
+function makeRng(seed) {
+  let s = seed | 0;
+  return () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+// fills both sides of one gondola, 4 shelves each, with its aisle's products (rows of the same product, like a real shelf)
+function stockGondola(batch, rng, g) {
+  const items = AISLES[g.aisle].items, SC = PRODUCT_SCALE;
+  [1, -1].forEach(side => GOND.tops.forEach(ty => {
+    let z = g.z - GOND.len / 2 + 0.07, name = null, run = 0;
+    const zEnd = g.z + GOND.len / 2 - 0.07;
+    for (let guard = 0; guard < 80; guard++) {
+      if (run === 0) { name = items[(rng() * items.length) | 0]; run = 2 + ((rng() * 4) | 0); }
+      const [w, , d] = PRODUCT[name], ww = w * SC, dd = d * SC;
+      if (z + ww > zEnd) break;
+      if (rng() < DENSITY) batch.add(name, g.x + side * (GOND.half - dd / 2 - 0.015), ty, z + ww / 2, side * Math.PI / 2 + PRODUCT_FACE, SC);
+      z += ww + 0.012; run--;
+    }
+  }));
+}
 
 // ---------- collision boxes (plot space) ----------
 const B = (x0, x1, z0, z1, level) => (level == null ? [x0, x1, z0 + MALL_Z, z1 + MALL_Z] : [x0, x1, z0 + MALL_Z, z1 + MALL_Z, level]);
@@ -147,11 +276,7 @@ export const MALL_INTERIOR_BOXES = (() => {
   // the ends of the lanes that lead nowhere (no floor below the ground floor, none above level 4)
   out.push(B(E.x1, E.x1 + 0.3, E.z0, ZM, 0), B(E.x0 - 0.3, E.x0, ZM, E.z1, 0));       // ground floor: lane A east end, lane B west end
   out.push(B(E.x0 - 0.3, E.x0, E.z0, ZM, 4), B(E.x1, E.x1 + 0.3, ZM, E.z1, 4));       // level 4: lane A west end, lane B east end
-  SM_ITEMS.forEach(it => {                                                  // the supermarket furniture is solid on the ground floor
-    const turned = Math.abs(Math.sin(it.rot)) > 0.5, [w, d] = SM_SIZE[it.prop];
-    const hx = (turned ? d : w) / 2, hz = (turned ? w : d) / 2;
-    out.push(B(it.x - hx, it.x + hx, it.z - hz, it.z + hz, 0));
-  });
+  smBoxes().forEach(b => out.push(B(b[0], b[1], b[2], b[3], 0)));          // the supermarket (shelves, fridges, counters, tables, restrooms, staff room): solid on the ground floor
   return out;
 })();
 
@@ -165,13 +290,17 @@ function fitFont(ctx, text, maxW, size) {
   for (let s = size; s > 12; s -= 2) { ctx.font = `bold ${s}px "Segoe UI", Arial, sans-serif`; if (ctx.measureText(text).width <= maxW) return s; }
   return 12;
 }
-function tileTexture() {                                                   // light polished mall tiles, 2 m squares
-  const t = canvasTex(256, 256, (ctx, w, h) => {
-    ctx.fillStyle = '#d9d5cc'; ctx.fillRect(0, 0, w, h);
-    for (let i = 0; i < 900; i++) { const v = 205 + Math.random() * 25; ctx.fillStyle = `rgb(${v},${v - 3},${v - 9})`; ctx.fillRect(Math.random() * w, Math.random() * h, 3, 3); }
-    ctx.strokeStyle = '#b9b4a8'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, w, h);
+function tileTexture() {                                                   // porcelain floor tiles, 60 cm, never green. One picture = 2 x 2 tiles = 1.2 m
+  const t = canvasTex(512, 512, (ctx, w, h) => {
+    const cols = ['#dad5c8', '#d3cec0', '#ded9cd', '#d0cabc'];
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) {
+      ctx.fillStyle = cols[(r * 2 + c) % 4]; ctx.fillRect(c * 256, r * 256, 256, 256);
+      for (let i = 0; i < 240; i++) { const v = 188 + Math.random() * 52; ctx.fillStyle = `rgba(${v},${v - 4},${v - 12},0.35)`; ctx.fillRect(c * 256 + Math.random() * 256, r * 256 + Math.random() * 256, 2 + Math.random() * 12, 1 + Math.random() * 2); }
+    }
+    ctx.strokeStyle = '#a39e91'; ctx.lineWidth = 4;
+    for (let i = 0; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(i * 256, 0); ctx.lineTo(i * 256, h); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, i * 256); ctx.lineTo(w, i * 256); ctx.stroke(); }
   });
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t;
 }
 function zoneTexture(name, col, wM, dM) {                                  // coloured patch with the zone name, 40 px per metre
   const PX = 40;
@@ -189,14 +318,6 @@ function labelTexture(text, col, w = 512, h = 128, fg = '#fff') {
     ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = `bold ${fitFont(ctx, text, W - 40, 80)}px "Segoe UI", Arial, sans-serif`; ctx.fillText(text, W / 2, H / 2 - 4);
   });
-}
-function beltTexture(repeatX, wM) {                                         // grooved rubber belt with arrows, one picture = 0.8 m
-  const t = canvasTex(128, 64, (ctx, w, h) => {
-    ctx.fillStyle = '#34373c'; ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = '#4a4e55'; for (let x = 0; x < w; x += 16) ctx.fillRect(x, 0, 6, h);
-    ctx.strokeStyle = '#f2b705'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(w * 0.35, h * 0.28); ctx.lineTo(w * 0.62, h * 0.5); ctx.lineTo(w * 0.35, h * 0.72); ctx.stroke();
-  });
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeatX, 1); return t;
 }
 function subtract(r, h) {                                                  // rectangle r minus rectangle h -> up to 4 rectangles
   if (h.x1 <= r.x0 || h.x0 >= r.x1 || h.z1 <= r.z0 || h.z0 >= r.z1) return [r];
@@ -237,8 +358,26 @@ export function buildMallInterior() {
   };
 
   const levels = [];                                // { group, side:{N,S,W,E} }
-  const doors = [];                                 // the lift doors of each floor (index = floor)
-  const beltTex = [];                               // the moving belts of the escalators
+  const lifts = [];                                 // the lift of each floor (index = floor): { o: how open the doors are 0..1, mixer }
+  const fridges = [];                               // the animated fridges: { x, z, p, mixer }
+  const roomUppers = [];                            // upper walls of the restrooms and the staff room: shown only while the camera is inside that room
+  const warnLoad = what => e => console.warn('mall interior: could not load ' + what, e);
+  const addLift = (parent, x, z) => {               // your animated lift: the wall and floor plane that come with the file are cut off, only the doors are animated
+    const st = { o: 0, mixer: null };
+    loadGLB(FILES.lift).then(gl => {
+      const m = gl.scene.clone(true), cut = [];
+      m.traverse(o => { if (/^(Wall|Plane)/.test(o.name)) cut.push(o); });
+      cut.forEach(o => o.parent && o.parent.remove(o));
+      safeScene(m); m.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
+      const wrap = new THREE.Group(); wrap.add(m);
+      wrap.position.set(x, 0, z - 0.28); wrap.rotation.y = -Math.PI / 2;      // the file's doors face +x: turn them to face south, frame flush with the shaft front
+      parent.add(wrap);
+      st.mixer = new THREE.AnimationMixer(m);
+      gl.animations.forEach(clip => { const c = clip.clone(); c.tracks = c.tracks.filter(t => /Door/.test(t.name)); st.mixer.clipAction(c).play(); });
+      st.mixer.setTime(0);
+    }).catch(warnLoad(FILES.lift));
+    return st;
+  };
   const OUTER = { x0: -HW - T, x1: HW + T, z0: -HD - T, z1: HD + T };
   const INNER = { x0: -HW, x1: HW, z0: -HD, z1: HD };
 
@@ -251,27 +390,27 @@ export function buildMallInterior() {
     // floor slab (a hole for the escalators on floors 1-4) and the floor surface
     if (i > 0) minus(OUTER, [ESCALATOR, ELEVATOR]).forEach(r => rectBox(g, M.slab, r, -T, 0));
     else floorPlane(g, OUTER, M.slab, -0.02);
-    minus(INNER, holes).forEach(r => floorPlane(g, r, M.tile, 0.01, 2));       // tiles everywhere (lobby)
+    minus(INNER, holes).forEach(r => floorPlane(g, r, M.tile, 0.01, 1.2));     // 60 cm tiles over the WHOLE floor, shop and lobby
 
     // zone patches (name painted on the floor) over the shop area
-    info.zones.forEach(z => {
+    if (i > 0) info.zones.forEach(z => {            // (the ground floor is tiled all over: no painted patch)
       const r = { x0: z.x0, x1: z.x1, z0: -HD, z1: LOBBY_Z };
       floorPlane(g, r, new THREE.MeshStandardMaterial({ map: zoneTexture(z.name, z.col, r.x1 - r.x0, r.z1 - r.z0), roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 0.02);
     });
     // a low line where the shop area meets the lobby
     box(g, std(0xf2b705, 0.6), HW * 2, 0.02, 0.12, 0, 0.03, LOBBY_Z);
 
-    // lift shaft (solid) with its sign and sliding doors on the front (south) face
-    const EV = ELEVATOR, evx = (EV.x0 + EV.x1) / 2, evz = EV.z1;
-    box(g, M.steel, EV.x1 - EV.x0, H, EV.z1 - EV.z0, evx, H / 2, (EV.z0 + EV.z1) / 2);
-    sign(g, labelTexture('LIFT', '#12315f', 256, 128), 2, 0.8, evx, 3.2, evz + 0.1, 0);
+    // lift shaft: three walls and a front wall with a doorway; your animated lift (elevator_animated.glb) stands inside (see addLift)
+    const EV = ELEVATOR, evx = (EV.x0 + EV.x1) / 2, evz = EV.z1, SW = 0.15, OPEN = 1.1, LIFT_DOOR_H = 3.05;
+    box(g, M.steel, SW, H, EV.z1 - EV.z0, EV.x0 + SW / 2, H / 2, (EV.z0 + EV.z1) / 2);
+    box(g, M.steel, SW, H, EV.z1 - EV.z0, EV.x1 - SW / 2, H / 2, (EV.z0 + EV.z1) / 2);
+    box(g, M.steel, EV.x1 - EV.x0, H, SW, evx, H / 2, EV.z0 + SW / 2);
+    box(g, M.steel, evx - OPEN - EV.x0, H, SW, (EV.x0 + evx - OPEN) / 2, H / 2, evz - SW / 2);              // front wall, left of the doorway
+    box(g, M.steel, EV.x1 - evx - OPEN, H, SW, (evx + OPEN + EV.x1) / 2, H / 2, evz - SW / 2);              // front wall, right of the doorway
+    box(g, M.steel, OPEN * 2, H - LIFT_DOOR_H, SW, evx, (H + LIFT_DOOR_H) / 2, evz - SW / 2);                // above the doorway
+    sign(g, labelTexture('LIFT', '#12315f', 256, 128), 2, 0.8, evx, Math.min(H - 0.5, 3.6), evz + 0.01, 0);
     sign(g, labelTexture('LIFT', '#12315f', 256, 128), 2, 1, evx, 2.6, EV.z0 - 0.02, Math.PI);
-    box(g, M.liftIn, 1.8, 2.6, 0.02, evx, 1.3, evz + 0.015);                                       // the inside of the car, seen when the doors open
-    const dA = box(g, M.door, 0.9, 2.6, 0.05, evx - 0.45, 1.3, evz + 0.05), dB = box(g, M.door, 0.9, 2.6, 0.05, evx + 0.45, 1.3, evz + 0.05);
-    box(g, M.steel, (EV.x1 - EV.x0) / 2 - 0.9, 2.7, 0.08, (EV.x0 + evx - 0.9) / 2, 1.35, evz + 0.09);  // the fixed plates the doors slide behind
-    box(g, M.steel, (EV.x1 - EV.x0) / 2 - 0.9, 2.7, 0.08, (evx + 0.9 + EV.x1) / 2, 1.35, evz + 0.09);
-    box(g, M.steel, 1.8, 0.1, 0.08, evx, 2.65, evz + 0.09);
-    doors.push({ a: dA, b: dB, x: evx, o: 0 });
+    lifts.push(addLift(g, evx, evz));
     floorPlane(g, { x0: EV.x0, x1: EV.x1, z0: evz + 0.3, z1: evz + 1.6 }, new THREE.MeshStandardMaterial({
       map: labelTexture('CALL LIFT', '#f2b705', 512, 128, '#222'), roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 0.02);
 
@@ -310,50 +449,121 @@ export function buildMallInterior() {
     levels.push({ group: g, side });
   }
 
-  // ----- the escalators: for every pair of floors (k, k+1) two sloping lanes, drawn in the group of the lower floor -----
-  const E = ESCALATOR, LW = (E.z1 - E.z0) / 2, LEN = E.x1 - E.x0;
-  for (let k = 0; k < 4; k++) {
-    const R = FLOOR_Y[k + 1] - FLOOR_Y[k], ang = Math.atan2(R, LEN), slope = Math.hypot(LEN, R);
-    [{ low: 'W', zc: E.z0 + LW / 2 }, { low: 'E', zc: E.z0 + LW * 1.5 }].forEach(lane => {
-      const pivot = new THREE.Group();
-      pivot.position.set((E.x0 + E.x1) / 2, R / 2, lane.zc);
-      pivot.rotation.z = lane.low === 'W' ? ang : -ang;                         // lane A rises towards the east, lane B falls towards the east
-      levels[k].group.add(pivot);
-      box(pivot, M.body, slope, 0.3, LW - 0.04, 0, -0.15, 0);                    // the body of the escalator
-      const tex = beltTexture(slope / 0.8, LW - 0.3); beltTex.push(tex);
-      const belt = new THREE.Mesh(new THREE.PlaneGeometry(slope, LW - 0.3), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }));
-      belt.rotation.x = -Math.PI / 2; belt.position.y = 0.01; belt.receiveShadow = true; pivot.add(belt);
-      [-1, 1].forEach(sd => {                                                    // glass sides with a black handrail on top
-        box(pivot, M.glass, slope, 1.0, 0.04, 0, 0.5, sd * (LW / 2 - 0.05));
-        box(pivot, M.handrail, slope, 0.07, 0.1, 0, 1.03, sd * (LW / 2 - 0.05));
+  // ----- the escalators: your mall_escalator_lane_optimised.glb, stretched to fit the 10 m hole and the height of every floor, two lanes for every pair of floors -----
+  const E = ESCALATOR, LW = (E.z1 - E.z0) / 2;
+  const ESC = { y0: 0.229, rise: 4.071, run: 8.36, width: 1.36 };            // measured in the file: height of the lower and the upper landing plates, length, width
+  loadGLB(FILES.escalator).then(ge => {
+    for (let k = 0; k < 4; k++) {
+      [{ low: 'W', zc: E.z0 + LW / 2 }, { low: 'E', zc: E.z0 + LW * 1.5 }].forEach(lane => {
+        const m = ge.scene.clone(true); safeScene(m);
+        m.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
+        m.position.y = -ESC.y0;                                               // the lower landing plate sits exactly on the floor
+        const wrap = new THREE.Group(); wrap.add(m);
+        wrap.scale.set((E.x1 - E.x0) / ESC.run, (FLOOR_Y[k + 1] - FLOOR_Y[k]) / ESC.rise, (LW - 0.1) / ESC.width);
+        wrap.position.set((E.x0 + E.x1) / 2, 0, lane.zc);
+        wrap.rotation.y = lane.low === 'W' ? Math.PI : 0;                     // the file's low end is at +x: lane A (low end west) is turned round
+        levels[k].group.add(wrap);
       });
-    });
-  }
-
-  // ----- STEP 3: the supermarket (ground floor) -----
-  const g0 = levels[0].group;
-  const warnLoad = what => e => console.warn('mall interior: could not load ' + what, e);
-  const stockGondola = (G, prop) => {                                          // flour or bread on two shelves, both sides
-    [1, -1].forEach(side => [0.49, 0.90].forEach(y => [-0.45, 0.45].forEach(dz => {
-      loadProp(prop, prop === 'sm_bread' ? { scale: 0.6 } : {}).then(p => { p.position.set(side * 0.15, y, dz); p.rotation.y = side * Math.PI / 2; G.add(p); }).catch(warnLoad(prop));
-    })));
-  };
-  SM_ITEMS.forEach(it => {
-    loadProp(it.prop).then(p => {
-      const G = new THREE.Group(); G.position.set(it.x, 0, it.z); G.rotation.y = it.rot; G.add(p); g0.add(G);
-      if (it.stock) stockGondola(G, it.stock);
-      if (it.prop === 'sm_checkout') loadProp('sm_register').then(r => { r.position.set(0.95, 0.9, -0.12); r.rotation.y = Math.PI; G.add(r); }).catch(warnLoad('sm_register'));
-    }).catch(warnLoad(it.prop));
-    if (it.lane) {                                                             // CHECKOUT 1..4 painted on the floor in front of each counter
-      floorPlane(g0, { x0: it.x - 1.1, x1: it.x + 1.1, z0: it.z - 1.7, z1: it.z - 1.1 }, new THREE.MeshStandardMaterial({
-        map: labelTexture('CHECKOUT ' + it.lane, '#c62828', 512, 128), roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 0.02);
     }
+  }).catch(warnLoad(FILES.escalator));
+
+  // ----- STEP 3 (rebuilt): the supermarket -----
+  const g0 = levels[0].group;
+  Object.assign(M, { wood: std(0x8b5a2b, 0.85), dark: std(0x5a3a1c, 0.85), part: std(0x9fb4c4, 0.6), porc: std(0xf4f6f7, 0.25),
+    mirror: new THREE.MeshStandardMaterial({ color: 0xcfe3ee, roughness: 0.05, metalness: 0.3 }) });
+  const rng = makeRng(20261012);
+  const lib = (parent, name, x, y, z, rot = 0) => {                              // a prop from props_library.js (skipped, with a console note, if it is not registered)
+    if (!PROPS[name]) { console.warn('mall interior: props_library has no prop called ' + name); return Promise.resolve(null); }
+    return loadProp(name).then(p => { p.position.set(x, y, z); p.rotation.y = rot; parent.add(p); return p; }).catch(warnLoad(name));
+  };
+  const putGLB = (parent, file, x, y, z, rot = 0, fix = null) => loadGLB(file).then(g => {   // one of the new files, centred on its feet
+    const m = g.scene.clone(true); m.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } }); safeScene(m, fix);
+    const w = new THREE.Group(); w.add(m); w.position.set(x, y, z); w.rotation.y = rot; parent.add(w); return w;
+  }).catch(warnLoad(file));
+
+  // the island shelves, fully stocked on both sides, with an aisle board on each end
+  GONDOLAS.forEach(gd => putGLB(g0, FILES.gondola, gd.x, 0, gd.z));
+  const stock = new InstanceBatch(FILES.products);
+  GONDOLAS.forEach(gd => stockGondola(stock, rng, gd));
+  stock.build(g0);
+  ROWS.forEach(r => {
+    const a = AISLES[r.aisle], tex = labelTexture(a.name + '  -  ' + a.sub, '#12315f', 768, 128);
+    sign(g0, tex, 1.9, 0.32, r.x, 1.82, r.zs[r.zs.length - 1] + GOND.len / 2 - 0.05, 0);          // faces the lobby
+    sign(g0, tex, 1.9, 0.32, r.x, 1.82, r.zs[0] - GOND.len / 2 + 0.05, Math.PI);                    // faces the back wall
   });
+
+  // the back wall: drinks, the fridges (the doors open when you walk up to them), snacks
+  BACK.drinks.forEach(x => lib(g0, 'sm_drinks_shelf', x, 0, wallZ('sm_drinks_shelf')));
+  BACK.chips.forEach(x => lib(g0, 'sm_chips_shelf', x, 0, wallZ('sm_chips_shelf')));
+  WALL_CHIPS_E.forEach(z => lib(g0, 'sm_chips_shelf', HW - 0.03 - SM_SIZE.sm_chips_shelf[1] / 2, 0, z, -Math.PI / 2));
+  loadGLB(FILES.fridge).then(gf => {
+    const probe = new THREE.Box3().setFromObject(gf.scene), cx = (probe.min.x + probe.max.x) / 2, cz = (probe.min.z + probe.max.z) / 2, depth = probe.max.z - probe.min.z;
+    BACK.fridges.forEach(x => {
+      const m = gf.scene.clone(true);
+      safeScene(m, c => { if (c.name === 'mainMetal') { c.color.set(0xd8dce1); c.roughness = 0.4; c.metalness = 0.15; } });   // the file's doors are almost black: make them steel
+      m.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
+      m.position.set(-cx, -probe.min.y, -cz);
+      const w = new THREE.Group(); w.add(m); w.position.set(x, 0, -HD + 0.03 + depth / 2); g0.add(w);
+      const mixer = new THREE.AnimationMixer(m);
+      gf.animations.forEach(clip => mixer.clipAction(clip).play());
+      mixer.setTime(0);
+      fridges.push({ x, z: -HD + 0.03 + depth / 2, p: 0, mixer });
+    });
+  }).catch(warnLoad(FILES.fridge));
+
+  // checkouts: belt starts on the shop (north) side, scanner end and cashier on the lobby (south) side, the register stands on the counter next to the scanner
+  CHECKOUT_X.forEach((x, n) => {
+    const G = new THREE.Group(); G.position.set(x, 0, CHECKOUT_Z); G.rotation.y = Math.PI / 2 + CHECKOUT_FLIP; g0.add(G);
+    putGLB(G, FILES.checkout, 0, 0, 0);
+    putGLB(G, FILES.register, -0.45, 0.835, 0.12);                                // 0.835 = the top of the counter, so the register sits ON it
+    floorPlane(g0, { x0: x - 0.95, x1: x + 0.95, z0: CHECKOUT_Z - CHECKOUT_LEN / 2 - 0.75, z1: CHECKOUT_Z - CHECKOUT_LEN / 2 - 0.15 }, new THREE.MeshStandardMaterial({
+      map: labelTexture('CHECKOUT ' + (n + 1), '#c62828', 512, 128), roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 0.02);
+  });
+
+  // walls of the restrooms and the staff room: a low band that always shows, an upper part that shows when the camera is inside
+  const wallBand = (low, up, alongX, fixed, from, to, gaps) => {
+    spansOf(from, to, gaps).forEach(([a, b]) => {
+      const len = b - a, c = (a + b) / 2;
+      box(low, M.wall, alongX ? len : TW, LOWH, alongX ? TW : len, alongX ? c : fixed, LOWH / 2, alongX ? fixed : c);
+      box(up, M.wall, alongX ? len : TW, WALLTOP - LOWH, alongX ? TW : len, alongX ? c : fixed, (LOWH + WALLTOP) / 2, alongX ? fixed : c);
+    });
+    gaps.forEach(gp => box(up, M.wall, alongX ? GAPW : TW, WALLTOP - DOORH, alongX ? TW : GAPW, alongX ? gp : fixed, (DOORH + WALLTOP) / 2, alongX ? fixed : gp));   // beam over each doorway
+  };
+  const makeRoom = rect => { const up = new THREE.Group(); g0.add(up); roomUppers.push({ up, rect }); return up; };
+  const plate = (text, col, x, y, z, w = 0.8) => sign(g0, labelTexture(text, col, 512, 128), w, w / 4, x, y, z, 0);
+
+  // restrooms (north-west): MEN | WOMEN, two stalls and a basin with a mirror in each
+  const upR = makeRoom(RESTROOM);
+  wallBand(g0, upR, true, RESTROOM.z1, RESTROOM.x0, RESTROOM.x1, RESTROOM.doors);
+  wallBand(g0, upR, false, RESTROOM.x1, RESTROOM.z0, RESTROOM.z1, []);
+  wallBand(g0, upR, false, RESTROOM.split, RESTROOM.z0, RESTROOM.z1, []);
+  [-15.0, -13.7, -11.9, -10.6].forEach(x => lib(g0, 'toilet', x, 0, -HD + 0.38, 0));
+  [-14.35, -11.25].forEach(x => box(g0, M.part, 0.05, 1.7, 1.25, x, 0.95, -HD + 0.625));
+  [{ x: -13.3, mirrorX: RESTROOM.split + 0.1 }, { x: -10.2, mirrorX: RESTROOM.x1 - 0.12 }].forEach(b => {
+    box(g0, M.wood, 0.5, 0.82, 1.0, b.x, 0.41, -8.5);                                // vanity
+    box(g0, M.porc, 0.44, 0.06, 0.6, b.x, 0.85, -8.5);                               // basin
+    box(g0, M.steel, 0.04, 0.2, 0.04, b.x + (b.x < -12 ? -0.14 : 0.14), 0.98, -8.5);  // tap
+    const mir = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.7), M.mirror); mir.position.set(b.mirrorX - 0.012, 1.55, -8.5); mir.rotation.y = -Math.PI / 2; upR.add(mir);
+  });
+  plate('MEN', '#1f4e79', RESTROOM.doors[0] + 0.95, 0.82, RESTROOM.z1 + TW / 2 + 0.01, 0.6);
+  plate('WOMEN', '#8a2b5c', RESTROOM.doors[1] + 0.95, 0.82, RESTROOM.z1 + TW / 2 + 0.01, 0.6);
+
+  // staff room (north-east): STAFF ONLY, lockers, a table with two chairs, a fridge
+  const upS = makeRoom(STAFF);
+  wallBand(g0, upS, true, STAFF.z1, STAFF.x0, STAFF.x1, [STAFF.door]);
+  wallBand(g0, upS, false, STAFF.x0, STAFF.z0, STAFF.z1, []);
+  [11.5, 13.5].forEach(x => lib(g0, 'locker_bank', x, 0, -HD + 0.25, 0));
+  lib(g0, 'office_table', 13.0, 0, -8.7, 0);
+  lib(g0, 'plastic_chair', 12.4, 0, -9.35, 0); lib(g0, 'plastic_chair', 13.6, 0, -8.05, Math.PI);
+  lib(g0, 'fridge', 15.55, 0, -8.6, -Math.PI / 2);
+  plate('STAFF ONLY', '#c62828', STAFF.door + 0.95, 0.82, STAFF.z1 + TW / 2 + 0.01, 0.9);
+
   // signs on the back wall
   sign(g0, labelTexture('FRESH MART SUPERMARKET', '#c62828', 1024, 128), 9, 1.1, 0, 4.6, -HD + 0.03, 0);
-  sign(g0, labelTexture('DRINKS', '#12315f', 512, 128), 3.4, 0.6, -9.9, 2.5, -HD + 0.03, 0);
-  sign(g0, labelTexture('CHILLED & DAIRY', '#12315f', 512, 128), 3.4, 0.6, -0.8, 2.5, -HD + 0.03, 0);
-  sign(g0, labelTexture('SNACKS & CHIPS', '#12315f', 512, 128), 3.4, 0.6, 8.4, 2.5, -HD + 0.03, 0);
+  sign(g0, labelTexture('DRINKS', '#12315f', 512, 128), 3.4, 0.6, -6.9, 2.5, -HD + 0.03, 0);
+  sign(g0, labelTexture('CHILLED & DAIRY', '#12315f', 512, 128), 3.4, 0.6, -1.2, 2.5, -HD + 0.03, 0);
+  sign(g0, labelTexture('SNACKS & CHIPS', '#12315f', 512, 128), 3.4, 0.6, 6.0, 2.5, -HD + 0.03, 0);
+  sign(g0, labelTexture('RESTROOMS', '#1d5fa8', 512, 128), 2.6, 0.55, -12.9, 3.6, -HD + 0.03, 0);
   // red gradient markers: one just inside the door (the exit) and one on the plaza in front of the doorway (the entrance, shown only while you are outside)
   loadProp('gta_marker_red').then(p => { p.position.set(DOOR_X, 0.02, HD - 1.6); g0.add(p); }).catch(warnLoad('gta_marker_red (exit)'));
   loadProp('gta_marker_red').then(p => { p.position.set(DOOR_X, 0.02, 2.96 + MARKER_OUT); marker.add(p); }).catch(warnLoad('gta_marker_red (entrance)'));
@@ -394,13 +604,17 @@ export function buildMallInterior() {
   };
   const update = (dt, ctx) => {                                                  // ctx: { x, z (plot space), level, goto(level) }
     makeUi();
-    beltTex.forEach(t => { t.offset.x -= dt * ESC_SPEED / 0.8; });               // both belts carry you east
     const lx = ctx.x, lz = ctx.z - MALL_Z;
     const inZone = lx > ELEVATOR.x0 - 0.3 && lx < ELEVATOR.x1 + 0.3 && lz > ELEVATOR.z1 && lz < HD;
-    doors.forEach((d, i) => {
-      const target = inZone && ctx.level === i ? 1 : 0;
-      d.o += (target - d.o) * Math.min(1, dt * 5);
-      d.a.position.x = d.x - 0.45 - 0.75 * d.o; d.b.position.x = d.x + 0.45 + 0.75 * d.o;
+    const step = (d, target, secs, clipT) => {                                  // move the doors towards open (1) or shut (0) and show that moment of the animation
+      if (d.o === target) return;
+      d.o += Math.sign(target - d.o) * dt / secs;
+      if ((target === 1 && d.o > 1) || (target === 0 && d.o < 0)) d.o = target;
+      if (d.mixer) d.mixer.setTime(d.o * clipT);
+    };
+    lifts.forEach((d, i) => step(d, inZone && ctx.level === i ? 1 : 0, 1.5, LIFT_OPEN_T));
+    fridges.forEach(f => {
+      f.o = f.p; step(f, ctx.level === 0 && Math.hypot(lx - f.x, lz - (f.z + 0.75)) < FRIDGE_RANGE ? 1 : 0, 1.4, FRIDGE_OPEN_T); f.p = f.o;
     });
     gotoFn = ctx.goto;
     panel.style.display = inZone ? 'block' : 'none';
@@ -417,6 +631,7 @@ export function buildMallInterior() {
       l.side.W.visible = !(relX < -HW);
       l.side.E.visible = !(relX > HW);
     });
+    roomUppers.forEach(r => { r.up.visible = relX > r.rect.x0 && relX < r.rect.x1 && z > r.rect.z0 && z < r.rect.z1; });   // the upper walls of a small room show only while the camera is in it
   };
   setLevel(0); setCamera(0, MALL_Z); setInside(false);
 
