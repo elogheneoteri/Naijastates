@@ -46,7 +46,7 @@ export const HS_STAIRS = {
   inner: IN_STAIR, floorH: FLOOR_H,
 };
 
-export const ESC_SPEED = 1.0;            // metres per second the mall escalator belts carry you (east, in the mall's own space)
+export const ESC_SPEED = 1.0;            // metres per second the mall escalator belts carry you (west, in the mall's own space)
 
 export const STAIR_SPEED_FACTOR = 0.6;   // you walk at 60% of normal speed on the steps (so the feet look right)
 export const STAIR_ANIM_SPEED = 1.5;     // the stairs animation plays at normal speed when you move this fast (m/s); change it if the feet slide
@@ -114,13 +114,13 @@ export function groundHeight(wx, wz, u) {
   return h;
 }
 
-// The mall's escalator belts carry you east (the mall's own +x). Returns the push in world metres per second, { x, z }.
+// The mall's escalator belts carry you WEST (the mall's own -x): the south lane (the side facing the entrance) rises towards the west, so it takes you UP; the north lane falls towards the west, so it brings you DOWN. Returns the push in world metres per second, { x, z }.
 export function escalatorDrift(wx, wz) {
   for (const s of placed) {
     const d = s.def;
     if (!d.floorsY) continue;
     const p = toLocal(s, wx, wz);
-    if (d.lanes.some(l => p.x >= l.x0 && p.x <= l.x1 && p.z >= l.z0 && p.z < l.z1)) return { x: ESC_SPEED * Math.cos(s.a), z: -ESC_SPEED * Math.sin(s.a) };
+    if (d.lanes.some(l => p.x >= l.x0 && p.x <= l.x1 && p.z >= l.z0 && p.z < l.z1)) return { x: -ESC_SPEED * Math.cos(s.a), z: ESC_SPEED * Math.sin(s.a) };
   }
   return { x: 0, z: 0 };
 }
@@ -135,3 +135,5 @@ export function onStairs(wx, wz) {
   }
   return false;
 }
+
+

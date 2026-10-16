@@ -34,8 +34,9 @@
 //
 //   ESCALATORS = your metaretail escalator (mall_escalator_lane_new_optimised.glb): ONE lane, at its real proportions (1.5 m wide, 33 degrees),
 //        two lanes side by side between every pair of floors, like your layout picture. Open hole in the floor, your glass balustrade round it, no walls.
-//        South lane (the side facing the entrance door): low end WEST, high end EAST  -> goes UP (the belts push you east).
-//        North lane (the side facing the supermarket): high end WEST, low end EAST    -> comes DOWN.
+//        South lane (the side facing the entrance door): low end EAST, high end WEST  -> goes UP. You step on at the east end, the nearest to the door.
+//        North lane (the side facing the supermarket): low end WEST, high end EAST    -> comes DOWN. You step on at the east end (the upper floor) too.
+//        Both belts carry you WEST (stairs.js, escalatorDrift), so the south lane takes you up and the north lane takes you down.
 //        (the treads do not move: the lane was lengthened to reach every floor, which cannot keep the original tread animation)
 //   LIFT = your elevator_animated.glb in a shaft on every floor. Stand in front of its door (there is no painted label any more): the real animated
 //        doors open and a panel with the five floors appears. Tap a floor and you are taken there (a short fade).
@@ -109,8 +110,8 @@ export const MALL_STAIRS = {
   floorsY: FLOOR_Y,
   footprint: { x0: -HW, x1: HW, z0: MALL_Z - HD, z1: MALL_Z + HD },
   lanes: [
-    { id: 'A', low: 'E', x0: ESC_XC - ESC_HIGH_PLATE, x1: ESC_XC + ESC_LOW_PLATE, z0: ESCALATOR.z0 + MALL_Z, z1: ZM + MALL_Z },     // north lane (faces the supermarket): DOWN
-    { id: 'B', low: 'W', x0: ESC_XC - ESC_LOW_PLATE, x1: ESC_XC + ESC_HIGH_PLATE, z0: ZM + MALL_Z, z1: ESCALATOR.z1 + MALL_Z },     // south lane (faces the entrance): UP. From the far end of the lower plate to the far end of the upper plate
+    { id: 'A', low: 'W', x0: ESC_XC - ESC_LOW_PLATE, x1: ESC_XC + ESC_HIGH_PLATE, z0: ESCALATOR.z0 + MALL_Z, z1: ZM + MALL_Z },     // north lane (faces the supermarket): from the far end of the lower plate to the far end of the upper plate
+    { id: 'B', low: 'E', x0: ESC_XC - ESC_HIGH_PLATE, x1: ESC_XC + ESC_LOW_PLATE, z0: ZM + MALL_Z, z1: ESCALATOR.z1 + MALL_Z },     // south lane (faces the entrance)
   ],
 };
 
@@ -294,8 +295,8 @@ export const MALL_INTERIOR_BOXES = (() => {
     out.push(B(E.x0, E.x1, ZM - 0.05, ZM + 0.05, l));                       // the wall between the two lanes
   }
   // the ends of the lanes that lead nowhere (no floor below the ground floor, none above level 4)
-  out.push(B(E.x0 - 0.3, E.x0, E.z0, ZM, 0), B(E.x1, E.x1 + 0.3, ZM, E.z1, 0));       // ground floor: the high end of the north lane (west) and of the south lane (east) lead nowhere
-  out.push(B(E.x1, E.x1 + 0.3, E.z0, ZM, 4), B(E.x0 - 0.3, E.x0, ZM, E.z1, 4));       // level 4: the low end of the north lane (east) and of the south lane (west) lead nowhere
+  out.push(B(E.x1, E.x1 + 0.3, E.z0, ZM, 0), B(E.x0 - 0.3, E.x0, ZM, E.z1, 0));       // ground floor: the high end of the north lane (east) and of the south lane (west) lead nowhere
+  out.push(B(E.x0 - 0.3, E.x0, E.z0, ZM, 4), B(E.x1, E.x1 + 0.3, ZM, E.z1, 4));       // level 4: the low end of the north lane (west) and of the south lane (east) lead nowhere
   smBoxes().forEach(b => out.push(B(b[0], b[1], b[2], b[3], 0)));          // the supermarket (shelves, fridges, counters, tables, restrooms, staff room): solid on the ground floor
   return out;
 })();
@@ -456,7 +457,7 @@ export function buildMallInterior() {
     if (i > 0) {
       const nSeg = 5, segLen = (E.x1 - E.x0) / nSeg;
       for (let k = 0; k < nSeg; k++) { const x = E.x0 + segLen * (k + 0.5); railList[i].push({ x, z: E.z0 - 0.07, rot: Math.PI / 2, len: segLen }, { x, z: E.z1 + 0.07, rot: Math.PI / 2, len: segLen }); }
-      if (i === 4) railList[i].push({ x: E.x1 + 0.07, z: (E.z0 + ZM) / 2, rot: 0, len: ZM - E.z0 }, { x: E.x0 - 0.07, z: (ZM + E.z1) / 2, rot: 0, len: E.z1 - ZM });   // the ends of lane A (west) and lane B (east) lead nowhere
+      if (i === 4) railList[i].push({ x: E.x0 - 0.07, z: (E.z0 + ZM) / 2, rot: 0, len: ZM - E.z0 }, { x: E.x1 + 0.07, z: (ZM + E.z1) / 2, rot: 0, len: E.z1 - ZM });   // the ends of lane A (west) and lane B (east) lead nowhere
     }
 
     // outer walls (grouped per side so the camera side can be hidden)
@@ -493,7 +494,7 @@ export function buildMallInterior() {
   const E = ESCALATOR, LW = (E.z1 - E.z0) / 2;
   loadGLB(FILES.escalator).then(ge => {
     for (let k = 0; k < 4; k++) {
-      [{ low: 'E', zc: E.z0 + LW / 2 }, { low: 'W', zc: E.z0 + LW * 1.5 }].forEach(lane => {      // north lane: low end east (goes down), south lane: low end west (goes up)
+      [{ low: 'W', zc: E.z0 + LW / 2 }, { low: 'E', zc: E.z0 + LW * 1.5 }].forEach(lane => {
         const m = ge.scene.clone(true); safeScene(m);
         m.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
         const wrap = new THREE.Group(); wrap.add(m);                          // in the file the low plate's top is at y = 0 and the high plate's top at 6.705 m
