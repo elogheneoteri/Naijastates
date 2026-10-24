@@ -13,6 +13,7 @@ import { buildHighSchoolExterior, HS_EXTERIOR_BOXES } from './high_school_exteri
 import { buildCommercialExterior, COMM_BOXES } from './commercial_exterior.js';
 import { buildLineHouses, LINE_HOUSE_BOXES } from './line_houses.js';
 import { buildRentalOffice, RENTAL_BOXES } from './rental_office.js';          // Rental Office: the rental building (rental_office.glb)          // Low-Class Housing: the line houses (line_house.glb)
+import { buildPoliceStation, POLICE_BOXES } from './police_station.js';   // Police Station: the building, the fence round it and the fig trees (police_station.glb, police_fence.glb, fig_tree.glb)
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
 import { buildMallInterior, MALL_INTERIOR_BOXES, MALL_STAIRS } from './mall_interior.js';        // the mall: 5 floors, escalators, lift
 import { initNin, IVORY_FILE } from './nin.js';
@@ -48,6 +49,7 @@ const ROAD_Z0 = 27.0, ROAD_Z1 = 30.5;      // main road (runs west to east, thro
 const COMM_PLOT = plotAt('commercial');     // the Commercial District plot from city.js
 const LH_PLOT = plotAt('low_line');          // the Line Houses plot from city.js
 const RENT_PLOT = plotAt('rental');            // the Rental Office plot from city.js
+const POLICE_PLOT = plotAt('police');          // the Police Station plot from city.js
 const HS_PLOT = plotAt('high_school');       // the High School plot from city.js (centre and which way it faces)
 const BUILDINGS = [
   {
@@ -117,6 +119,14 @@ const BUILDINGS = [
     x: RENT_PLOT.x, z: RENT_PLOT.z, rotY: RENT_PLOT.rotY,
     boxes: RENTAL_BOXES,
     fallback: [RENT_PLOT.w, 6, RENT_PLOT.d]
+  },
+  {
+    key: 'police', name: 'Police Station',
+    // The police building (police_station.js): signboard reading POLICE STATION, a chain-link fence round the plot with an open gate at the front, and fig trees. Its front faces the main road.
+    build: buildPoliceStation,
+    x: POLICE_PLOT.x, z: POLICE_PLOT.z, rotY: POLICE_PLOT.rotY,
+    boxes: POLICE_BOXES,
+    fallback: [POLICE_PLOT.w, 6, POLICE_PLOT.d]
   }
 ];
 
@@ -1585,6 +1595,3 @@ class World {
 
 // start only after everything above has been defined
 boot();
-
-
-
