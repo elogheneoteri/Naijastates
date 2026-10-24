@@ -11,6 +11,7 @@ import { buildRefugeeCamp, CAMP_BOXES } from './refugee_camp.js';
 import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.js';
 import { buildHighSchoolExterior, HS_EXTERIOR_BOXES } from './high_school_exterior.js';
 import { buildCommercialExterior, COMM_BOXES } from './commercial_exterior.js';
+import { buildLineHouses, LINE_HOUSE_BOXES } from './line_houses.js';          // Low-Class Housing: the line houses (line_house.glb)
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
 import { buildMallInterior, MALL_INTERIOR_BOXES, MALL_STAIRS } from './mall_interior.js';        // the mall: 5 floors, escalators, lift
 import { initNin, IVORY_FILE } from './nin.js';
@@ -44,6 +45,7 @@ const ROAD_Z0 = 27.0, ROAD_Z1 = 30.5;      // main road (runs west to east, thro
 // boxes = solid parts you cannot walk through: [minX, maxX, minZ, maxZ] relative to the centre,
 // measured BEFORE rotation (the code rotates them for you).
 const COMM_PLOT = plotAt('commercial');     // the Commercial District plot from city.js
+const LH_PLOT = plotAt('low_line');          // the Line Houses plot from city.js
 const HS_PLOT = plotAt('high_school');       // the High School plot from city.js (centre and which way it faces)
 const BUILDINGS = [
   {
@@ -97,6 +99,14 @@ const BUILDINGS = [
     x: COMM_PLOT.x, z: COMM_PLOT.z, rotY: COMM_PLOT.rotY,
     boxes: [...COMM_BOXES, ...MALL_INTERIOR_BOXES],
     fallback: [74, 33, 48]
+  },
+  {
+    key: 'low_line', name: 'Line Houses',
+    // Two line houses facing each other (line_houses.js). Change their size or places in that file.
+    build: buildLineHouses,
+    x: LH_PLOT.x, z: LH_PLOT.z, rotY: LH_PLOT.rotY,
+    boxes: LINE_HOUSE_BOXES,
+    fallback: [LH_PLOT.w, 6, LH_PLOT.d]
   }
 ];
 
