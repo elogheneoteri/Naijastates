@@ -34,7 +34,7 @@ const TALK_RANGE = 3.4;                   // metres from her at which "Talk to .
 const STREAMS = ['Science', 'Arts', 'Commercial'];
 const UNIFORM_TOP = [236, 238, 240];      // white shirt
 const UNIFORM_BOTTOM = [26, 36, 70];      // navy trousers
-const TEST_BUTTONS = true;                // the two test buttons under the minimap. Set false when you are happy.
+const TEST_BUTTONS = false;               // the two school test buttons are switched off. Set true to bring them back.
 
 // ---------- which parts of a character become the uniform ----------
 // By material name (Mixamo names look like "m13_Vestmat"; the "m13_" and "mat" are ignored). Any character not listed here uses the
@@ -354,3 +354,6 @@ export function initSchool(opts) {
 
   return { update, record, setWorn, npc };
 }
+
+
+

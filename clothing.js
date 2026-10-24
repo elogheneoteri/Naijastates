@@ -74,7 +74,7 @@ function resolveOutfit(id) {
 // much (millimetres) along its surface to cover it. 0 = off.
 const INFLATE_MM = 0;                               // the skin mask below does this job now, so growing is off by default (?inflate=4 turns it back on)
 
-const TEST_BUTTONS = true;                                // the buttons under the minimap. Set false when you are happy.
+const TEST_BUTTONS = false;                               // the clothing test buttons under the minimap are switched off. Set true to bring them back.
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.get('outfitdebug') === '1';
@@ -682,3 +682,6 @@ export function initClothing(opts) {
 
   return { update, setOutfit, setPiece, setColour, getState, clearAll, setLook, PIECES, OUTFITS, ready, wardrobeInfo: () => wardrobeInfo };
 }
+
+
+
