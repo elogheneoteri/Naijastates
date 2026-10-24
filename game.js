@@ -11,7 +11,8 @@ import { buildRefugeeCamp, CAMP_BOXES } from './refugee_camp.js';
 import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.js';
 import { buildHighSchoolExterior, HS_EXTERIOR_BOXES } from './high_school_exterior.js';
 import { buildCommercialExterior, COMM_BOXES } from './commercial_exterior.js';
-import { buildLineHouses, LINE_HOUSE_BOXES } from './line_houses.js';          // Low-Class Housing: the line houses (line_house.glb)
+import { buildLineHouses, LINE_HOUSE_BOXES } from './line_houses.js';
+import { buildRentalOffice, RENTAL_BOXES } from './rental_office.js';          // Rental Office: the rental building (rental_office.glb)          // Low-Class Housing: the line houses (line_house.glb)
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
 import { buildMallInterior, MALL_INTERIOR_BOXES, MALL_STAIRS } from './mall_interior.js';        // the mall: 5 floors, escalators, lift
 import { initNin, IVORY_FILE } from './nin.js';
@@ -46,6 +47,7 @@ const ROAD_Z0 = 27.0, ROAD_Z1 = 30.5;      // main road (runs west to east, thro
 // measured BEFORE rotation (the code rotates them for you).
 const COMM_PLOT = plotAt('commercial');     // the Commercial District plot from city.js
 const LH_PLOT = plotAt('low_line');          // the Line Houses plot from city.js
+const RENT_PLOT = plotAt('rental');            // the Rental Office plot from city.js
 const HS_PLOT = plotAt('high_school');       // the High School plot from city.js (centre and which way it faces)
 const BUILDINGS = [
   {
@@ -107,6 +109,14 @@ const BUILDINGS = [
     x: LH_PLOT.x, z: LH_PLOT.z, rotY: LH_PLOT.rotY,
     boxes: LINE_HOUSE_BOXES,
     fallback: [LH_PLOT.w, 6, LH_PLOT.d]
+  },
+  {
+    key: 'rental', name: 'Rental Office',
+    // The rental building (rental_office.js): a bungalow with the green signboard reading RENTAL OFFICE. Its front faces the main road.
+    build: buildRentalOffice,
+    x: RENT_PLOT.x, z: RENT_PLOT.z, rotY: RENT_PLOT.rotY,
+    boxes: RENTAL_BOXES,
+    fallback: [RENT_PLOT.w, 6, RENT_PLOT.d]
   }
 ];
 
@@ -1575,3 +1585,6 @@ class World {
 
 // start only after everything above has been defined
 boot();
+
+
+

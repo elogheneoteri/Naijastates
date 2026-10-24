@@ -160,10 +160,10 @@ export function buildCity(loadProp) {
     flat(new THREE.PlaneGeometry(x1 - x0, pave), paveMat, (x0 + x1) / 2, -0.01, sz + side * (streetW / 2 + pave / 2)))));
 
   // ----- empty building plots -----
-// Plots that already have a building: they keep their plain ground pad, but lose the yellow border, front strip and floating sign.
-const BUILT_PLOTS = ['high_school', 'commercial', 'low_line'];
-  // Plots that must show the real ground (red sand with a little grass) instead of the plain grey pad:
-  const NO_PAD_PLOTS = ['low_line'];
+// Plots that already have a building: no yellow border, no front strip, no floating sign, and NO grey pad: the real red sand shows under the building.
+const BUILT_PLOTS = ['high_school', 'commercial', 'low_line', 'rental'];
+  // Plots that must show the real ground (red sand) instead of the plain grey pad: every built plot. (An empty plot keeps its grey pad.)
+  const NO_PAD_PLOTS = BUILT_PLOTS;
   const padMat = new THREE.MeshStandardMaterial({ color: 0xb4ae9f, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const edgeMat = new THREE.MeshStandardMaterial({ color: 0xf2c200, roughness: 0.7, emissive: 0x5a4600, emissiveIntensity: 0.4 });
   PLOTS.forEach(p => {
@@ -215,3 +215,6 @@ const BUILT_PLOTS = ['high_school', 'commercial', 'low_line'];
 
   return { group };
 }
+
+
+
