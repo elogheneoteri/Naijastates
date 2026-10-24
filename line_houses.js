@@ -13,6 +13,7 @@
 //   YARD                the width of the yard between the west row and the east row (the plot is 25 m wide, so about 6.4 m is the most that fits)
 //   BATH_FILE / BATH_SCALE   the outdoor bathroom and toilet (2.4 makes its doors about 1.9 m tall: the building is then about 4.6 m wide, 4.1 m deep)
 //   BATH_MARGIN               how far from the north edge of the plot the bathroom/toilet building stands (BATH_MARGIN)
+//   GRASS_TUFTS         how many small grass tufts are scattered on the sand (a touch of grass); 0 = none
 //   LAYOUT              one line per line house: x, z (metres from the plot centre) and rotY
 //                       (0 = doors face south, 90 = doors face east, 180 = doors face north, 270 = doors face west).
 //                       Keep rotY at 0, 90, 180 or 270 so the walls line up with the collision boxes.
@@ -60,6 +61,49 @@ export const LINE_HOUSE_BOXES = [
   footprint(BATH, BATH_HALF_W, BATH_HALF_D, BATH_APRON)
 ];
 
+// ---------- a touch of grass on the bare sand ----------
+// The ground here is the world's red sand (city.js no longer lays a grey pad under this plot). A few small grass tufts are scattered in the yard,
+// around the bathroom and toilet, and just outside the plot edges. They never stand in the walkway of the yard or in front of the doors.
+const GRASS_TUFTS = 90;
+
+function paintTuft(ctx, S) {                             // a small fan of grass blades on a transparent card
+  ctx.clearRect(0, 0, S, S);
+  const greens = ['#5f8f2e', '#6f9c36', '#4d7d28', '#7fa83f', '#86a845'];
+  for (let i = 0; i < 16; i++) {
+    const x0 = S * (0.30 + 0.40 * ((i * 0.6180339) % 1)), lean = (((i * 0.4142) % 1) - 0.5) * S * 0.55, h = S * (0.50 + 0.42 * ((i * 0.7321) % 1));
+    ctx.strokeStyle = greens[i % greens.length]; ctx.lineWidth = S * 0.045; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x0, S * 0.98); ctx.quadraticCurveTo(x0 + lean * 0.3, S * 0.98 - h * 0.6, x0 + lean, S * 0.98 - h); ctx.stroke();
+  }
+}
+
+function addTufts(group) {
+  if (!GRASS_TUFTS) return;
+  let seed = 20261024;                                   // fixed seed: the tufts are in the same places every time
+  const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const solids = [...LAYOUT.map(h => footprint(h, HALF_W, HALF_D, 0)), footprint(BATH, BATH_HALF_W, BATH_HALF_D, 0)];
+  const PLOT_W = 25, PX = PLOT_W / 2, PZ = PLOT_D / 2;
+  const spots = [];
+  for (let tries = 0; spots.length < GRASS_TUFTS && tries < 4000; tries++) {
+    const x = (rnd() * 2 - 1) * (PX + 1.5), z = (rnd() * 2 - 1) * (PZ + 1.5);
+    if (z > PZ + 0.5) continue;                                                             // not onto the pavement of the main road
+    if (solids.some(b => x > b[0] - 0.7 && x < b[1] + 0.7 && z > b[2] - 0.7 && z < b[3] + 0.7)) continue;      // not against the walls
+    if (Math.abs(x) < YARD / 2 && Math.abs(x) < 1.6) continue;                              // keep the middle of the yard clear for walking
+    if (Math.abs(x) < YARD / 2 + 0.2 && z > -PZ + BATH_MARGIN + 2 * BATH_HALF_D + 0.5) continue;   // and the strips in front of the doors (only the bathroom end stays grassy)
+    spots.push([x, z]);
+  }
+  const c = document.createElement('canvas'); c.width = c.height = 128; paintTuft(c.getContext('2d'), 128);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1 });
+  [0, Math.PI / 2].forEach(rot => {                                                         // two crossed cards per tuft
+    const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.5, 0.4).translate(0, 0.2, 0).rotateY(rot), mat, spots.length), m = new THREE.Object3D(), col = new THREE.Color();
+    spots.forEach(([x, z], i) => {
+      const k = 0.6 + rnd() * 0.7; m.position.set(x, -0.03, z); m.rotation.y = rnd() * 3.14; m.scale.set(k, k * (0.8 + rnd() * 0.5), k); m.updateMatrix();
+      im.setMatrixAt(i, m.matrix); const t = 0.8 + rnd() * 0.35; im.setColorAt(i, col.setRGB(t, t, t * 0.92));
+    });
+    im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.frustumCulled = false; group.add(im);
+  });
+}
+
 function place(group, gltf, scale, h) {
   const m = gltf.scene.clone(true);                      // the same model and textures, shared between the copies
   m.scale.setScalar(scale);
@@ -77,6 +121,7 @@ function plainBlock(group, w, d, h) {                    // a plain block so the
 
 export function buildLineHouses() {
   const group = new THREE.Group();
+  addTufts(group);
   const load = (file, onLoad, onFail) => new GLTFLoader().load(file, gltf => {
     gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     onLoad(gltf);

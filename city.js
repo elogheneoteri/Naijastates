@@ -162,10 +162,12 @@ export function buildCity(loadProp) {
   // ----- empty building plots -----
 // Plots that already have a building: they keep their plain ground pad, but lose the yellow border, front strip and floating sign.
 const BUILT_PLOTS = ['high_school', 'commercial', 'low_line'];
+  // Plots that must show the real ground (red sand with a little grass) instead of the plain grey pad:
+  const NO_PAD_PLOTS = ['low_line'];
   const padMat = new THREE.MeshStandardMaterial({ color: 0xb4ae9f, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const edgeMat = new THREE.MeshStandardMaterial({ color: 0xf2c200, roughness: 0.7, emissive: 0x5a4600, emissiveIntensity: 0.4 });
   PLOTS.forEach(p => {
-    flat(new THREE.PlaneGeometry(p.w, p.d), padMat, p.x, 0.0, p.z);
+    if (!NO_PAD_PLOTS.includes(p.code)) flat(new THREE.PlaneGeometry(p.w, p.d), padMat, p.x, 0.0, p.z);
     if (BUILT_PLOTS.includes(p.code)) return;
     const e = 0.35, top = 0.012;
     [[p.w, e, p.x, p.z - p.d / 2 + e / 2], [p.w, e, p.x, p.z + p.d / 2 - e / 2], [e, p.d - 2 * e, p.x - p.w / 2 + e / 2, p.z], [e, p.d - 2 * e, p.x + p.w / 2 - e / 2, p.z]]
