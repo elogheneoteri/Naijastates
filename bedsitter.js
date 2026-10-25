@@ -10,20 +10,26 @@
 // the shape itself was not touched (20,000 triangles).
 //
 // THE LAYOUT: TWO blocks, both facing SOUTH (towards the main road), one IN FRONT OF the other, on the same line (x = 0). The south block stands at the
-// front of the plot, the north block at the back. The open yard between them (SPACE_BETWEEN, see below) is kept free: that is where the two water
-// tanks and the tap will go.
+// front of the plot, the north block at the back. The open yard between them (SPACE_BETWEEN, see below) is kept free of grass: that is where the two water
+// tanks and the tap stand.
 //
-// STEP 1 (this file): the buildings are placed. The staircases are drawn but are SOLID BLOCKS for now (you cannot walk on them yet).
-// The next steps will add the water tap and then the walkable stairs; both will change this file and nothing else.
+// THE YARD BETWEEN THE BLOCKS, far EAST end: the tap (your tubewell hand pump, tubewell.glb, on a small concrete slab, spout facing west) and the TWO water
+// tanks, each on its steel stand, made the same way as the tank at your high school (plastic_tank + water_tank_stand.glb from props/).
+//
+// STEP 2 (this file): the buildings, the tap and the two tanks are placed. The staircases are drawn but are SOLID BLOCKS for now (you cannot walk on them yet).
+// The next step will add the walkable stairs; it will change this file and nothing else.
 //
 // THINGS YOU MAY WANT TO CHANGE
 //   FILE / SCALE   the model and its size. Two blocks one behind the other have to share the plot's 22 m depth, so 9.4 is as big as they can be
 //                  and still leave a yard between them: doors about 1.74 m tall, each block about 17.9 m long, 8.8 m deep and 6.3 m high
 //   EDGE           the gap between the roof edge of the front block and the front of the plot (and the back block and the back of the plot)
+//   TAP / TANKS    where the tap and the two water tanks stand in the yard (metres from the plot centre; x grows towards the east)
+//   TAP_SCALE      the size of the hand pump (1.15 makes it about 1.3 m tall)
 //   GRASS_TUFTS    how many small grass tufts are scattered on the sand; 0 = none
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadProp, PROPS_DIR } from './props_library.js';
 
 const FILE = 'bedsitter.glb';
 const SCALE = 9.4;
@@ -47,13 +53,27 @@ const LAYOUT = [
 ];
 const SPACE_BETWEEN = BLD_Z - ROOF_HALF_D;                          // half the free yard between the two roofs: the yard runs from z = -this to +this (about 3.6 m wide in all)
 
+// the tap and the two water tanks, in the yard between the blocks, in the east half (the yard runs from z = about -2.7 to +2.1 between the walls)
+const TAP_FILE = 'tubewell.glb', TAP_SCALE = 1.15;             // lives in your props/ folder, like the water tank stand
+const TAP = { x: 1.8, z: 0.0 };                                     // the hand pump (its spout points west, its handle east)
+const TAP_SLAB = { w: 1.3, h: 0.12, d: 1.3 };                       // the concrete slab it stands on
+const TANKS = [{ x: 3.9, z: 0.0 }, { x: 6.2, z: 0.0 }];             // the two tank towers
+const TANK_SCALE = 1.5;                                             // same as the high school tank
+const STAND_FILE = 'water_tank_stand.glb';                          // the same stand as the high school tank
+
+const R = (x, z, hw, hd = hw) => [x - hw, x + hw, z - hd, z + hd];
+
 // solid parts, [minX, maxX, minZ, maxZ] relative to the plot centre
-export const BEDSIT_BOXES = LAYOUT.flatMap(b => [
+export const BEDSIT_BOXES = [
+  R(TAP.x, TAP.z, 0.7, 0.55),                                       // the tap
+  ...TANKS.map(t => R(t.x, t.z, 0.95)),                             // the tank towers (same size as the high school one)
+  ...LAYOUT.flatMap(b => [
   // the walls (pulled in 0.2 m so you can brush along them, and the strip in front of the doors is left open)
   [b.x - BODY_HALF_L + 0.2, b.x + BODY_HALF_L - 0.2, b.z + BODY_BACK + 0.2, b.z + BODY_FRONT - 0.2 - APRON],
   // the outside staircase on the east end: a solid block for now (the walkable stairs come in the stairs step)
   [b.x + BODY_HALF_L - 0.3, b.x + STAIR_X1, b.z + STAIR_Z0, b.z + STAIR_Z1]
-]);
+  ])
+];
 
 // ---------- a touch of grass on the bare sand ----------
 // The ground here is the world's red sand (city.js no longer lays a grey pad under this plot). Small grass tufts are scattered in the yard,
@@ -102,9 +122,57 @@ function plainBlock(group, h) {                          // a plain block so the
   b.position.set(h.x, 3, h.z + (BODY_FRONT + BODY_BACK) / 2); group.add(b);
 }
 
+// ---------- the tap and the two water tanks ----------
+const gltfLoader = new GLTFLoader();
+const noShadow = o => { o.traverse(m => { if (m.isMesh) m.castShadow = false; }); return o; };
+
+function addTap(group) {
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(TAP_SLAB.w, TAP_SLAB.h, TAP_SLAB.d), new THREE.MeshStandardMaterial({ color: 0xbdb9ae, roughness: 0.95 }));
+  slab.position.set(TAP.x, TAP_SLAB.h / 2, TAP.z); slab.receiveShadow = true; group.add(slab);
+  gltfLoader.load(PROPS_DIR + TAP_FILE, gltf => {
+    gltf.scene.traverse(o => {
+      if (!o.isMesh) return;
+      o.castShadow = false; o.receiveShadow = true;
+      (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map) m.map.anisotropy = 4; });
+    });
+    gltf.scene.scale.setScalar(TAP_SCALE);
+    gltf.scene.position.set(TAP.x, TAP_SLAB.h, TAP.z);               // the pipe is centred on the model's middle; its foot rests on the slab
+    group.add(gltf.scene);
+  }, undefined, e => console.warn('bedsitter: could not load ' + PROPS_DIR + TAP_FILE, e));
+}
+
+let standPromise = null;
+async function loadStand(maxXZ) {                                    // the stand, sized and put on the ground the same way the high school does it
+  if (!standPromise) standPromise = gltfLoader.loadAsync(PROPS_DIR + STAND_FILE);
+  const gltf = await standPromise, root = gltf.scene.clone(true);
+  root.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
+  root.updateMatrixWorld(true);
+  let b = new THREE.Box3().setFromObject(root);
+  const size = b.getSize(new THREE.Vector3());
+  root.scale.multiplyScalar(maxXZ / Math.max(size.x, size.z, 1e-6)); root.updateMatrixWorld(true);
+  b = new THREE.Box3().setFromObject(root);
+  const c = b.getCenter(new THREE.Vector3());
+  root.position.set(-c.x, -b.min.y, -c.z);
+  const wrap = new THREE.Group(); wrap.add(root); return wrap;
+}
+
+async function addTank(group, at) {                                  // one tank on its stand (like the high school's)
+  const tank = noShadow(await loadProp('plastic_tank', { scale: TANK_SCALE }).catch(e => { console.warn('bedsitter: tank not loaded', e); return null; }) || new THREE.Group());
+  let top = 0;
+  try {
+    const ts = new THREE.Box3().setFromObject(tank).getSize(new THREE.Vector3());
+    const stand = await loadStand(Math.max(ts.x, ts.z, 1.2) * 1.12);                    // a stand a little wider than the tank
+    top = new THREE.Box3().setFromObject(stand).max.y;
+    stand.position.set(at.x, 0, at.z); group.add(stand);
+  } catch (e) { console.warn('bedsitter: could not load ' + STAND_FILE, e); }
+  tank.position.set(at.x, top - 0.02, at.z); group.add(tank);
+}
+
 export function buildBedsitter() {
   const group = new THREE.Group();
   addTufts(group);
+  addTap(group);
+  TANKS.forEach(t => addTank(group, t));
   new GLTFLoader().load(FILE, gltf => {
     gltf.scene.traverse(o => {
       if (!o.isMesh) return;
