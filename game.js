@@ -14,6 +14,7 @@ import { buildCommercialExterior, COMM_BOXES } from './commercial_exterior.js';
 import { buildLineHouses, LINE_HOUSE_BOXES } from './line_houses.js';
 import { buildBedsitter, BEDSIT_BOXES, BEDSIT_STAIRS } from './bedsitter.js';          // Low-Class Housing: the bed-sitter block (bedsitter.glb)
 import { buildRentalOffice, RENTAL_BOXES } from './rental_office.js';          // Rental Office: the rental building (rental_office.glb)          // Low-Class Housing: the line houses (line_house.glb)
+import { buildGovernment, GOV_BOXES, GOV_ORIGIN } from './government.js';   // Government compound: City Hall + Government Office (city_hall.glb, government_office.glb)
 import { buildPoliceStation, POLICE_BOXES } from './police_station.js';   // Police Station: the building, the fence round it and the fig trees (police_station.glb, police_fence.glb, fig_tree.glb)
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
 import { buildMallInterior, MALL_INTERIOR_BOXES, MALL_STAIRS } from './mall_interior.js';        // the mall: 5 floors, escalators, lift
@@ -138,6 +139,16 @@ const BUILDINGS = [
     x: POLICE_PLOT.x, z: POLICE_PLOT.z, rotY: POLICE_PLOT.rotY,
     boxes: POLICE_BOXES,
     fallback: [POLICE_PLOT.w, 6, POLICE_PLOT.d]
+  },
+  {
+    key: 'government', name: 'Government Area',
+    // The government compound (government.js): City Hall (faces east) and Government Office (faces north), each with its name board. No fence or decorations yet.
+    // rotY is 0 on purpose: the two buildings face different ways, so government.js turns each one itself.
+    build: buildGovernment,
+    x: GOV_ORIGIN.x, z: GOV_ORIGIN.z, rotY: 0,
+    zone: { x0: 138, x1: 222, z0: 36, z1: 86 },     // the whole compound shows the name at the top left
+    boxes: GOV_BOXES,
+    fallback: [60, 8, 50]
   }
 ];
 
@@ -1177,7 +1188,7 @@ class World {
     });
 
     // Name zone for the top-left text
-    b.zone = { x0: b.x - 14, x1: b.x + 14, z0: b.z - 14, z1: b.z + 14 };
+    b.zone = b.zone || { x0: b.x - 14, x1: b.x + 14, z0: b.z - 14, z1: b.z + 14 };
 
     if (b.interior) {                    // a room you can walk into: hidden until the player is inside
       b.room = b.interior();
