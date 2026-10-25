@@ -16,10 +16,11 @@
 //   * a green hedge fence (hedge_fence_optimised.glb) round both plots, with an open gateway in the north side (the road side), on the line of the Government Office door
 //   * a security post (security_booth_optimised.glb) just inside the gate, its door facing the driveway
 //   * a driveway from the road to the office, with the animated fountain (fountain_animated_optimised.glb) on a round stone island in the middle of it
-//   * a car park with painted bays, east of the driveway (the side of City Hall)
+//   * three car parks with painted bays: in front, east of the driveway (the side of City Hall), and one in each side yard of the Government Office
+//     (east yard: 11 bays along the east fence; west yard: 11 bays along the west fence, reached by a road from the driveway)
 //   * 6 street lamps (street_lamp.glb, the same one as the school), looks only: no real lights
-//   * a garden west of the driveway made with your school hedge (hedge.glb): a hedged bed with ONE sour orange tree (sour_orange_optimised.glb, the school one)
-//     and elephant ear bushes (elephant_ear_bush_optimised.glb), more bushes along the front hedge fence and in front of the office
+//   * a garden in the west front yard made with your school hedge (hedge.glb): ONE sour orange tree (sour_orange_optimised.glb, the school one) standing in the OPEN
+//     (you can walk under it: only the trunk is solid), two short hedge lines with gaps, and elephant ear bushes (elephant_ear_bush_optimised.glb) along the front hedge fence
 //   All the new props are in the props/ folder (the first four names are the files you sent me, the other three are the ones the school uses).
 //
 // THINGS YOU MAY WANT TO CHANGE
@@ -27,7 +28,7 @@
 //   x, z       where the building stands (its centre). Move it and the walls follow by themselves.
 //   sign.text  the words on the name board
 //   GATE       where the gateway is (x of its middle, and how wide)         FENCE_Z   the north fence line (the road side)
-//   BUSHES, LAMPS, ORANGE, BOOTH, FOUNTAIN, CAR_PARK   the places of the decorations, in world metres (x, z); delete a line to remove a bush or a lamp
+//   BUSHES, LAMPS, ORANGE, BOOTH, FOUNTAIN, CAR_PARKS   the places of the decorations, in world metres (x, z); delete a line to remove a bush or a lamp
 //   SHOW       switch a whole group on or off (false = not built)
 //
 // KEEPING IT FAST: the hedge fence, the school hedges and the bushes are InstancedMesh (every copy of a piece shares one mesh), the ground paint is a few flat
@@ -84,30 +85,44 @@ const BOOTH = { x: 159.6, z: 40.3, rotY: -Math.PI / 2 };      // security post j
 const FOUNTAIN = { x: 168, z: 45.0, island: 4.3 };            // the fountain (7 m across) on a round stone island in the middle of the driveway
 const DRIVE = { x0: 161, x1: 175, z0: 37.4, z1: 51.8 };       // the driveway inside the gate (14 m wide, so cars pass either side of the fountain)
 const APRON = { x0: GATE.x - GATE.w / 2, x1: GATE.x + GATE.w / 2, z0: 32.2, z1: 37.6 };   // from the pavement of the main road to the gate
-const CAR_PARK = { x0: 175, x1: 195.5, z0: 38.6, z1: 51.8, bayX0: 177, bayW: 2.5, bays: 7 };   // two rows of 7 bays with an aisle between them
+// car parks. rect = the asphalt. A "row" is a line of bays:
+//   along 'x': bays side by side along x, from xStart, nose (car end) at z = near, kerb at z = far    along 'z': the same along z, nose at x = near, kerb at x = far
+// arrows = [x, z, direction] painted in the aisle ('e' 'w' 'n' 's')
+const BAY = 2.5;
+const CAR_PARKS = [
+  { rect: { x0: 175, x1: 195.5, z0: 38.6, z1: 51.8 },                                   // in front, east of the driveway
+    rows: [{ along: 'x', start: 177, count: 7, near: 43.6, far: 38.9 }, { along: 'x', start: 177, count: 7, near: 47.2, far: 51.6 }],
+    arrows: [[181, 45.4, 'e'], [190, 45.4, 'e']] },
+  { rect: { x0: 184, x1: 195.8, z0: 51.8, z1: 83.8 },                                   // EAST side yard of the office: 11 bays along the east fence, the aisle runs along the office wall
+    rows: [{ along: 'z', start: 54.4, count: 11, near: 190.7, far: 195.5 }],
+    arrows: [[187.4, 60, 's'], [187.4, 72, 's']] },
+  { rect: { x0: 140, x1: 152.8, z0: 46.6, z1: 83.8 },                                   // WEST side yard of the office: 11 bays along the west fence
+    rows: [{ along: 'z', start: 54.4, count: 11, near: 145.0, far: 140.2 }],
+    arrows: [[148.9, 60, 's'], [148.9, 72, 's']] }
+];
+const CONNECTOR = { x0: 152.8, x1: 161, z0: 46.6, z1: 52.4 };      // the road from the driveway to the west side yard (in front of the office, west part)
 
 // street lamps (the arm turns towards 'face': 0 = south, 90 = east, 180 = north, 270 = west): x, z, face in degrees
 const LAMPS = [
   [161.8, 38.9, 90], [174.2, 38.9, 270],                  // either side of the driveway, just inside the gate
-  [161.0, 50.6, 90], [175.0, 50.6, 270],                  // either side of the driveway, in front of the office
-  [183.5, 45.5, 0], [192.5, 45.5, 0]                      // the car park aisle
+  [160.7, 46.0, 90], [175.0, 50.6, 270],                  // either side of the driveway, in front of the office
+  [183.5, 45.5, 0], [192.5, 45.5, 0],                     // the front car park aisle
+  [184.6, 60, 90], [184.6, 72, 90],                       // east side yard
+  [151.8, 60, 270], [151.8, 72, 270]                      // west side yard
 ];
 
-// the garden (west of the driveway): a bed with a low hedge round it (your school hedge, 0.9 m high), the orange tree and bushes inside it
-const GARDEN = { x0: 142, x1: 155, z0: 42.5, z1: 49.5 };
-const ORANGE = { x: 148.5, z: 46.0, height: 4.5 };            // the same sour orange as the school (4.5 m)
+// the garden (west front yard): the orange tree stands in the OPEN. Two short low hedges (your school hedge, 0.9 m) run either side of it with a wide gap in the
+// middle, and nothing closes the east and west ends, so you can walk all round it and stand under it. Only the trunk is solid.
+const ORANGE = { x: 148.5, z: 43.3, height: 4.5 };            // the same sour orange as the school (4.5 m)
 const HEDGE_H = 0.9;
 const LOW_HEDGES = [                                          // [x0, z0, x1, z1]
-  [GARDEN.x0, GARDEN.z0, GARDEN.x1, GARDEN.z0], [GARDEN.x1, GARDEN.z0, GARDEN.x1, GARDEN.z1],
-  [GARDEN.x1, GARDEN.z1, GARDEN.x0, GARDEN.z1], [GARDEN.x0, GARDEN.z1, GARDEN.x0, GARDEN.z0],
-  [153.8, 50.2, 160.6, 50.2], [175.4, 50.2, 182.2, 50.2]      // in front of the office, either side of the driveway
+  [142, 41.2, 146.2, 41.2], [150.8, 41.2, 155, 41.2],         // north of the tree
+  [142, 45.6, 146.2, 45.6], [150.8, 45.6, 155, 45.6]          // south of the tree
 ];
 // elephant ear bushes: x, z, size (1 = 2.4 m wide)
 const BUSHES = [
-  [144.2, 44.2, 1.0], [152.8, 44.2, 1.0], [144.2, 47.8, 1.0], [152.8, 47.8, 1.0],                     // the four corners inside the garden bed
-  [142.8, 39.3, 1.1], [146.0, 39.3, 1.0], [149.2, 39.3, 1.1], [152.4, 39.3, 1.0], [155.6, 39.3, 1.1],   // in front of the hedge fence, north-west
-  [155.6, 51.5, 1.0], [158.6, 51.5, 1.0], [177.4, 51.5, 1.0], [180.4, 51.5, 1.0],                      // between the office wall and its front hedges
-  [195.2, 62.0, 1.0], [195.2, 66.0, 1.1], [195.2, 70.0, 1.0], [195.2, 74.0, 1.1], [195.2, 78.0, 1.0]  // along the east fence (below City Hall)
+  [143.2, 43.4, 1.0], [153.8, 43.4, 1.0],                                                               // either end of the orange tree garden
+  [142.8, 39.3, 1.1], [146.0, 39.3, 1.0], [149.2, 39.3, 1.1], [152.4, 39.3, 1.0], [155.6, 39.3, 1.1]    // in front of the hedge fence, north-west
 ];
 
 // ---- solid parts: the walls of each building, [minX, maxX, minZ, maxZ] relative to GOV_ORIGIN (the game does not turn them: rotY is 0) ----
@@ -245,20 +260,27 @@ function flatRect(group, r, mat, y, tile) {                    // flat rectangle
   if (tile) { const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / tile, uv.getY(i) * d / tile); }
   const m = new THREE.Mesh(g, mat); m.rotation.x = -Math.PI / 2; m.position.set((r.x0 + r.x1) / 2, y, (r.z0 + r.z1) / 2); m.receiveShadow = true; group.add(m); return m;
 }
-function parkingTexture() {                                    // 35 pixels per metre; the top of the picture is the north (back) of the lot
-  const PX = 35, W = Math.round((CAR_PARK.x1 - CAR_PARK.x0) * PX), H = Math.round((CAR_PARK.z1 - CAR_PARK.z0) * PX);
-  const X = x => (x - CAR_PARK.x0) * PX, Z = z => (z - CAR_PARK.z0) * PX;
+function parkingTexture(cp) {                                   // 35 pixels per metre; the top of the picture is the north (back)
+  const R = cp.rect, PX = 35, W = Math.round((R.x1 - R.x0) * PX), H = Math.round((R.z1 - R.z0) * PX);
+  const X = x => (x - R.x0) * PX, Z = z => (z - R.z0) * PX;
   return canvasTex(W, H, (g, w, h) => {
-    noise(g, w, h, '#3a3d41', 26, 5000, 17);
+    noise(g, w, h, '#3a3d41', 26, Math.round(W * H / 90), 17 + W);
     g.strokeStyle = '#ecece4'; g.lineWidth = 4; g.lineCap = 'butt';
-    const rowA = [CAR_PARK.z0 + 0.3, CAR_PARK.z0 + 5.0], rowB = [CAR_PARK.z1 - 4.6, CAR_PARK.z1 - 0.2];        // the two rows of bays: [car end, kerb end]
-    [rowA, rowB].forEach(([za, zb]) => {
-      for (let i = 0; i <= CAR_PARK.bays; i++) { const x = CAR_PARK.bayX0 + i * CAR_PARK.bayW; g.beginPath(); g.moveTo(X(x), Z(za)); g.lineTo(X(x), Z(zb)); g.stroke(); }
-      g.beginPath(); g.moveTo(X(CAR_PARK.bayX0), Z(za)); g.lineTo(X(CAR_PARK.bayX0 + CAR_PARK.bays * CAR_PARK.bayW), Z(za)); g.stroke();
+    const line = (x0, z0, x1, z1) => { g.beginPath(); g.moveTo(X(x0), Z(z0)); g.lineTo(X(x1), Z(z1)); g.stroke(); };
+    cp.rows.forEach(r => {
+      for (let i = 0; i <= r.count; i++) {
+        const p = r.start + i * BAY;
+        if (r.along === 'x') line(p, r.near, p, r.far); else line(r.near, p, r.far, p);
+      }
+      const e = r.start + r.count * BAY;                                                  // the line at the car end of the bays
+      if (r.along === 'x') line(r.start, r.near, e, r.near); else line(r.near, r.start, r.near, e);
     });
-    g.fillStyle = '#ecece4';                                                                                       // two arrows in the aisle
-    const az = (rowA[1] + rowB[0]) / 2;
-    [CAR_PARK.bayX0 + 3, CAR_PARK.bayX0 + 12].forEach(ax => { g.beginPath(); g.moveTo(X(ax + 1.3), Z(az)); g.lineTo(X(ax + 0.2), Z(az - 0.5)); g.lineTo(X(ax + 0.2), Z(az - 0.18)); g.lineTo(X(ax - 1.3), Z(az - 0.18)); g.lineTo(X(ax - 1.3), Z(az + 0.18)); g.lineTo(X(ax + 0.2), Z(az + 0.18)); g.lineTo(X(ax + 0.2), Z(az + 0.5)); g.closePath(); g.fill(); });
+    g.fillStyle = '#ecece4';                                                              // arrows in the aisle
+    cp.arrows.forEach(([ax, az, d]) => {
+      const ang = { e: 0, s: Math.PI / 2, w: Math.PI, n: -Math.PI / 2 }[d], c = Math.cos(ang), s = Math.sin(ang);
+      const pts = [[1.3, 0], [0.2, -0.5], [0.2, -0.18], [-1.3, -0.18], [-1.3, 0.18], [0.2, 0.18], [0.2, 0.5]];
+      g.beginPath(); pts.forEach(([px, pz], i) => { const x = ax + px * c - pz * s, z = az + px * s + pz * c; i ? g.lineTo(X(x), Z(z)) : g.moveTo(X(x), Z(z)); }); g.closePath(); g.fill();
+    });
   });
 }
 
@@ -275,7 +297,10 @@ function buildYard(group, animators) {
     }, [FOUNTAIN.island * 2 / 1.5, FOUNTAIN.island * 2 / 1.5])));
     stone.rotation.x = -Math.PI / 2; stone.position.set(FOUNTAIN.x, 0.05, FOUNTAIN.z); stone.receiveShadow = true; group.add(stone);
   }
-  if (SHOW.carPark) flatRect(group, CAR_PARK, groundMat(parkingTexture()), 0.04);
+  if (SHOW.carPark) {
+    CAR_PARKS.forEach(cp => flatRect(group, cp.rect, groundMat(parkingTexture(cp)), 0.04));
+    flatRect(group, CONNECTOR, groundMat(noiseAsphalt()), 0.03, 4);                 // road to the west side yard
+  }
 
   // the hedge fence round both plots (7 runs, 7 parts each: 49 draw calls in all, each run is only drawn while you can see it)
   if (SHOW.fence) {
