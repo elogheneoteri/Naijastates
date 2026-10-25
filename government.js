@@ -3,7 +3,7 @@
 // Exports:  buildGovernment() -> { group }      GOV_BOXES -> solid parts for collisions      GOV_ZONES -> the areas that show the name at the top left
 //
 // WORLD-ALIGNED: this building is NOT turned by game.js (rotY 0 in the BUILDINGS entry), because the two halves face different ways:
-//   City Hall         faces EAST  (towards the avenue at x = 230)
+//   City Hall         faces WEST  (towards the Government Office)
 //   Government Office faces NORTH (towards the main road)
 // so the layout below is in real world metres, and every building turns itself.  +X = east, +Z = south, -Z = north.
 //
@@ -35,8 +35,8 @@ const HALL_MODEL = { hw: 0.954, hd: 0.917, h: 0.582 };
 const OFFICE_MODEL = { hw: 0.924, hd: 0.950, h: 0.744 };
 const HALL_SCALE = 8.5, OFFICE_SCALE = 16;
 
-// City Hall faces EAST: its back is the WEST side of its plot. (hd is the depth, along x when turned)
-const hallX = HALL_PLOT.x0 + 1.3 + HALL_MODEL.hd * HALL_SCALE;      // back wall 1.3 m inside the plot
+// City Hall stands in the same place as before; it is only turned to face WEST. (hd is the depth, along x when turned)
+const hallX = HALL_PLOT.x0 + 1.3 + HALL_MODEL.hd * HALL_SCALE;      // same spot as before: only the direction it faces was changed
 const hallZ = (HALL_PLOT.z0 + HALL_PLOT.z1) / 2;
 // Government Office faces NORTH: its back is the SOUTH side of its plot.
 const officeX = (GOV_PLOT.x0 + GOV_PLOT.x1) / 2;
@@ -44,10 +44,10 @@ const officeZ = GOV_PLOT.z1 - BACK_GAP - OFFICE_MODEL.hd * OFFICE_SCALE;
 
 // ---- the buildings. Signs: x, y, z = the middle of the empty board on the model (model units), w, h = board size (model units) ----
 const PARTS = [
-  { file: 'city_hall.glb', scale: HALL_SCALE, x: hallX, z: hallZ, rotY: 90, half: HALL_MODEL,
+  { file: 'city_hall.glb', scale: HALL_SCALE, x: hallX, z: hallZ, rotY: 270, half: HALL_MODEL,
     sign: { text: 'CITY HALL', x: 0, y: 0.450, z: 0.758, w: 0.250, h: 0.062 } },            // the grey board above the entrance canopy
   { file: 'government_office.glb', scale: OFFICE_SCALE, x: officeX, z: officeZ, rotY: 180, half: OFFICE_MODEL,
-    sign: { text: 'GOVERNMENT OFFICE', x: 0, y: 0.710, z: 0.885, w: 0.500, h: 0.060 } }      // the long board on the roof, facing the front
+    sign: { text: 'GOVERNMENT OFFICE', x: 0, y: 0.710, z: 0.885, w: 0.340, h: 0.042 } }      // the long board on the roof, facing the front
 ];
 
 // ---- solid parts: the walls of each building, [minX, maxX, minZ, maxZ] relative to GOV_ORIGIN (the game does not turn them: rotY is 0) ----
