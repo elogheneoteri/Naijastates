@@ -161,7 +161,7 @@ export function buildCity(loadProp) {
 
   // ----- empty building plots -----
 // Plots that already have a building: no yellow border, no front strip, no floating sign, and NO grey pad: the real red sand shows under the building.
-const BUILT_PLOTS = ['high_school', 'commercial', 'low_line', 'low_bedsit', 'rental', 'police', 'government', 'city_hall'];
+const BUILT_PLOTS = ['high_school', 'commercial', 'low_line', 'low_bedsit', 'rental', 'police', 'government', 'city_hall', 'rural'];
   // Plots that must show the real ground (red sand) instead of the plain grey pad: every built plot. (An empty plot keeps its grey pad.)
   const NO_PAD_PLOTS = BUILT_PLOTS;
   const padMat = new THREE.MeshStandardMaterial({ color: 0xb4ae9f, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });

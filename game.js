@@ -15,6 +15,7 @@ import { buildLineHouses, LINE_HOUSE_BOXES } from './line_houses.js';
 import { buildBedsitter, BEDSIT_BOXES, BEDSIT_STAIRS } from './bedsitter.js';          // Low-Class Housing: the bed-sitter block (bedsitter.glb)
 import { buildRentalOffice, RENTAL_BOXES } from './rental_office.js';          // Rental Office: the rental building (rental_office.glb)          // Low-Class Housing: the line houses (line_house.glb)
 import { buildGovernment, GOV_BOXES, GOV_ORIGIN } from './government.js';   // Government compound: City Hall + Government Office (city_hall.glb, government_office.glb)
+import { buildRuralFarm, FARM_BOXES } from './rural_farm.js';   // Rural District: rows of cassava, tomatoes and pepper + reserved river, animal and warehouse areas (cassava_row.glb, tomato_row.glb in props/)
 import { buildPoliceStation, POLICE_BOXES } from './police_station.js';   // Police Station: the building, the fence round it and the fig trees (police_station.glb, police_fence.glb, fig_tree.glb)
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
 import { buildMallInterior, MALL_INTERIOR_BOXES, MALL_STAIRS } from './mall_interior.js';        // the mall: 5 floors, escalators, lift
@@ -52,6 +53,7 @@ const COMM_PLOT = plotAt('commercial');     // the Commercial District plot from
 const LH_PLOT = plotAt('low_line');          // the Line Houses plot from city.js
 const BS_PLOT = plotAt('low_bedsit');        // the Bed-Sitters plot from city.js (next to the line houses)
 const RENT_PLOT = plotAt('rental');            // the Rental Office plot from city.js
+const RURAL_PLOT = plotAt('rural');            // the Rural District plot from city.js (next to the High School, across the avenue)
 const POLICE_PLOT = plotAt('police');          // the Police Station plot from city.js
 const HS_PLOT = plotAt('high_school');       // the High School plot from city.js (centre and which way it faces)
 const BUILDINGS = [
@@ -149,6 +151,15 @@ const BUILDINGS = [
     zone: { x0: 138, x1: 222, z0: 36, z1: 86 },     // the whole compound shows the name at the top left
     boxes: GOV_BOXES,
     fallback: [60, 8, 50]
+  },
+  {
+    key: 'rural', name: 'Rural District',
+    // The farm (rural_farm.js): 4 rows of cassava and 5 rows of tomatoes and pepper, with a river gap along the north edge, the animal area on the west side and the warehouse + 3 van bays on the east side. Its front faces the main road.
+    build: buildRuralFarm,
+    x: RURAL_PLOT.x, z: RURAL_PLOT.z, rotY: RURAL_PLOT.rotY,
+    zone: { x0: RURAL_PLOT.x - RURAL_PLOT.w / 2, x1: RURAL_PLOT.x + RURAL_PLOT.w / 2, z0: RURAL_PLOT.z - RURAL_PLOT.d / 2, z1: RURAL_PLOT.z + RURAL_PLOT.d / 2 },
+    boxes: FARM_BOXES,
+    fallback: [RURAL_PLOT.w, 3, RURAL_PLOT.d]
   }
 ];
 
