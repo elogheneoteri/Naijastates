@@ -12,6 +12,7 @@ import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.
 import { buildHighSchoolExterior, HS_EXTERIOR_BOXES } from './high_school_exterior.js';
 import { buildCommercialExterior, COMM_BOXES } from './commercial_exterior.js';
 import { buildLineHouses, LINE_HOUSE_BOXES } from './line_houses.js';
+import { buildBedsitter, BEDSIT_BOXES } from './bedsitter.js';          // Low-Class Housing: the bed-sitter block (bedsitter.glb)
 import { buildRentalOffice, RENTAL_BOXES } from './rental_office.js';          // Rental Office: the rental building (rental_office.glb)          // Low-Class Housing: the line houses (line_house.glb)
 import { buildPoliceStation, POLICE_BOXES } from './police_station.js';   // Police Station: the building, the fence round it and the fig trees (police_station.glb, police_fence.glb, fig_tree.glb)
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
@@ -48,6 +49,7 @@ const ROAD_Z0 = 27.0, ROAD_Z1 = 30.5;      // main road (runs west to east, thro
 // measured BEFORE rotation (the code rotates them for you).
 const COMM_PLOT = plotAt('commercial');     // the Commercial District plot from city.js
 const LH_PLOT = plotAt('low_line');          // the Line Houses plot from city.js
+const BS_PLOT = plotAt('low_bedsit');        // the Bed-Sitters plot from city.js (next to the line houses)
 const RENT_PLOT = plotAt('rental');            // the Rental Office plot from city.js
 const POLICE_PLOT = plotAt('police');          // the Police Station plot from city.js
 const HS_PLOT = plotAt('high_school');       // the High School plot from city.js (centre and which way it faces)
@@ -111,6 +113,14 @@ const BUILDINGS = [
     x: LH_PLOT.x, z: LH_PLOT.z, rotY: LH_PLOT.rotY,
     boxes: LINE_HOUSE_BOXES,
     fallback: [LH_PLOT.w, 6, LH_PLOT.d]
+  },
+  {
+    key: 'low_bedsit', name: 'Bed-Sitters',
+    // The two-floor bed-sitter block (bedsitter.js): six rooms a floor, a veranda along the top floor, the outside stairs on the east end. Its front faces the main road.
+    build: buildBedsitter,
+    x: BS_PLOT.x, z: BS_PLOT.z, rotY: BS_PLOT.rotY,
+    boxes: BEDSIT_BOXES,
+    fallback: [BS_PLOT.w, 7, BS_PLOT.d]
   },
   {
     key: 'rental', name: 'Rental Office',
