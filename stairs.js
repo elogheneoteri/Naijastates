@@ -1,4 +1,5 @@
 // stairs.js  (STEP 2 + 4: the front steps of the High School, and the indoor stairs to the upper floor)
+//   (+ the OUTSIDE STAIRS of the bed-sitter blocks: see extStairs() below; their numbers are in bedsitter.js, BEDSIT_STAIRS)
 //
 // What this file does
 //   1. Knows where the steps are and how high they go.
@@ -53,6 +54,31 @@ export const STAIR_ANIM_SPEED = 1.5;     // the stairs animation plays at normal
 
 const placed = [];   // every set of steps in the world, with its position
 
+// ---- the OUTSIDE STAIRS of the bed-sitter blocks (a def with ext: true; one def covers every block, def.blocks) ----
+// Three flights hug the east wall of each block: the back flight F1 and the front flight F3 both go up from the ground to the landing (same
+// height), the top flight F2 goes on up from the landing to the veranda deck of the top floor. Every character carries u.level, as at the school:
+//   * on the back flight, the front flight and the east half of the landing you are on level 0 (ground side);
+//   * on the west half of the landing (west of landing.gateX) you are on level 1: from there you can climb F2 to the deck and walk the veranda;
+//   * on F2 and on the deck, level 1 keeps you up there (level 0 would mean you are on the ground underneath, which the collision boxes in
+//     bedsitter.js do not let you reach under F2).
+// q = the position in the block's own space (metres from the middle of the block); u = the character's userData. Returns { h } or null (not on the stairs).
+const clamp01 = v => Math.min(1, Math.max(0, v));
+function extStairs(d, q, u) {
+  const inZ = z => q.x >= z.x0 && q.x <= z.x1 && q.z >= z.z0 && q.z <= z.z1;
+  const level = u ? (u.level || 0) : 0;
+  if (level === 1) {
+    if (inZ(d.deck)) return { h: d.deck.h };                                                       // the veranda of the top floor
+    if (inZ(d.F2)) return { h: d.F2.hLow + (d.F2.hHigh - d.F2.hLow) * clamp01((q.z - d.F2.z0) / (d.F2.z1 - d.F2.z0)) };   // the top flight
+  }
+  if (inZ(d.landing)) {                                                                            // the landing: flat, and it decides which way you are heading
+    if (u) u.level = q.x < d.landing.gateX ? 1 : 0;
+    return { h: d.landing.h };
+  }
+  if (inZ(d.F1)) { if (u) u.level = 0; return { h: d.F1.h * clamp01((q.z - d.F1.z0) / (d.F1.z1 - d.F1.z0)) }; }     // back flight (rises towards +z)
+  if (inZ(d.F3)) { if (u) u.level = 0; return { h: d.F3.h * clamp01((d.F3.z1 - q.z) / (d.F3.z1 - d.F3.z0)) }; }     // front flight (falls towards +z)
+  return null;
+}
+
 // Called once by game.js for each building that has steps (x, z, rotY = where the building stands, as in the BUILDINGS list)
 export function addStairs(def, x, z, rotY) {
   placed.push({ def, x, z, a: THREE.MathUtils.degToRad(rotY || 0) });
@@ -69,6 +95,14 @@ export function groundHeight(wx, wz, u) {
   let h = 0, inside = false;
   for (const s of placed) {
     const d = s.def, p = toLocal(s, wx, wz), f = d.footprint;
+    if (d.ext) {                                                                                       // the BED-SITTERS: outside stairs + the top-floor veranda
+      for (const blk of d.blocks) {
+        const r = extStairs(d, { x: p.x - blk.x, z: p.z - blk.z }, u);
+        if (r) { h = Math.max(h, r.h); break; }
+      }
+      if (u && u.level === 1) inside = true;                                                           // up there: do not reset the level below
+      continue;
+    }
     if (d.floorsY) {                                                                                       // the MALL: five floors + two escalator lanes (mall_interior.js)
       if (p.x > f.x0 && p.x < f.x1 && p.z > f.z0 && p.z <= f.z1) {
         inside = true;
@@ -129,11 +163,21 @@ export function escalatorDrift(wx, wz) {
 export function onStairs(wx, wz) {
   for (const s of placed) {
     const d = s.def, p = toLocal(s, wx, wz);
+    if (d.ext) {                                                                                       // the bed-sitter stairs
+      for (const blk of d.blocks) {
+        const x = p.x - blk.x, z = p.z - blk.z;
+        if (x >= d.on.x0 && x <= d.on.x1 && z >= d.on.z0 && z <= d.on.z1) return true;
+      }
+      continue;
+    }
     if (p.x >= d.x0 - 0.2 && p.x <= d.x1 + 0.2 && p.z > d.zTop && p.z < d.zBottom) return true;
     const st = d.inner;
     if (st && Math.abs(p.x - st.sx) <= st.halfX && Math.abs(p.z - st.sz) <= st.halfZ) return true;
   }
   return false;
 }
+
+
+
 
 

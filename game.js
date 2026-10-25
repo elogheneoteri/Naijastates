@@ -12,7 +12,7 @@ import { buildImmigrationOffice, IMMIGRATION_BOXES } from './immigration_office.
 import { buildHighSchoolExterior, HS_EXTERIOR_BOXES } from './high_school_exterior.js';
 import { buildCommercialExterior, COMM_BOXES } from './commercial_exterior.js';
 import { buildLineHouses, LINE_HOUSE_BOXES } from './line_houses.js';
-import { buildBedsitter, BEDSIT_BOXES } from './bedsitter.js';          // Low-Class Housing: the bed-sitter block (bedsitter.glb)
+import { buildBedsitter, BEDSIT_BOXES, BEDSIT_STAIRS } from './bedsitter.js';          // Low-Class Housing: the bed-sitter block (bedsitter.glb)
 import { buildRentalOffice, RENTAL_BOXES } from './rental_office.js';          // Rental Office: the rental building (rental_office.glb)          // Low-Class Housing: the line houses (line_house.glb)
 import { buildPoliceStation, POLICE_BOXES } from './police_station.js';   // Police Station: the building, the fence round it and the fig trees (police_station.glb, police_fence.glb, fig_tree.glb)
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
@@ -120,6 +120,7 @@ const BUILDINGS = [
     build: buildBedsitter,
     x: BS_PLOT.x, z: BS_PLOT.z, rotY: BS_PLOT.rotY,
     boxes: BEDSIT_BOXES,
+    stairs: BEDSIT_STAIRS,                 // the outside stairs of both blocks are walkable up to the top-floor veranda (stairs.js, extStairs)
     fallback: [BS_PLOT.w, 7, BS_PLOT.d]
   },
   {

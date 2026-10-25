@@ -10,20 +10,21 @@
 // the shape itself was not touched (20,000 triangles).
 //
 // THE LAYOUT: TWO blocks, both facing SOUTH (towards the main road), one IN FRONT OF the other, on the same line (x = 0). The south block stands at the
-// front of the plot, the north block at the back. The open yard between them (SPACE_BETWEEN, see below) is kept free of grass: that is where the two water
-// tanks and the tap stand.
+// front of the plot, the north block at the back. The open yard between them (SPACE_BETWEEN, see below) is kept free of grass.
 //
-// THE YARD BETWEEN THE BLOCKS, far EAST end: the tap (your tubewell hand pump, tubewell.glb, on a small concrete slab, spout facing west) and the TWO water
-// tanks, each on its steel stand, made the same way as the tank at your high school (plastic_tank + water_tank_stand.glb from props/).
+// THE TAP AND THE TANKS: on the line of the yard between the two blocks, but at the WEST end, behind the line houses next door (the line houses' back
+// wall is just west of this plot): the tap (your tubewell hand pump, props/tubewell.glb, on a small concrete slab, spout facing west) in the middle and a
+// water tank on its steel stand on each side of it, made the same way as the tank at your high school (plastic_tank + water_tank_stand.glb from props/).
 //
-// STEP 2 (this file): the buildings, the tap and the two tanks are placed. The staircases are drawn but are SOLID BLOCKS for now (you cannot walk on them yet).
-// The next step will add the walkable stairs; it will change this file and nothing else.
+// THE STAIRS (walkable): each block's outside staircase (east end) works like the stairs at the school. Walk up the front flight (or the back flight),
+// cross the landing, turn onto the top flight and you arrive on the veranda of the top floor, which you can walk along in front of the six doors.
+// Walk back down the same way. stairs.js does the heights (it reads BEDSIT_STAIRS below), game.js does the collisions (BEDSIT_BOXES below).
 //
 // THINGS YOU MAY WANT TO CHANGE
 //   FILE / SCALE   the model and its size. Two blocks one behind the other have to share the plot's 22 m depth, so 9.4 is as big as they can be
 //                  and still leave a yard between them: doors about 1.74 m tall, each block about 17.9 m long, 8.8 m deep and 6.3 m high
 //   EDGE           the gap between the roof edge of the front block and the front of the plot (and the back block and the back of the plot)
-//   TAP / TANKS    where the tap and the two water tanks stand in the yard (metres from the plot centre; x grows towards the east)
+//   TAP / TANKS    where the tap and the two water tanks stand (metres from the plot centre; x grows towards the east, so a big negative x is the west end)
 //   TAP_SCALE      the size of the hand pump (1.15 makes it about 1.3 m tall)
 //   GRASS_TUFTS    how many small grass tufts are scattered on the sand; 0 = none
 
@@ -53,31 +54,61 @@ const LAYOUT = [
 ];
 const SPACE_BETWEEN = BLD_Z - ROOF_HALF_D;                          // half the free yard between the two roofs: the yard runs from z = -this to +this (about 3.6 m wide in all)
 
-// the tap and the two water tanks, in the yard between the blocks, in the east half (the yard runs from z = about -2.7 to +2.1 between the walls)
+// the tap and the two water tanks, on the line of the yard between the blocks, at the west end (behind the line houses)
 const TAP_FILE = 'tubewell.glb', TAP_SCALE = 1.15;             // lives in your props/ folder, like the water tank stand
-const TAP = { x: 1.8, z: 0.0 };                                     // the hand pump (its spout points west, its handle east)
+const TAP = { x: -10.9, z: 0.0 };                                   // the hand pump (its spout points west towards the line houses, its handle east)
 const TAP_SLAB = { w: 1.3, h: 0.12, d: 1.3 };                       // the concrete slab it stands on
-const TANKS = [{ x: 3.9, z: 0.0 }, { x: 6.2, z: 0.0 }];             // the two tank towers
+const TANKS = [{ x: -10.9, z: -1.9 }, { x: -10.9, z: 1.9 }];       // the two tank towers, one on each side of the tap
 const TANK_SCALE = 1.5;                                             // same as the high school tank
 const STAND_FILE = 'water_tank_stand.glb';                          // the same stand as the high school tank
 
 const R = (x, z, hw, hd = hw) => [x - hw, x + hw, z - hd, z + hd];
 
-// solid parts, [minX, maxX, minZ, maxZ] relative to the plot centre
+// ---------- the outside stairs (measured from the model; all in metres from the middle of each block) ----------
+// The staircase hugs the east wall in three flights: a BACK flight (F1) rises to a landing, a FRONT flight (F3) comes down from the landing to the
+// ground in front, and a TOP flight (F2) rises from the landing to the veranda deck of the top floor. The flights are narrow (0.7 m), so the
+// collision boxes below leave a narrow lane to walk in.
+const LANDING_H = 0.157 * SCALE, TOP_H = 0.311 * SCALE;              // height of the landing and of the top-floor veranda above the ground
+export const BEDSIT_STAIRS = {
+  ext: true,
+  blocks: LAYOUT.map(b => ({ x: b.x, z: b.z })),
+  F1: { x0: 0.766 * SCALE, x1: 0.894 * SCALE, z0: -0.289 * SCALE, z1: -0.037 * SCALE, h: LANDING_H },                       // back flight: foot at z0, top at z1
+  landing: { x0: 0.766 * SCALE, x1: 0.957 * SCALE, z0: -0.037 * SCALE, z1: 0.091 * SCALE, h: LANDING_H, gateX: 0.851 * SCALE },   // west of gateX you are heading for the top flight
+  F2: { x0: 0.766 * SCALE, x1: 0.883 * SCALE, z0: 0.091 * SCALE, z1: 0.325 * SCALE, hLow: LANDING_H, hHigh: TOP_H },         // top flight: from the landing up to the veranda
+  F3: { x0: 0.851 * SCALE, x1: 0.979 * SCALE, z0: 0.091 * SCALE, z1: 0.338 * SCALE, h: LANDING_H },                          // front flight: top at z0 (landing), foot at z1
+  deck: { x0: -0.84 * SCALE, x1: 0.883 * SCALE, z0: 0.325 * SCALE, z1: 0.479 * SCALE, h: TOP_H },                            // the veranda of the top floor, along the whole front
+  on: { x0: 0.766 * SCALE, x1: 0.99 * SCALE, z0: -0.3 * SCALE, z1: 0.34 * SCALE }                                            // where you walk slower (on the steps)
+};
+const K = v => v * SCALE;
+
+// solid parts, [minX, maxX, minZ, maxZ, level] relative to the plot centre. level (optional): 0 = only solid when you are on the ground floor,
+// 1 = only solid when you are on the top floor, missing = solid on both.
+const blockBoxes = b => {
+  const X = b.x, Z = b.z;
+  const B = (x0, x1, z0, z1, lv) => lv === undefined ? [X + x0, X + x1, Z + z0, Z + z1] : [X + x0, X + x1, Z + z0, Z + z1, lv];
+  return [
+    // the walls (pulled in so you can brush along them, and the strip in front of the doors is left open). The east end is pulled in further so the
+    // narrow stair lane has room next to the wall.
+    B(-BODY_HALF_L + 0.2, BODY_HALF_L - 0.7, BODY_BACK + 0.2, BODY_FRONT - 0.2 - APRON),
+    // fences of the stairs (thin boxes: the game keeps you 0.45 m away from them, which leaves a lane of about 0.4 m)
+    B(K(0.881), K(0.885), K(-0.287), K(-0.048)),                    // east side of the back flight
+    B(K(0.979), K(0.984), K(-0.053), K(0.314)),                     // east side of the landing and of the front flight
+    B(K(0.777), K(0.84), K(0.101), K(0.319), 0),                    // under the top flight: you cannot walk in below it from the ground
+    B(K(0.878), K(0.883), K(0.101), K(0.521), 1),                   // between the top flight and the front flight, and the east end of the veranda (top floor only)
+    // the veranda of the top floor (only solid up there): the rail along the front and the west end
+    B(K(-0.894), K(0.883), K(0.459), K(0.464), 1),
+    B(K(-0.894), K(-0.83), K(0.32), K(0.521), 1)
+  ];
+};
 export const BEDSIT_BOXES = [
   R(TAP.x, TAP.z, 0.7, 0.55),                                       // the tap
   ...TANKS.map(t => R(t.x, t.z, 0.95)),                             // the tank towers (same size as the high school one)
-  ...LAYOUT.flatMap(b => [
-  // the walls (pulled in 0.2 m so you can brush along them, and the strip in front of the doors is left open)
-  [b.x - BODY_HALF_L + 0.2, b.x + BODY_HALF_L - 0.2, b.z + BODY_BACK + 0.2, b.z + BODY_FRONT - 0.2 - APRON],
-  // the outside staircase on the east end: a solid block for now (the walkable stairs come in the stairs step)
-  [b.x + BODY_HALF_L - 0.3, b.x + STAIR_X1, b.z + STAIR_Z0, b.z + STAIR_Z1]
-  ])
+  ...LAYOUT.flatMap(blockBoxes)
 ];
 
 // ---------- a touch of grass on the bare sand ----------
 // The ground here is the world's red sand (city.js no longer lays a grey pad under this plot). Small grass tufts are scattered in the yard,
-// at the sides and just outside the plot edges, never against the walls and never in the yard between the two blocks (that is kept free for the tanks and the tap).
+// at the sides and just outside the plot edges, never against the walls, never in the yard between the two blocks and never around the tap and the tanks.
 const GRASS_TUFTS = 70;
 
 function paintTuft(ctx, S) {                             // a small fan of grass blades on a transparent card
@@ -96,12 +127,14 @@ function addTufts(group) {
   const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   const solids = LAYOUT.map(b => [b.x - ROOF_HALF_L, b.x + ROOF_HALF_L, b.z - ROOF_HALF_D, b.z + ROOF_HALF_D]);     // everything under each roof edge
   const PX = PLOT_W / 2, PZ = PLOT_D / 2;
+  const clearOf = [R(TAP.x, TAP.z, 0.7, 0.55), ...TANKS.map(t => R(t.x, t.z, 0.95))];
   const spots = [];
   for (let tries = 0; spots.length < GRASS_TUFTS && tries < 4000; tries++) {
     const x = (rnd() * 2 - 1) * (PX + 1.5), z = (rnd() * 2 - 1) * (PZ + 1.5);
     if (z > PZ + 0.5) continue;                                                             // not onto the pavement of the main road
     if (solids.some(b => x > b[0] - 0.6 && x < b[1] + 0.6 && z > b[2] - 0.6 && z < b[3] + 0.6)) continue;   // not against the buildings
     if (Math.abs(z) < SPACE_BETWEEN + 0.6 && Math.abs(x) < ROOF_HALF_L) continue;                          // not in the yard between the blocks
+    if (clearOf.some(b => x > b[0] - 1 && x < b[1] + 1 && z > b[2] - 1 && z < b[3] + 1)) continue;         // not around the tap and the tanks
     spots.push([x, z]);
   }
   const c = document.createElement('canvas'); c.width = c.height = 128; paintTuft(c.getContext('2d'), 128);
