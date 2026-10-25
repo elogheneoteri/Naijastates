@@ -15,6 +15,7 @@ import { buildLineHouses, LINE_HOUSE_BOXES } from './line_houses.js';
 import { buildBedsitter, BEDSIT_BOXES, BEDSIT_STAIRS } from './bedsitter.js';          // Low-Class Housing: the bed-sitter block (bedsitter.glb)
 import { buildRentalOffice, RENTAL_BOXES } from './rental_office.js';          // Rental Office: the rental building (rental_office.glb)          // Low-Class Housing: the line houses (line_house.glb)
 import { buildGovernment, GOV_BOXES, GOV_ORIGIN } from './government.js';   // Government compound: City Hall + Government Office (city_hall.glb, government_office.glb)
+import { buildRiver, cutRiverHole, RIVER_BOXES, riverDip, riverSpeed } from './river.js';   // the river along the north edge of the Rural District (for fishing)
 import { buildRuralFarm, FARM_BOXES } from './rural_farm.js';   // Rural District: rows of cassava, tomatoes and pepper + reserved river, animal and warehouse areas (cassava_row.glb, tomato_row.glb in props/)
 import { buildPoliceStation, POLICE_BOXES } from './police_station.js';   // Police Station: the building, the fence round it and the fig trees (police_station.glb, police_fence.glb, fig_tree.glb)
 import { buildHighSchoolInterior, HS_INTERIOR_BOXES } from './high_school_interior.js';
@@ -922,7 +923,7 @@ function updateElevation(av, x, z, dt) {
   const u = av.userData, y = groundHeight(x, z, u);   // Step 4: u.level (0 downstairs, 1 upstairs) is kept up to date by groundHeight
   const vy = u.lastY === undefined ? 0 : (y - u.lastY) / Math.max(dt, 0.001);
   u.lastY = y;
-  av.position.y = y;
+  av.position.y = y + riverDip(x, z);                    // river.js: sink into the water (0 on land)
   const th = u.stairDir ? 0.05 : 0.2;                  // a little hysteresis, so the animation does not flicker at the ends
   u.stairDir = vy > th ? 1 : vy < -th ? -1 : 0;
 }
@@ -954,6 +955,12 @@ class World {
     this.buildGround();
     this.buildBorder();
     BUILDINGS.forEach(b => this.addBuilding(b));
+    try {                                // the river north of the Rural District: water, fish, reeds, ripples (river.js)
+      this.river = buildRiver(this);
+      this.scene.add(this.river.group);
+      this.animators.push(this.river.update);
+      RIVER_BOXES.forEach(b => this.boxes.push(b));       // the invisible wall at the end of the rural plot
+    } catch (e) { console.error('River could not start:', e); this.river = null; }
     this.buildPlayer();
     this.buildHud();
     this.initMinimap();
@@ -1044,13 +1051,17 @@ class World {
         .replace('#include <map_fragment>', `
           float grassAmt = texture2D(tMask, vMapUv / uRep).r;
           diffuseColor *= mix(texture2D(map, vMapUv), texture2D(tGrass, vMapUv), grassAmt);`);
+      cutRiverHole(sh);                                  // river.js: the river-shaped hole in the ground, so the water bed and the water show
     };
-    groundMat.customProgramCacheKey = () => 'sand-grass-ground';
+    groundMat.customProgramCacheKey = () => 'sand-grass-ground-river';
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, WORLD_H), groundMat);
     ground.rotation.x = -Math.PI / 2; ground.position.set(WORLD_W / 2, -0.04, WORLD_H / 2); ground.receiveShadow = true; this.scene.add(ground);
 
     // Beyond the world edge: more ground so the horizon is not a cliff
-    const far = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: 0x6b8348, roughness: 1 }));
+    const farMat = new THREE.MeshStandardMaterial({ color: 0x6b8348, roughness: 1 });
+    farMat.onBeforeCompile = sh => cutRiverHole(sh);     // river.js: the big river carries on north of the world edge
+    farMat.customProgramCacheKey = () => 'far-ground-river';
+    const far = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), farMat);
     far.rotation.x = -Math.PI / 2; far.position.set(WORLD_W / 2, -0.08, WORLD_H / 2); this.scene.add(far);
 
     // Asphalt road with worn lane markings baked in (one tile = 4 m of road)
@@ -1538,7 +1549,7 @@ class World {
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw);       // forward on the ground
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);        // right
     const p = this.player.position;
-    const sp = onStairs(p.x, p.z) ? SPEED * STAIR_SPEED_FACTOR : SPEED;       // Step 2: a bit slower on the steps
+    const sp = (onStairs(p.x, p.z) ? SPEED * STAIR_SPEED_FACTOR : SPEED) * riverSpeed(p.x, p.z);       // a bit slower on the steps, and slower in deep water
     const vx = (fx * iy + rx * ix) * sp;
     const vz = (fz * iy + rz * ix) * sp;
 
