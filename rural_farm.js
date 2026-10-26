@@ -28,12 +28,21 @@
 //   copied with SkeletonUtils, so every animal has its own skeleton and its own animation clock).
 //   The brown "trodden earth" patch that used to mark the animal area is gone: the animals stand on the ordinary red sand.
 //
-// FILES (all go in your props folder):
+// THE WAREHOUSE (your warehouse_optimised.glb, in the MAIN folder next to game.js, not in props): it stands in the spot that was kept for it
+//   (WAREHOUSE_SPOT, the north part of the warehouse area), the big door facing the 3 van bays. The grey concrete yard that was painted under
+//   the warehouse area is gone; only the white van bay lines stay. The warehouse is solid.
+//   Next to it: the water tank on its stand (props/water_tank_optimised.glb) beside the field, a watering can by the tank and one on the footpath
+//   (props/watering_can_optimised.glb), and the rusted farm tools (spade, shovel, pitchfork, hoe, rake: props/rusted_farm_tools_optimised.glb)
+//   leaning on the front wall of the warehouse, east of the door.
+//
+// FILES (all go in your props folder, except the warehouse):
 //   wood_fence.glb                    your fence (70 triangles, already small)
 //   ps1_pig.glb                       your pig (728 triangles, 256 px picture, already small)
 //   chicken_rig.glb                   your chicken, SMALLER: 1541 triangles, picture shrunk from 410 KB to 113 KB, whole file 722 KB -> 426 KB. Same animation.
 //   feeding_trough_optimised.glb      your trough, SMALLER: 16 pieces joined into 1 (1 draw call instead of 16), 748 triangles, file 2.8 MB -> 96 KB
 //   cassava_row.glb, tomato_row.glb   the crops (unchanged)
+//   water_tank_optimised.glb, watering_can_optimised.glb, rusted_farm_tools_optimised.glb   NEW, already shrunk (about 0.3 to 0.5 MB each)
+//   warehouse_optimised.glb           NEW, in the MAIN folder (1.5 MB, 20,000 triangles)
 //
 // KEEPING THE GAME FAST
 //   * the whole fence is 2 draw calls (InstancedMesh: one for the panels, one for the posts): 39 panels + 41 posts, about 2,900 triangles in all
@@ -48,7 +57,10 @@
 //   PIGS / CHICKENS / TROUGH / PUDDLES   one line per animal or puddle: x, z (metres from the plot centre), which way it faces (rot) and its size
 //   PIG_SCALE / CHICKEN_SCALE            how big the animals are (0.2 makes a pig 1.3 m long; the chicken file is already life size, 0.42 m tall)
 //   PIG_TURN / CHICKEN_TURN              if the animals face the wrong way (tail towards the trough), set this to 3.1416 to turn every one of them round
-//   MARK_AREAS       false = no painted patches at all (the warehouse yard and the van bay lines)
+//   MARK_AREAS       false = no painted lines at all (the van bay lines)
+//   WAREHOUSE_STRETCH_Y   1.6 makes the warehouse 1.6 times taller than its file (about 4.5 m high, door about 2 m). 1 = as in the file.
+//   WAREHOUSE_BOX / TANK_BOX   the solid parts (players cannot walk through the warehouse or the water tank)
+//   TOOLS_AT / CANS / TANK     where the tools, the two watering cans and the water tank stand (x, z in metres from the plot centre)
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -58,10 +70,13 @@ import { PROPS_DIR } from './props_library.js';
 const FILE_CASSAVA = PROPS_DIR + 'cassava_row.glb', FILE_TOMATO = PROPS_DIR + 'tomato_row.glb';   // in the props folder
 const FILE_FENCE = PROPS_DIR + 'wood_fence.glb', FILE_PIG = PROPS_DIR + 'ps1_pig.glb', FILE_CHICKEN = PROPS_DIR + 'chicken_rig.glb';
 const FILE_TROUGH = PROPS_DIR + 'feeding_trough_optimised.glb';
+const FILE_WAREHOUSE = 'warehouse_optimised.glb';                                            // in the MAIN folder (not props)
+const FILE_TANK = PROPS_DIR + 'water_tank_optimised.glb', FILE_CAN = PROPS_DIR + 'watering_can_optimised.glb', FILE_TOOLS = PROPS_DIR + 'rusted_farm_tools_optimised.glb';
 const PLOT_W = 74, PLOT_D = 22;                       // the plot (from city.js)
 const X0 = -PLOT_W / 2, X1 = PLOT_W / 2, Z0 = -PLOT_D / 2, Z1 = PLOT_D / 2;
 const MODULE_L = 3.8;                                 // length of one row piece (metres): they sit end to end
-const MARK_AREAS = true;
+const MARK_AREAS = true;                              // the white van bay lines (the grey yard under the warehouse is gone)
+const WAREHOUSE_STRETCH_Y = 1.6;                      // the warehouse file is low and wide: this makes it taller (1 = as in the file)
 
 // ----- the reserved areas -----
 const RIVER_DEPTH = 5.0, ANIMAL_W = 16, WAREHOUSE_W = 16;
@@ -73,6 +88,11 @@ const BAY_W = 3.2, BAY_L = 6.0, BAYS_X0 = (WAREHOUSE.x0 + WAREHOUSE.x1) / 2 - 1.
 const BAYS = { x0: BAYS_X0, x1: BAYS_X0 + 3 * BAY_W, z0: BAYS_Z0, z1: BAYS_Z0 + BAY_L };
 // the small warehouse itself goes here later (north part of its area, loading side facing the bays)
 const WAREHOUSE_SPOT = { x0: WAREHOUSE.x0 + 1.5, x1: WAREHOUSE.x1 - 1.5, z0: RIVER.z1 + 0.8, z1: BAYS_Z0 - 3.0 };
+// the warehouse fills its spot from side to side (13 m wide); its depth follows from the file (6.5 m); the big door faces south, to the van bays
+const WH = { cx: (WAREHOUSE_SPOT.x0 + WAREHOUSE_SPOT.x1) / 2, cz: (WAREHOUSE_SPOT.z0 + WAREHOUSE_SPOT.z1) / 2, w: WAREHOUSE_SPOT.x1 - WAREHOUSE_SPOT.x0, d: 6.46 };
+const TANK = { x: 21.2, z: -3.2, height: 3.2 };                                        // the water tank on its stand, between the field and the warehouse
+const CANS = [{ x: 4.2, z: 2.25, rot: 0.8 }, { x: TANK.x + 0.3, z: TANK.z + 2.0, rot: 2.4 }];   // one on the footpath, one by the tank
+const TOOLS_AT = { x: WH.cx + 4.6, z: WH.cz + WH.d / 2 + 0.3, height: 1.55, lean: -0.14 };      // the tools lean against the front wall, east of the door
 export const FARM_AREAS = { river: RIVER, animals: ANIMALS, warehouse: WAREHOUSE, warehouseSpot: WAREHOUSE_SPOT, vanBays: BAYS };
 
 // ----- the crop field: between the two side areas, a footpath down the middle -----
@@ -131,7 +151,9 @@ const PIG_BOXES = PIGS.map(p => {                       // a box round the pig, 
   const hx = s * hl + c * hw, hz = c * hl + s * hw;
   return [p.x - hx, p.x + hx, p.z - hz, p.z + hz];
 });
-export const FARM_BOXES = [...FENCE_BOXES, TROUGH_BOX, ...PIG_BOXES];       // crops are walk-through; add [x0, x1, z0, z1] here to make something solid
+const WAREHOUSE_BOX = [WH.cx - WH.w / 2 - 0.05, WH.cx + WH.w / 2 + 0.05, WH.cz - WH.d / 2, WH.cz + WH.d / 2 + 0.02];
+const TANK_BOX = [TANK.x - 0.85, TANK.x + 0.85, TANK.z - 0.8, TANK.z + 0.8];
+export const FARM_BOXES = [...FENCE_BOXES, TROUGH_BOX, ...PIG_BOXES, WAREHOUSE_BOX, TANK_BOX];       // crops are walk-through; add [x0, x1, z0, z1] here to make something solid
 
 // ---------- small helpers ----------
 let seed = 7;
@@ -151,7 +173,7 @@ function patch(group, r, color, y, level) {                                     
 
 function markAreas(group) {
   // (the brown "trodden earth" patch under the animal area was here. It is removed: the animals stand on the plain red sand.)
-  patch(group, { x0: WAREHOUSE.x0 + 0.5, x1: WAREHOUSE.x1 - 0.5, z0: WAREHOUSE.z0 + 0.5, z1: WAREHOUSE.z1 - 0.8 }, 0x9d9a92, 0.012, 1);  // concrete yard
+  // (the grey concrete yard under the warehouse area was here. It is removed: the warehouse stands on the plain red sand.)
   for (let i = 0; i <= 3; i++) {                                                                                                          // the 3 van bay lines
     const x = BAYS.x0 + i * BAY_W;
     patch(group, { x0: x - 0.06, x1: x + 0.06, z0: BAYS.z0, z1: BAYS.z1 }, 0xf1efe6, 0.02, 3);
@@ -275,6 +297,31 @@ function buildTrough(group) {
   }, undefined, e => console.warn('rural_farm: could not load ' + FILE_TROUGH, e));
 }
 
+// ---------- a model sized in metres, its feet on the ground and its middle on (x, z) ----------
+// width or height: the size in metres (the other sides follow). stretchY: makes it taller or lower than its file. lean: tips it over (negative = the top goes north).
+function placeModel(group, file, o) {
+  new GLTFLoader().load(file, gltf => {
+    const root = gltf.scene;
+    root.traverse(m => { if (m.isMesh) { m.castShadow = o.shadow !== false; m.receiveShadow = true; } });
+    root.updateMatrixWorld(true);
+    const size = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
+    const k = o.width ? o.width / size.x : o.height / size.y;
+    root.scale.set(k, k * (o.stretchY || 1), k); root.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(root), c = b.getCenter(new THREE.Vector3());
+    root.position.set(-c.x, -b.min.y, -c.z);                                        // centred on x and z, standing on the ground
+    const holder = new THREE.Group(); holder.add(root);
+    holder.rotation.set(o.lean || 0, o.rot || 0, 0); holder.position.set(o.x, 0, o.z);
+    group.add(holder);
+  }, undefined, e => console.warn('rural_farm: could not load ' + file, e));
+}
+
+function buildWarehouseAndProps(group) {
+  placeModel(group, FILE_WAREHOUSE, { width: WH.w, stretchY: WAREHOUSE_STRETCH_Y, x: WH.cx, z: WH.cz });
+  placeModel(group, FILE_TANK, { height: TANK.height, x: TANK.x, z: TANK.z });
+  CANS.forEach(c => placeModel(group, FILE_CAN, { height: 0.42, x: c.x, z: c.z, rot: c.rot, shadow: false }));
+  placeModel(group, FILE_TOOLS, { height: TOOLS_AT.height, x: TOOLS_AT.x, z: TOOLS_AT.z, lean: TOOLS_AT.lean, shadow: false });
+}
+
 export function buildRuralFarm() {
   const group = new THREE.Group();
   const mixers = [];
@@ -285,6 +332,7 @@ export function buildRuralFarm() {
   buildPuddles(group);
   buildTrough(group);
   buildAnimals(group, mixers);
+  buildWarehouseAndProps(group);
   const clock = new THREE.Clock();                                                 // game.js calls update() every frame: it moves the pigs and chickens
   const update = () => { const dt = Math.min(clock.getDelta(), 0.1); for (let i = 0; i < mixers.length; i++) mixers[i].update(dt); };
   return { group, update };
