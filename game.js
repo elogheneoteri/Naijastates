@@ -14,6 +14,7 @@ import { buildCommercialExterior, COMM_BOXES } from './commercial_exterior.js';
 import { buildLineHouses, LINE_HOUSE_BOXES } from './line_houses.js';
 import { buildBedsitter, BEDSIT_BOXES, BEDSIT_STAIRS } from './bedsitter.js';          // Low-Class Housing: the bed-sitter block (bedsitter.glb)
 import { buildRentalOffice, RENTAL_BOXES } from './rental_office.js';          // Rental Office: the rental building (rental_office.glb)          // Low-Class Housing: the line houses (line_house.glb)
+import { buildHotel, HOTEL_BOXES, HOTEL_ORIGIN } from './hotel.js';   // Hotel compound: Hotel + Club House (hotel.glb, club_house.glb)
 import { buildGovernment, GOV_BOXES, GOV_ORIGIN } from './government.js';   // Government compound: City Hall + Government Office (city_hall.glb, government_office.glb)
 import { buildRiver, cutRiverHole, RIVER_BOXES, riverDip, riverSpeed } from './river.js';   // the river along the north edge of the Rural District (for fishing)
 import { buildRuralFarm, FARM_BOXES } from './rural_farm.js';   // Rural District: rows of cassava, tomatoes and pepper + reserved river, animal and warehouse areas (cassava_row.glb, tomato_row.glb in props/)
@@ -152,6 +153,16 @@ const BUILDINGS = [
     zone: { x0: 138, x1: 222, z0: 36, z1: 86 },     // the whole compound shows the name at the top left
     boxes: GOV_BOXES,
     fallback: [60, 8, 50]
+  },
+  {
+    key: 'hotel', name: 'Hotel',
+    // The hotel compound (hotel.js): the Hotel and the Club House, both facing north to the main road, each with its name board. Nothing else yet.
+    // rotY is 0 on purpose: hotel.js places and turns each building itself, in world metres.
+    build: buildHotel,
+    x: HOTEL_ORIGIN.x, z: HOTEL_ORIGIN.z, rotY: 0,
+    zone: { x0: 238, x1: 312, z0: 36, z1: 86 },     // the whole plot shows the name at the top left
+    boxes: HOTEL_BOXES,
+    fallback: [74, 10, 50]
   },
   {
     key: 'rural', name: 'Rural District',
