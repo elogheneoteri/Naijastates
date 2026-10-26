@@ -255,7 +255,7 @@ function buildGrass(group) {
       const im = new THREE.InstancedMesh(geo, m, list.length);
       list.forEach((sp, i) => {
         const k = sp.h / hgt; o.position.set(sp.x, sp.y, sp.z); o.rotation.set(0, sp.r, 0); o.scale.set(k * rand(0.9, 1.2), k, k * rand(0.9, 1.2)); o.updateMatrix();
-        im.setMatrixAt(i, o.matrix); const t = 0.8 + Math.random() * 0.35; im.setColorAt(i, c.setRGB(t, t, t * 0.93));
+        im.setMatrixAt(i, o.matrix); const t = 1.15 + Math.random() * 0.5; im.setColorAt(i, c.setRGB(t, t * 1.05, t * 0.9));
       });
       im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
       im.castShadow = false; im.receiveShadow = false;
@@ -304,7 +304,7 @@ export function buildRiver(world) {
   const idx = (i, j) => j * NX + i;
 
   // grid positions + bed depth at each vertex. Each row is as wide as the river (and its beach) is anywhere in that part of the river.
-  const X = new Float32Array(N), Z = new Float32Array(N), D = new Float32Array(N), E = new Float32Array(N);
+  const X = new Float32Array(N), Z = new Float32Array(N), D = new Float32Array(N), E = new Float32Array(N), S = new Float32Array(N);
   for (let j = 0; j < NZ; j++) {
     const za = rows[Math.max(0, j - 1)], zb = rows[Math.min(NZ - 1, j + 1)];
     let lo = 1e9, hi = -1e9;
@@ -313,7 +313,8 @@ export function buildRiver(world) {
     for (let i = 0; i < NX; i++) {
       const k = idx(i, j), x = lo + (hi - lo) * i / (NX - 1), z = rows[j];
       X[k] = x; Z[k] = z; D[k] = depthAt(x, z);
-      E[k] = Math.max(0, Math.min(zShore(x) + beachS(x) - z, x - (bankL(z) - beachSide(z)), (bankR(z) + beachSide(z)) - x));   // how far inside the hole (the beach edge is 0)
+      S[k] = Math.min(zShore(x) + beachS(x) - z, x - (bankL(z) - beachSide(z)), (bankR(z) + beachSide(z)) - x, z - zFar(x));   // how far inside the hole this point is (negative = outside it, under the ground)
+      E[k] = Math.max(0, S[k]);
     }
   }
   const indices = [];
@@ -325,17 +326,19 @@ export function buildRiver(world) {
   // ----- the river bed: ground-coloured sand at the edge, paler sand on the beach, mud, then dark where it is deep -----
   const bedPos = new Float32Array(N * 3), bedCol = new Float32Array(N * 3);
   for (let k = 0; k < N; k++) {
-    bedPos[k * 3] = X[k]; bedPos[k * 3 + 1] = BED_EDGE_Y - D[k]; bedPos[k * 3 + 2] = Z[k];
+    // outside the hole the bed dives well under the ground, so it can never show through it (it used to lie only 2 cm under it and flicker through as a straight pale strip)
+    const drop = S[k] < 0 ? Math.min(1.5, 0.15 - S[k] * 2.5) : 0;
+    bedPos[k * 3] = X[k]; bedPos[k * 3 + 1] = BED_EDGE_Y - D[k] - drop; bedPos[k * 3 + 2] = Z[k];
     const m = smooth(0.0, 0.7, D[k]), dp = smooth(0.7, 3.2, D[k]), n = 0.92 + 0.08 * Math.sin(X[k] * 1.7) * Math.cos(Z[k] * 2.3);
     let r = 0.74 * (1 - m) + 0.50 * m * (1 - dp) + 0.20 * dp, g = 0.57 * (1 - m) + 0.42 * m * (1 - dp) + 0.19 * dp, b = 0.40 * (1 - m) + 0.30 * m * (1 - dp) + 0.17 * dp;
     const edge = smooth(0, 0.55, E[k]), wet = 0.78 + 0.22 * smooth(0, 0.35, D[k] + (E[k] > 0.25 ? 0.2 : 0));
-    r = (0.64 * (1 - edge) + r * edge) * n; g = (0.40 * (1 - edge) + g * edge) * n; b = (0.26 * (1 - edge) + b * edge) * n;   // melts into the red sand of the ground at the edge
+    r = (0.72 * (1 - edge) + r * edge) * n; g = (0.42 * (1 - edge) + g * edge) * n; b = (0.25 * (1 - edge) + b * edge) * n;   // melts into the red sand of the ground at the edge
     const w = D[k] < 0.12 ? wet : 1; bedCol[k * 3] = r * w; bedCol[k * 3 + 1] = g * w; bedCol[k * 3 + 2] = b * w;
   }
   const bedGeo = new THREE.BufferGeometry();
   bedGeo.setAttribute('position', new THREE.BufferAttribute(bedPos, 3)); bedGeo.setAttribute('color', new THREE.BufferAttribute(bedCol, 3));
   bedGeo.setIndex(indices); bedGeo.computeVertexNormals(); bedGeo.computeBoundingSphere();
-  const bed = new THREE.Mesh(bedGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  const bed = new THREE.Mesh(bedGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
   bed.receiveShadow = false; bed.frustumCulled = false; group.add(bed);
 
   // ----- the water surface -----
