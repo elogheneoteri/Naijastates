@@ -16,6 +16,11 @@
 // WHAT IS HERE: the two buildings with their name boards (HOTEL and CLUB HOUSE) and the swimming pool in the strip west of the hotel (x 242 to 250, z 66 to 80),
 //   sunk into the ground (the ground has a hole cut in it, like the river), with two ladders on its east wall and animated water. The space in front of the buildings
 //   (z 37 to 63) is kept empty for the gate, driveway, fountain and car park, and 3 m is kept free behind them for the fence.
+//   AROUND THE POOL (the pool terrace, x 240 to 252.6, z 62.5 to 84): grey hexagon paving (pool_paving.jpg), 8 lounge chairs (4 west of the pool with 2 blue umbrellas,
+//   4 east of it with 2 red umbrellas), 2 patio sets (table, 4 chairs and umbrella) at the south end, and a lifeguard chair at the deep (north) end.
+//   PROPS FOLDER (new): lounge_chair_optimised.glb, umbrella_blue.glb, umbrella_red.glb, patio_set_optimised.glb, lifeguard_chair_optimised.glb, pool_paving.jpg, pool_paving_n.jpg
+//   KEEPING IT FAST: every kind of prop is a few InstancedMeshes (all copies of a chair share one mesh): about 9 draw calls for the whole pool area, about 45,000 triangles,
+//   no shadows from any of it. The paving is 4 flat strips.
 //   The pool is 11.8 m long and 5.2 m wide inside, 1.5 m deep at the shallow end (south) and 2.3 m deep at the deep end (north). Nobody can walk into it (it is a solid box),
 //   the deck round it is walkable.
 //
@@ -24,6 +29,7 @@
 //   x, z       where the building stands (its centre). Move it and the walls follow by themselves.
 //   sign.text  the words on the name board
 //   POOL       where the pool is (x, z = its middle) and how big (scale 7.4 = 11.8 m long inside); WATER_DROP = how far the water is below the edge (0.15 m)
+//   TERRACE, LOUNGERS, UMBRELLAS, PATIOS, LIFEGUARD   where the things round the pool stand (world metres: x, z; turn in degrees); delete a line to remove one, SHOW_POOL_AREA = false switches the lot off
 //   LADDERS    where the two ladders are along the pool wall (-1 = shallow end, +1 = deep end)
 
 import * as THREE from 'three';
@@ -52,19 +58,41 @@ const PARTS = [
 // ---- the swimming pool (swimming_pool.glb: a deck slab with the pool cut into it; its top face is the deck) ----
 // In the model's own units: the deck top is 0.346 high, the opening is 0.80 long each way along x and 0.35 each way along z (floor 0.70 x 0.31), x = the long way,
 // the floor is 0.15 high at the shallow end (x < -0.3), slopes up to 0.04 at x = 0.19, and stays 0.04 to the deep end.
-const POOL = { file: 'swimming_pool.glb', scale: 7.4, x: 246, z: 73, rotY: 90, deck: 0.346, openX: 0.80, openZ: 0.35 };   // rotY 90: the deep end (+x of the file) points north
+const POOL = { file: 'swimming_pool.glb', scale: 7.4, x: 246, z: 73, rotY: 90, deck: 0.346, openX: 0.80, openZ: 0.35, hw: 0.954, hd: 0.508 };   // rotY 90: the deep end (+x of the file) points north
+
+// ---- the pool terrace: paving and furniture (world metres) ----
+const SHOW_POOL_AREA = true;
+const TERRACE = { x0: 239.9, x1: 252.6, z0: 62.5, z1: 84.0 };       // the paved area round the pool (the pool's own deck is inside it)
+const PAVING_M = 2.0;                                                // one picture of paving = 2 m
+// [x, z, turn in degrees]. A lounger's head end is its +x side in the file: turn 90 puts the head to the north.
+const LOUNGERS = [[241.3, 67.5, 90], [241.3, 70.5, 90], [241.3, 73.5, 90], [241.3, 76.5, 90],        // west of the pool
+                  [251.9, 68.0, 90], [251.9, 71.0, 90], [251.9, 74.0, 90], [251.9, 77.0, 90]];       // east of the pool
+const UMBRELLAS_BLUE = [[240.5, 69.0, 0], [240.5, 75.0, 0]];         // between the west loungers
+const UMBRELLAS_RED = [[250.9, 69.5, 0], [250.9, 75.5, 0]];          // between the east loungers
+const PATIOS = [[244.2, 82.2, 0], [248.0, 82.2, 0]];                 // table + 4 chairs + umbrella, south end of the pool
+const LIFEGUARD = [[246.0, 64.3, 0]];                                // at the deep end, facing the pool (south)
+const PROP_FILES = { lounger: 'lounge_chair_optimised.glb', umbrellaBlue: 'umbrella_blue.glb', umbrellaRed: 'umbrella_red.glb', patio: 'patio_set_optimised.glb', lifeguard: 'lifeguard_chair_optimised.glb' };
+const PAVING_FILE = 'pool_paving.jpg', PAVING_NORMAL = 'pool_paving_n.jpg';
+const solid = (x, z, hw, hd = hw) => [x - hw - HOTEL_ORIGIN.x, x + hw - HOTEL_ORIGIN.x, z - hd - HOTEL_ORIGIN.z, z + hd - HOTEL_ORIGIN.z];
+const FURNITURE_BOXES = !SHOW_POOL_AREA ? [] : [
+  ...LOUNGERS.map(([x, z]) => solid(x, z, 0.3, 0.95)),
+  ...UMBRELLAS_BLUE.concat(UMBRELLAS_RED).map(([x, z]) => solid(x, z, 0.12)),
+  ...PATIOS.map(([x, z]) => solid(x, z, 0.95)),
+  ...LIFEGUARD.map(([x, z]) => solid(x, z, 0.5, 0.6))
+];
 const WATER_DROP = 0.15;                                   // the water is this far below the edge of the pool
 const LADDER_FILE = 'pool_ladder.glb', LADDER_SCALE = 0.01, LADDERS = [-0.45, 0.50];    // along the pool wall, in file units (x of the pool file); the wall is the pool's +z side (east)
 const WATER_FILE = 'water_animation_optimised.glb';
 const poolTurned = (Math.round(POOL.rotY / 90) % 2) !== 0;
 const POOL_HX = (poolTurned ? POOL.openZ : POOL.openX) * POOL.scale, POOL_HZ = (poolTurned ? POOL.openX : POOL.openZ) * POOL.scale;   // half size of the opening, in world metres
 const HOLE_PAD = 0.4;                                      // the ground hole is a little bigger than the opening (it hides under the deck)
+const DECK_HX = (Math.round(POOL.rotY / 90) % 2 !== 0 ? POOL.hd : POOL.hw) * POOL.scale, DECK_HZ = (Math.round(POOL.rotY / 90) % 2 !== 0 ? POOL.hw : POOL.hd) * POOL.scale;   // half size of the whole pool slab, in world metres
 export const POOL_HOLE = { x0: POOL.x - POOL_HX - HOLE_PAD, x1: POOL.x + POOL_HX + HOLE_PAD, z0: POOL.z - POOL_HZ - HOLE_PAD, z1: POOL.z + POOL_HZ + HOLE_PAD };
 const POOL_BOX = [POOL.x - POOL_HX + 0.1 - HOTEL_ORIGIN.x, POOL.x + POOL_HX - 0.1 - HOTEL_ORIGIN.x, POOL.z - POOL_HZ + 0.1 - HOTEL_ORIGIN.z, POOL.z + POOL_HZ - 0.1 - HOTEL_ORIGIN.z];
 
 // ---- solid parts: the walls of each building, [minX, maxX, minZ, maxZ] relative to HOTEL_ORIGIN (the game does not turn them: rotY is 0) ----
 const STEP = 0.5;                                          // the strip in front of each door that stays walkable
-export const HOTEL_BOXES = [POOL_BOX, ...PARTS.map(p => {
+export const HOTEL_BOXES = [POOL_BOX, ...FURNITURE_BOXES, ...PARTS.map(p => {
   const turned = (Math.round(p.rotY / 90) % 2) !== 0;
   const hw = (turned ? p.half.hd : p.half.hw) * p.scale - 0.2, hd = (turned ? p.half.hw : p.half.hd) * p.scale - 0.2;
   let x0 = p.x - hw, x1 = p.x + hw, z0 = p.z - hd, z1 = p.z + hd;
@@ -143,9 +171,48 @@ function buildPool(group, animators) {
   }, undefined, e => console.warn('hotel: could not load ' + PROPS_DIR + WATER_FILE + ' (the pool stays empty)', e));
 }
 
+// ---------- the pool area: paving + furniture (every kind is a few InstancedMeshes, all copies share the same meshes) ----------
+function buildPoolArea(group) {
+  // paving: 4 flat strips round the pool slab (so nothing covers the pool opening)
+  const dx0 = POOL.x - DECK_HX, dx1 = POOL.x + DECK_HX, dz0 = POOL.z - DECK_HZ, dz1 = POOL.z + DECK_HZ, T = TERRACE;
+  const strips = [[T.x0, T.x1, T.z0, dz0], [T.x0, T.x1, dz1, T.z1], [T.x0, dx0, dz0, dz1], [dx1, T.x1, dz0, dz1]];     // north, south, west, east
+  const tl = new THREE.TextureLoader();
+  const map = tl.load(PROPS_DIR + PAVING_FILE), nmap = tl.load(PROPS_DIR + PAVING_NORMAL);
+  map.colorSpace = THREE.SRGBColorSpace;
+  [map, nmap].forEach(t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; });
+  const mat = new THREE.MeshStandardMaterial({ map, normalMap: nmap, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  strips.forEach(([x0, x1, z0, z1]) => {
+    const w = x1 - x0, d = z1 - z0; if (w < 0.05 || d < 0.05) return;
+    const g = new THREE.PlaneGeometry(w, d), uv = g.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, (x0 + uv.getX(i) * w) / PAVING_M, -(z1 - uv.getY(i) * d) / PAVING_M);     // paving lines up across the strips
+    const m = new THREE.Mesh(g, mat); m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2 - HOTEL_ORIGIN.x, 0.005, (z0 + z1) / 2 - HOTEL_ORIGIN.z); m.receiveShadow = false; group.add(m);
+  });
+
+  // furniture: spots = [x, z, turn in degrees]
+  const place = (file, spots) => {
+    if (!spots.length) return;
+    new GLTFLoader().load(PROPS_DIR + file, gltf => {
+      gltf.scene.updateMatrixWorld(true);
+      const o = new THREE.Object3D(), m4 = new THREE.Matrix4();
+      gltf.scene.traverse(part => {
+        if (!part.isMesh) return;
+        const im = new THREE.InstancedMesh(part.geometry, part.material, spots.length);
+        spots.forEach(([x, z, turn], i) => {
+          o.position.set(x - HOTEL_ORIGIN.x, 0, z - HOTEL_ORIGIN.z); o.rotation.set(0, THREE.MathUtils.degToRad(turn), 0); o.scale.set(1, 1, 1); o.updateMatrix();
+          m4.multiplyMatrices(o.matrix, part.matrixWorld); im.setMatrixAt(i, m4);
+        });
+        im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; im.castShadow = false; im.receiveShadow = false; group.add(im);
+      });
+    }, undefined, e => console.warn('hotel: could not load ' + PROPS_DIR + file, e));
+  };
+  place(PROP_FILES.lounger, LOUNGERS); place(PROP_FILES.umbrellaBlue, UMBRELLAS_BLUE); place(PROP_FILES.umbrellaRed, UMBRELLAS_RED);
+  place(PROP_FILES.patio, PATIOS); place(PROP_FILES.lifeguard, LIFEGUARD);
+}
+
 export function buildHotel() {
   const group = new THREE.Group(), animators = [];
   buildPool(group, animators);
+  if (SHOW_POOL_AREA) buildPoolArea(group);
   PARTS.forEach(p => {
     const holder = new THREE.Group();                      // turned to face the right way, standing at its place (relative to HOTEL_ORIGIN)
     holder.position.set(p.x - HOTEL_ORIGIN.x, 0, p.z - HOTEL_ORIGIN.z);
