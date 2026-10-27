@@ -35,6 +35,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { PROPS_DIR } from './props_library.js';
+import { buildFenceKit } from './fence_kit.js';
 
 export const HOTEL_ORIGIN = { x: 275, z: 61 };           // the centre this compound is placed at: it MUST be the x / z of the BUILDINGS entry in game.js
 
@@ -64,18 +65,20 @@ const POOL = { file: 'swimming_pool.glb', scale: 7.4, x: 246, z: 73, rotY: 90, d
 const SHOW_POOL_AREA = true;
 const TERRACE = { x0: 239.9, x1: 252.6, z0: 62.5, z1: 84.0 };       // the paved area round the pool (the pool's own deck is inside it)
 const PAVING_M = 2.0;                                                // one picture of paving = 2 m
-// [x, z, turn in degrees]. A lounger's head end is its +x side in the file: turn 90 puts the head to the north.
-const LOUNGERS = [[241.3, 67.5, 90], [241.3, 70.5, 90], [241.3, 73.5, 90], [241.3, 76.5, 90],        // west of the pool
-                  [251.9, 68.0, 90], [251.9, 71.0, 90], [251.9, 74.0, 90], [251.9, 77.0, 90]];       // east of the pool
+// [x, z, turn in degrees]. A lounger's head (backrest) end is its +x side in the file and its feet are on the -x side. Each one lies ACROSS the pool edge with its feet
+// towards the water, so whoever sits on it looks at the pool: west of the pool turn 180 (feet point east), east of the pool turn 0 (feet point west).
+const LOUNGERS = [[241.0, 67.5, 180], [241.0, 70.5, 180], [241.0, 73.5, 180], [241.0, 76.5, 180],    // west of the pool
+                  [251.4, 68.0, 0], [251.4, 71.0, 0], [251.4, 74.0, 0], [251.4, 77.0, 0]];           // east of the pool
 const UMBRELLAS_BLUE = [[240.5, 69.0, 0], [240.5, 75.0, 0]];         // between the west loungers
 const UMBRELLAS_RED = [[250.9, 69.5, 0], [250.9, 75.5, 0]];          // between the east loungers
-const PATIOS = [[244.2, 82.2, 0], [248.0, 82.2, 0]];                 // table + 4 chairs + umbrella, south end of the pool
-const LIFEGUARD = [[246.0, 64.3, 0]];                                // at the deep end, facing the pool (south)
+const PATIOS = [[244.2, 82.2, 0], [248.0, 82.2, 0]];                 // table + 4 chairs, south end of the pool
+const PATIO_UMBRELLAS_BLUE = [[244.2, 82.2, 0]], PATIO_UMBRELLAS_RED = [[248.0, 82.2, 0]];   // the umbrella over each table (the patio set's own umbrella was black, so it was taken out of the file)
+const LIFEGUARD = [[246.0, 64.3, 180]];                              // at the deep end. In the file the ladder (front) is on -z, so turn 180 puts the ladder side and the view to the south, over the pool
 const PROP_FILES = { lounger: 'lounge_chair_optimised.glb', umbrellaBlue: 'umbrella_blue.glb', umbrellaRed: 'umbrella_red.glb', patio: 'patio_set_optimised.glb', lifeguard: 'lifeguard_chair_optimised.glb' };
 const PAVING_FILE = 'pool_paving.jpg', PAVING_NORMAL = 'pool_paving_n.jpg';
 const solid = (x, z, hw, hd = hw) => [x - hw - HOTEL_ORIGIN.x, x + hw - HOTEL_ORIGIN.x, z - hd - HOTEL_ORIGIN.z, z + hd - HOTEL_ORIGIN.z];
 const FURNITURE_BOXES = !SHOW_POOL_AREA ? [] : [
-  ...LOUNGERS.map(([x, z]) => solid(x, z, 0.3, 0.95)),
+  ...LOUNGERS.map(([x, z]) => solid(x, z, 0.95, 0.3)),
   ...UMBRELLAS_BLUE.concat(UMBRELLAS_RED).map(([x, z]) => solid(x, z, 0.12)),
   ...PATIOS.map(([x, z]) => solid(x, z, 0.95)),
   ...LIFEGUARD.map(([x, z]) => solid(x, z, 0.5, 0.6))
@@ -92,7 +95,17 @@ const POOL_BOX = [POOL.x - POOL_HX + 0.1 - HOTEL_ORIGIN.x, POOL.x + POOL_HX - 0.
 
 // ---- solid parts: the walls of each building, [minX, maxX, minZ, maxZ] relative to HOTEL_ORIGIN (the game does not turn them: rotY is 0) ----
 const STEP = 0.5;                                          // the strip in front of each door that stays walkable
-export const HOTEL_BOXES = [POOL_BOX, ...FURNITURE_BOXES, ...PARTS.map(p => {
+// ---- the fence round the compound (fence_kit.js + compound_fence.glb): 1 m inside the plot edge, with the animated double gate in the middle of the north (road) side ----
+const FENCE_INSET = 1.0;
+const FX0 = PLOT.x0 + FENCE_INSET, FX1 = PLOT.x1 - FENCE_INSET, FZ0 = PLOT.z0 + FENCE_INSET, FZ1 = PLOT.z1 - FENCE_INSET;
+const GATE = { x: HOTEL_ORIGIN.x, z: FZ0, axis: 'x', inside: 'south' };      // the leaves swing in, towards the compound
+const FENCE = buildFenceKit({
+  runs: [[FX0, FZ0, FX1, FZ0], [FX1, FZ0, FX1, FZ1], [FX1, FZ1, FX0, FZ1], [FX0, FZ1, FX0, FZ0]],      // north (with the gate), east, south, west
+  gates: [GATE]
+});
+const FENCE_BOXES = FENCE.boxes.map(([x0, x1, z0, z1]) => [x0 - HOTEL_ORIGIN.x, x1 - HOTEL_ORIGIN.x, z0 - HOTEL_ORIGIN.z, z1 - HOTEL_ORIGIN.z]);
+
+export const HOTEL_BOXES = [POOL_BOX, ...FURNITURE_BOXES, ...FENCE_BOXES, ...PARTS.map(p => {
   const turned = (Math.round(p.rotY / 90) % 2) !== 0;
   const hw = (turned ? p.half.hd : p.half.hw) * p.scale - 0.2, hd = (turned ? p.half.hw : p.half.hd) * p.scale - 0.2;
   let x0 = p.x - hw, x1 = p.x + hw, z0 = p.z - hd, z1 = p.z + hd;
@@ -205,12 +218,20 @@ function buildPoolArea(group) {
       });
     }, undefined, e => console.warn('hotel: could not load ' + PROPS_DIR + file, e));
   };
-  place(PROP_FILES.lounger, LOUNGERS); place(PROP_FILES.umbrellaBlue, UMBRELLAS_BLUE); place(PROP_FILES.umbrellaRed, UMBRELLAS_RED);
+  place(PROP_FILES.lounger, LOUNGERS); place(PROP_FILES.umbrellaBlue, UMBRELLAS_BLUE.concat(PATIO_UMBRELLAS_BLUE)); place(PROP_FILES.umbrellaRed, UMBRELLAS_RED.concat(PATIO_UMBRELLAS_RED));
   place(PROP_FILES.patio, PATIOS); place(PROP_FILES.lifeguard, LIFEGUARD);
 }
 
-export function buildHotel() {
+export function buildHotel(world) {
   const group = new THREE.Group(), animators = [];
+  FENCE.group.position.set(-HOTEL_ORIGIN.x, 0, -HOTEL_ORIGIN.z);          // the fence is made in world metres; this group is placed at HOTEL_ORIGIN
+  group.add(FENCE.group);
+  let last = performance.now();
+  animators.push(() => {                                                   // opens the gate when the player walks up to it
+    const now = performance.now(), dt = Math.min((now - last) / 1000, 0.1); last = now;
+    const p = world && world.player && world.player.position;
+    if (p) FENCE.update(p.x, p.z, dt);
+  });
   buildPool(group, animators);
   if (SHOW_POOL_AREA) buildPoolArea(group);
   PARTS.forEach(p => {
@@ -234,5 +255,5 @@ export function buildHotel() {
       b.position.y = p.half.h * p.scale / 2; holder.add(b);
     });
   });
-  return { group, update: () => { for (const f of animators) f(); } };
+  return { group, liveBoxes: FENCE.liveBoxes, update: () => { for (const f of animators) f(); } };
 }
