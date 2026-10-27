@@ -14,7 +14,7 @@ import { buildCommercialExterior, COMM_BOXES } from './commercial_exterior.js';
 import { buildLineHouses, LINE_HOUSE_BOXES } from './line_houses.js';
 import { buildBedsitter, BEDSIT_BOXES, BEDSIT_STAIRS } from './bedsitter.js';          // Low-Class Housing: the bed-sitter block (bedsitter.glb)
 import { buildRentalOffice, RENTAL_BOXES } from './rental_office.js';          // Rental Office: the rental building (rental_office.glb)          // Low-Class Housing: the line houses (line_house.glb)
-import { buildHotel, HOTEL_BOXES, HOTEL_ORIGIN } from './hotel.js';   // Hotel compound: Hotel + Club House (hotel.glb, club_house.glb)
+import { buildHotel, HOTEL_BOXES, HOTEL_ORIGIN, cutPoolHole } from './hotel.js';   // Hotel compound: Hotel + Club House (hotel.glb, club_house.glb)
 import { buildGovernment, GOV_BOXES, GOV_ORIGIN } from './government.js';   // Government compound: City Hall + Government Office (city_hall.glb, government_office.glb)
 import { buildRiver, cutRiverHole, RIVER_BOXES, riverDip, riverSpeed } from './river.js';   // the river along the north edge of the Rural District (for fishing)
 import { buildRuralFarm, FARM_BOXES } from './rural_farm.js';   // Rural District: rows of cassava, tomatoes and pepper + reserved river, animal and warehouse areas (cassava_row.glb, tomato_row.glb in props/)
@@ -1063,15 +1063,16 @@ class World {
           float grassAmt = texture2D(tMask, vMapUv / uRep).r;
           diffuseColor *= mix(texture2D(map, vMapUv), texture2D(tGrass, vMapUv), grassAmt);`);
       cutRiverHole(sh);                                  // river.js: the river-shaped hole in the ground, so the water bed and the water show
+      cutPoolHole(sh);                                   // hotel.js: the swimming-pool-shaped hole in the ground
     };
-    groundMat.customProgramCacheKey = () => 'sand-grass-ground-river';
+    groundMat.customProgramCacheKey = () => 'sand-grass-ground-river-pool';
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, WORLD_H), groundMat);
     ground.rotation.x = -Math.PI / 2; ground.position.set(WORLD_W / 2, -0.04, WORLD_H / 2); ground.receiveShadow = true; this.scene.add(ground);
 
     // Beyond the world edge: more ground so the horizon is not a cliff
     const farMat = new THREE.MeshStandardMaterial({ color: 0x6b8348, roughness: 1 });
-    farMat.onBeforeCompile = sh => cutRiverHole(sh);     // river.js: the big river carries on north of the world edge
-    farMat.customProgramCacheKey = () => 'far-ground-river';
+    farMat.onBeforeCompile = sh => { cutRiverHole(sh); cutPoolHole(sh); };     // river.js: the big river carries on north of the world edge
+    farMat.customProgramCacheKey = () => 'far-ground-river-pool';
     const far = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), farMat);
     far.rotation.x = -Math.PI / 2; far.position.set(WORLD_W / 2, -0.08, WORLD_H / 2); this.scene.add(far);
 
