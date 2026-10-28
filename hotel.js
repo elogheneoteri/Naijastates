@@ -77,7 +77,7 @@ const LIFEGUARD = [[246.0, 64.3, 180]];                              // at the d
 const PROP_FILES = { lounger: 'lounge_chair_optimised.glb', umbrellaBlue: 'umbrella_blue.glb', umbrellaRed: 'umbrella_red.glb', patio: 'patio_set_optimised.glb', lifeguard: 'lifeguard_chair_optimised.glb' };
 const PAVING_FILE = 'pool_paving.jpg', PAVING_NORMAL = 'pool_paving_n.jpg';
 
-// ---- the front yard: car parks, driveway lanes, paved walkways (the same paving as the pool terrace) and street lamps (all world metres) ----
+// ---- the yard: asphalt driveway + car parks, the pool paving everywhere else you walk, and street lamps (all world metres) ----
 const SHOW_YARD = true;
 const BAY = 2.5;                                                      // width of one parking bay
 // a car park: rect = the asphalt. Two rows of bays that face each other across an aisle: 'near' = the car end of the bays (z), 'far' = the kerb end. arrows = [x, z, 'e' | 'w'] painted in the aisle
@@ -87,18 +87,12 @@ const CAR_PARKS = [
   { rect: { x0: 282.0, x1: 309.5, z0: 38.6, z1: 54.8 },              // EAST car park (east of the driveway)
     rows: [{ start: 283.5, count: 10, near: 44.2, far: 39.2 }, { start: 283.5, count: 10, near: 49.2, far: 54.2 }], arrows: [[288, 46.7, 'w'], [304, 46.7, 'w']] }
 ];
-const LANES = [{ x0: 268.0, x1: 272.5, z0: 37.6, z1: 59.5 }, { x0: 277.5, x1: 282.0, z0: 37.6, z1: 59.5 }];      // asphalt either side of the walkway, from the gate to the buildings
-// paved walkways (pool paving): the middle one runs from the gate to the buildings, the others run along the fronts of the Hotel and the Club House
-const WALKWAYS = [
-  { x0: 272.5, x1: 277.5, z0: 37.0, z1: 59.5 },                       // gate -> forecourt
-  { x0: 253.0, x1: 283.0, z0: 59.5, z1: 63.0 },                       // in front of the Hotel
-  { x0: 283.0, x1: 308.0, z0: 59.5, z1: 63.0 },                       // across to the Club House
-  { x0: 292.4, x1: 307.6, z0: 63.0, z1: 67.2 }                        // in front of the Club House
-];
+const DRIVEWAY = { x0: 268.0, x1: 282.0, z0: 37.0, z1: 61.5 };          // asphalt: the road for cars from the gate to the front of the buildings (the car park aisles open onto it)
+// EVERYTHING ELSE inside the fence that is not asphalt, a building or the pool is the walking floor: the pool paving (see buildYard)
 // street lamps: x, z, face in degrees (the arm turns towards 'face': 0 = south, 90 = east, 180 = north, 270 = west)
 const LAMP_FILE = 'street_lamp.glb', LAMP_HEIGHT = 6.0;
 const LAMPS = [
-  [270.2, 39.5, 90], [279.8, 39.5, 270], [270.2, 49.0, 90], [279.8, 49.0, 270], [270.2, 58.0, 90], [279.8, 58.0, 270],      // either side of the driveway
+  [268.4, 40.5, 90], [281.6, 40.5, 270], [268.4, 52.0, 90], [281.6, 52.0, 270], [268.4, 60.0, 90], [281.6, 60.0, 270],      // either side of the driveway
   [247.0, 38.2, 0], [259.5, 38.2, 0], [289.0, 38.2, 0], [301.5, 38.2, 0],                                                    // behind the front row of each car park
   [251.0, 60.5, 90], [284.0, 58.5, 270], [309.0, 60.5, 270], [241.5, 61.0, 90]                                              // the forecourt and the pool terrace
 ];
@@ -268,9 +262,13 @@ function loadLamp(loader, group, x, z, faceDeg) {
   }, undefined, e => console.warn('hotel: could not load ' + PROPS_DIR + LAMP_FILE, e));
 }
 function buildYard(group) {
-  LANES.forEach(r => flatRect(group, r, asphaltTexture(r.x1 - r.x0, r.z1 - r.z0, 20, null), 0.03));
+  // 1. the walking floor: pool paving over the whole compound inside the fence, except the pool slab itself (the pool is a hole in the ground, so nothing may cover it)
+  const sx0 = POOL.x - DECK_HX, sx1 = POOL.x + DECK_HX, sz0 = POOL.z - DECK_HZ, sz1 = POOL.z + DECK_HZ;
+  [[FX0, FX1, FZ0, sz0], [FX0, FX1, sz1, FZ1], [FX0, sx0, sz0, sz1], [sx1, FX1, sz0, sz1]].forEach(r => pave(group, r[0], r[1], r[2], r[3], 0.02));
+  // 2. asphalt on top of it: the driveway and the car parks (with their painted bays)
+  flatRect(group, DRIVEWAY, asphaltTexture(DRIVEWAY.x1 - DRIVEWAY.x0, DRIVEWAY.z1 - DRIVEWAY.z0, 20, null), 0.03);
   CAR_PARKS.forEach(cp => flatRect(group, cp.rect, asphaltTexture(cp.rect.x1 - cp.rect.x0, cp.rect.z1 - cp.rect.z0, 35, cp), 0.04));
-  WALKWAYS.forEach(r => pave(group, r.x0, r.x1, r.z0, r.z1, 0.06));
+  // 3. street lamps
   const loader = new GLTFLoader(); LAMPS.forEach(([x, z, f]) => loadLamp(loader, group, x, z, f));
 }
 
