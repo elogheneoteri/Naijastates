@@ -76,6 +76,32 @@ const PATIO_UMBRELLAS_BLUE = [[244.2, 82.2, 0]], PATIO_UMBRELLAS_RED = [[248.0, 
 const LIFEGUARD = [[246.0, 64.3, 180]];                              // at the deep end. In the file the ladder (front) is on -z, so turn 180 puts the ladder side and the view to the south, over the pool
 const PROP_FILES = { lounger: 'lounge_chair_optimised.glb', umbrellaBlue: 'umbrella_blue.glb', umbrellaRed: 'umbrella_red.glb', patio: 'patio_set_optimised.glb', lifeguard: 'lifeguard_chair_optimised.glb' };
 const PAVING_FILE = 'pool_paving.jpg', PAVING_NORMAL = 'pool_paving_n.jpg';
+
+// ---- the front yard: car parks, driveway lanes, paved walkways (the same paving as the pool terrace) and street lamps (all world metres) ----
+const SHOW_YARD = true;
+const BAY = 2.5;                                                      // width of one parking bay
+// a car park: rect = the asphalt. Two rows of bays that face each other across an aisle: 'near' = the car end of the bays (z), 'far' = the kerb end. arrows = [x, z, 'e' | 'w'] painted in the aisle
+const CAR_PARKS = [
+  { rect: { x0: 240.2, x1: 268.0, z0: 38.6, z1: 54.8 },              // WEST car park (west of the driveway)
+    rows: [{ start: 241.5, count: 10, near: 44.2, far: 39.2 }, { start: 241.5, count: 10, near: 49.2, far: 54.2 }], arrows: [[247, 46.7, 'e'], [262, 46.7, 'e']] },
+  { rect: { x0: 282.0, x1: 309.5, z0: 38.6, z1: 54.8 },              // EAST car park (east of the driveway)
+    rows: [{ start: 283.5, count: 10, near: 44.2, far: 39.2 }, { start: 283.5, count: 10, near: 49.2, far: 54.2 }], arrows: [[288, 46.7, 'w'], [304, 46.7, 'w']] }
+];
+const LANES = [{ x0: 268.0, x1: 272.5, z0: 37.6, z1: 59.5 }, { x0: 277.5, x1: 282.0, z0: 37.6, z1: 59.5 }];      // asphalt either side of the walkway, from the gate to the buildings
+// paved walkways (pool paving): the middle one runs from the gate to the buildings, the others run along the fronts of the Hotel and the Club House
+const WALKWAYS = [
+  { x0: 272.5, x1: 277.5, z0: 37.0, z1: 59.5 },                       // gate -> forecourt
+  { x0: 253.0, x1: 283.0, z0: 59.5, z1: 63.0 },                       // in front of the Hotel
+  { x0: 283.0, x1: 308.0, z0: 59.5, z1: 63.0 },                       // across to the Club House
+  { x0: 292.4, x1: 307.6, z0: 63.0, z1: 67.2 }                        // in front of the Club House
+];
+// street lamps: x, z, face in degrees (the arm turns towards 'face': 0 = south, 90 = east, 180 = north, 270 = west)
+const LAMP_FILE = 'street_lamp.glb', LAMP_HEIGHT = 6.0;
+const LAMPS = [
+  [270.2, 39.5, 90], [279.8, 39.5, 270], [270.2, 49.0, 90], [279.8, 49.0, 270], [270.2, 58.0, 90], [279.8, 58.0, 270],      // either side of the driveway
+  [247.0, 38.2, 0], [259.5, 38.2, 0], [289.0, 38.2, 0], [301.5, 38.2, 0],                                                    // behind the front row of each car park
+  [251.0, 60.5, 90], [284.0, 58.5, 270], [309.0, 60.5, 270], [241.5, 61.0, 90]                                              // the forecourt and the pool terrace
+];
 const solid = (x, z, hw, hd = hw) => [x - hw - HOTEL_ORIGIN.x, x + hw - HOTEL_ORIGIN.x, z - hd - HOTEL_ORIGIN.z, z + hd - HOTEL_ORIGIN.z];
 const FURNITURE_BOXES = !SHOW_POOL_AREA ? [] : [
   ...LOUNGERS.map(([x, z]) => solid(x, z, 0.95, 0.3)),
@@ -105,7 +131,8 @@ const FENCE = buildFenceKit({
 });
 const FENCE_BOXES = FENCE.boxes.map(([x0, x1, z0, z1]) => [x0 - HOTEL_ORIGIN.x, x1 - HOTEL_ORIGIN.x, z0 - HOTEL_ORIGIN.z, z1 - HOTEL_ORIGIN.z]);
 
-export const HOTEL_BOXES = [POOL_BOX, ...FURNITURE_BOXES, ...FENCE_BOXES, ...PARTS.map(p => {
+const LAMP_BOXES = !SHOW_YARD ? [] : LAMPS.map(([x, z]) => solid(x, z, 0.2));
+export const HOTEL_BOXES = [POOL_BOX, ...FURNITURE_BOXES, ...LAMP_BOXES, ...FENCE_BOXES, ...PARTS.map(p => {
   const turned = (Math.round(p.rotY / 90) % 2) !== 0;
   const hw = (turned ? p.half.hd : p.half.hw) * p.scale - 0.2, hd = (turned ? p.half.hw : p.half.hd) * p.scale - 0.2;
   let x0 = p.x - hw, x1 = p.x + hw, z0 = p.z - hd, z1 = p.z + hd;
@@ -184,22 +211,75 @@ function buildPool(group, animators) {
   }, undefined, e => console.warn('hotel: could not load ' + PROPS_DIR + WATER_FILE + ' (the pool stays empty)', e));
 }
 
+// ---------- paving (shared by the pool terrace and the walkways): one material, the picture lines up across every strip because the UVs come from world metres ----------
+let pavingMat = null;
+function pave(group, x0, x1, z0, z1, y) {
+  if (!pavingMat) {
+    const tl = new THREE.TextureLoader(), map = tl.load(PROPS_DIR + PAVING_FILE), nmap = tl.load(PROPS_DIR + PAVING_NORMAL);
+    map.colorSpace = THREE.SRGBColorSpace;
+    [map, nmap].forEach(t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; });
+    pavingMat = new THREE.MeshStandardMaterial({ map, normalMap: nmap, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  }
+  const w = x1 - x0, d = z1 - z0; if (w < 0.05 || d < 0.05) return;
+  const g = new THREE.PlaneGeometry(w, d), uv = g.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, (x0 + uv.getX(i) * w) / PAVING_M, -(z1 - uv.getY(i) * d) / PAVING_M);
+  const m = new THREE.Mesh(g, pavingMat); m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2 - HOTEL_ORIGIN.x, y, (z0 + z1) / 2 - HOTEL_ORIGIN.z); m.receiveShadow = false; group.add(m);
+}
+
+// ---------- the front yard: asphalt, car parks with painted bays, paved walkways, street lamps ----------
+function asphaltTexture(w, h, px, bays) {                       // w, h in metres; px pixels per metre; bays = a car park (rows + arrows) or null for plain asphalt
+  const c = document.createElement('canvas'); c.width = Math.max(8, Math.round(w * px)); c.height = Math.max(8, Math.round(h * px));
+  const g = c.getContext('2d'); g.fillStyle = '#3a3d41'; g.fillRect(0, 0, c.width, c.height);
+  let seed = 7 + c.width; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < c.width * c.height / 90; i++) { const v = 58 + Math.floor(rnd() * 26); g.fillStyle = 'rgb(' + v + ',' + (v + 2) + ',' + (v + 5) + ')'; g.fillRect(rnd() * c.width, rnd() * c.height, 2, 2); }
+  if (bays) {
+    const R = bays.rect, X = x => (x - R.x0) * px, Z = z => (z - R.z0) * px;
+    g.strokeStyle = '#ecece4'; g.lineWidth = 4; g.lineCap = 'butt';
+    const line = (x0, z0, x1, z1) => { g.beginPath(); g.moveTo(X(x0), Z(z0)); g.lineTo(X(x1), Z(z1)); g.stroke(); };
+    bays.rows.forEach(r => { for (let i = 0; i <= r.count; i++) line(r.start + i * BAY, r.near, r.start + i * BAY, r.far); line(r.start, r.near, r.start + r.count * BAY, r.near); });
+    g.fillStyle = '#ecece4';
+    bays.arrows.forEach(([ax, az, d]) => {
+      const sgn = d === 'e' ? 1 : -1, pts = [[1.3, 0], [0.2, -0.5], [0.2, -0.18], [-1.3, -0.18], [-1.3, 0.18], [0.2, 0.18], [0.2, 0.5]];
+      g.beginPath(); pts.forEach(([a, b], i) => { const x = ax + a * sgn, z = az + b * sgn; i ? g.lineTo(X(x), Z(z)) : g.moveTo(X(x), Z(z)); }); g.closePath(); g.fill();
+    });
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+function flatRect(group, r, tex, y) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(r.x1 - r.x0, r.z1 - r.z0), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+  m.rotation.x = -Math.PI / 2; m.position.set((r.x0 + r.x1) / 2 - HOTEL_ORIGIN.x, y, (r.z0 + r.z1) / 2 - HOTEL_ORIGIN.z); m.receiveShadow = false; group.add(m);
+}
+// a street lamp: its FOOT stands on x, z and its arm turns towards 'face' (same way the school and government compounds do it)
+function loadLamp(loader, group, x, z, faceDeg) {
+  loader.load(PROPS_DIR + LAMP_FILE, gltf => {
+    const root = gltf.scene; root.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
+    root.updateMatrixWorld(true);
+    let b = new THREE.Box3().setFromObject(root);
+    root.scale.multiplyScalar(LAMP_HEIGHT / Math.max(b.max.y - b.min.y, 1e-6)); root.updateMatrixWorld(true);
+    b = new THREE.Box3().setFromObject(root);
+    const lim = b.min.y + (b.max.y - b.min.y) * 0.04, v = new THREE.Vector3(); let sx = 0, sz = 0, n = 0;
+    root.traverse(o => { if (!o.isMesh || !o.geometry.attributes.position) return; const p = o.geometry.attributes.position;
+      for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); if (v.y <= lim) { sx += v.x; sz += v.z; n++; } } });
+    const mid = b.getCenter(new THREE.Vector3()), foot = n ? new THREE.Vector3(sx / n, b.min.y, sz / n) : mid.clone().setY(b.min.y);
+    root.position.set(-foot.x, -b.min.y, -foot.z);
+    let spin = 0; const dx = mid.x - foot.x, dz = mid.z - foot.z; if (Math.hypot(dx, dz) > 0.3) spin = -Math.atan2(dx, dz);     // the arm now points south (+z)
+    const pivot = new THREE.Group(); pivot.add(root); pivot.rotation.y = spin + THREE.MathUtils.degToRad(faceDeg);
+    const wrap = new THREE.Group(); wrap.add(pivot); wrap.position.set(x - HOTEL_ORIGIN.x, 0, z - HOTEL_ORIGIN.z); group.add(wrap);
+  }, undefined, e => console.warn('hotel: could not load ' + PROPS_DIR + LAMP_FILE, e));
+}
+function buildYard(group) {
+  LANES.forEach(r => flatRect(group, r, asphaltTexture(r.x1 - r.x0, r.z1 - r.z0, 20, null), 0.03));
+  CAR_PARKS.forEach(cp => flatRect(group, cp.rect, asphaltTexture(cp.rect.x1 - cp.rect.x0, cp.rect.z1 - cp.rect.z0, 35, cp), 0.04));
+  WALKWAYS.forEach(r => pave(group, r.x0, r.x1, r.z0, r.z1, 0.06));
+  const loader = new GLTFLoader(); LAMPS.forEach(([x, z, f]) => loadLamp(loader, group, x, z, f));
+}
+
 // ---------- the pool area: paving + furniture (every kind is a few InstancedMeshes, all copies share the same meshes) ----------
 function buildPoolArea(group) {
   // paving: 4 flat strips round the pool slab (so nothing covers the pool opening)
   const dx0 = POOL.x - DECK_HX, dx1 = POOL.x + DECK_HX, dz0 = POOL.z - DECK_HZ, dz1 = POOL.z + DECK_HZ, T = TERRACE;
   const strips = [[T.x0, T.x1, T.z0, dz0], [T.x0, T.x1, dz1, T.z1], [T.x0, dx0, dz0, dz1], [dx1, T.x1, dz0, dz1]];     // north, south, west, east
-  const tl = new THREE.TextureLoader();
-  const map = tl.load(PROPS_DIR + PAVING_FILE), nmap = tl.load(PROPS_DIR + PAVING_NORMAL);
-  map.colorSpace = THREE.SRGBColorSpace;
-  [map, nmap].forEach(t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; });
-  const mat = new THREE.MeshStandardMaterial({ map, normalMap: nmap, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
-  strips.forEach(([x0, x1, z0, z1]) => {
-    const w = x1 - x0, d = z1 - z0; if (w < 0.05 || d < 0.05) return;
-    const g = new THREE.PlaneGeometry(w, d), uv = g.attributes.uv;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, (x0 + uv.getX(i) * w) / PAVING_M, -(z1 - uv.getY(i) * d) / PAVING_M);     // paving lines up across the strips
-    const m = new THREE.Mesh(g, mat); m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2 - HOTEL_ORIGIN.x, 0.005, (z0 + z1) / 2 - HOTEL_ORIGIN.z); m.receiveShadow = false; group.add(m);
-  });
+  strips.forEach(r => pave(group, r[0], r[1], r[2], r[3], 0.005));
 
   // furniture: spots = [x, z, turn in degrees]
   const place = (file, spots) => {
@@ -222,6 +302,19 @@ function buildPoolArea(group) {
   place(PROP_FILES.patio, PATIOS); place(PROP_FILES.lifeguard, LIFEGUARD);
 }
 
+// The game's sun shines from the south-east, so a wall that faces NORTH (or west) never gets any sun and only has the dim sky light: both buildings face north, so their fronts
+// looked almost black. This adds a soft glow of the wall's own colour to north-facing (FILL_NORTH) and west-facing (FILL_WEST) surfaces only. 0 = off, about 0.6 = as bright as a sunny wall.
+const FILL_NORTH = 0.6, FILL_WEST = 0.25;
+function brightenShadedWalls(mat) {
+  if (!mat || mat.userData.shadeFill) return; mat.userData.shadeFill = true;
+  mat.onBeforeCompile = sh => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>',
+      '#include <emissivemap_fragment>\n  vec3 nWorldFill = normalize((vec4(normal, 0.0) * viewMatrix).xyz);\n  totalEmissiveRadiance += diffuseColor.rgb * (clamp(-nWorldFill.z, 0.0, 1.0) * ' + FILL_NORTH.toFixed(3) + ' + clamp(-nWorldFill.x, 0.0, 1.0) * ' + FILL_WEST.toFixed(3) + ');');
+  };
+  mat.customProgramCacheKey = () => 'hotelFill';
+  mat.needsUpdate = true;
+}
+
 export function buildHotel(world) {
   const group = new THREE.Group(), animators = [];
   FENCE.group.position.set(-HOTEL_ORIGIN.x, 0, -HOTEL_ORIGIN.z);          // the fence is made in world metres; this group is placed at HOTEL_ORIGIN
@@ -229,18 +322,30 @@ export function buildHotel(world) {
   let last = performance.now();
   animators.push(() => {                                                   // opens the gate when the player walks up to it
     const now = performance.now(), dt = Math.min((now - last) / 1000, 0.1); last = now;
-    const p = world && world.player && world.player.position;
+    const p = world && world.player && world.player.position;      // the proper way (game.js passes the world in)
     if (p) FENCE.update(p.x, p.z, dt);
+    else if (camSeen) FENCE.update(camPlayer.x, camPlayer.z, dt);   // fallback: where the camera is looking at ground level (about where the player stands)
   });
+  const camPlayer = new THREE.Vector3(), camDir = new THREE.Vector3(), camPos = new THREE.Vector3(); let camSeen = false;
+  const probe = new THREE.Mesh(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0.01, 0, 0, 0, 0.01, 0], 3)),
+    new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }));
+  probe.frustumCulled = false;
+  probe.onBeforeRender = (renderer, scene, cam) => {              // runs while the game draws: the game camera looks at the player, so its view ray hitting head height is the player
+    if (!cam.isPerspectiveCamera) return;
+    cam.getWorldPosition(camPos); cam.getWorldDirection(camDir);
+    if (camDir.y < -0.02) { const t = (1.1 - camPos.y) / camDir.y; camPlayer.set(camPos.x + camDir.x * t, 0, camPos.z + camDir.z * t); camSeen = true; }
+  };
+  group.add(probe);
   buildPool(group, animators);
   if (SHOW_POOL_AREA) buildPoolArea(group);
+  if (SHOW_YARD) buildYard(group);
   PARTS.forEach(p => {
     const holder = new THREE.Group();                      // turned to face the right way, standing at its place (relative to HOTEL_ORIGIN)
     holder.position.set(p.x - HOTEL_ORIGIN.x, 0, p.z - HOTEL_ORIGIN.z);
     holder.rotation.y = THREE.MathUtils.degToRad(p.rotY);
     group.add(holder);
     new GLTFLoader().load(p.file, gltf => {
-      gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; brightenShadedWalls(o.material); } });
       gltf.scene.scale.setScalar(p.scale);
       holder.add(gltf.scene);
       // the name on the empty board (a plain card just in front of the board: the letters only, the board shows through)
